@@ -7,12 +7,19 @@ const getExpectedStudents = async (dateStr) => {
   try {
     const query = `
       SELECT 
-        id AS student_id,
-        nome AS first_name,
-        cognome AS last_name,
-        giorni_abbonamento
-      FROM students
-      WHERE EXTRACT(ISODOW FROM $1::date) = ANY(giorni_abbonamento);
+        s.id AS student_id,
+        s.nome AS first_name,
+        s.cognome AS last_name,
+        s.giorni_abbonamento,
+        COALESCE(a.is_present, false)           AS is_present,
+        COALESCE(a.is_absent_justified, false)  AS is_absent_justified,
+        COALESCE(a.canteen_used, false)         AS canteen_used,
+        COALESCE(a.is_extra, false)             AS is_extra,
+        (a.id IS NOT NULL)                      AS already_registered
+      FROM students s
+      LEFT JOIN attendances a
+        ON s.id = a.student_id AND a.date = $1
+      WHERE EXTRACT(ISODOW FROM $1::date) = ANY(s.giorni_abbonamento);
     `;
     const result = await db.query(query, [dateStr]);
     return result.rows;

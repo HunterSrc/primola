@@ -8,6 +8,7 @@ class AttendanceRecord {
   bool isJustified;
   bool hasMeal;
   bool isExtra;
+  final bool alreadyRegistered;
 
   AttendanceRecord({
     required this.studentId,
@@ -16,6 +17,7 @@ class AttendanceRecord {
     this.isJustified = false,
     this.hasMeal = false,
     this.isExtra = false,
+    this.alreadyRegistered = false,
   });
 
   factory AttendanceRecord.fromJson(Map<String, dynamic> json) {
@@ -28,6 +30,7 @@ class AttendanceRecord {
       isJustified: json['is_absent_justified'] as bool? ?? false,
       hasMeal: json['canteen_used'] as bool? ?? false,
       isExtra: json['is_extra'] as bool? ?? false,
+      alreadyRegistered: json['already_registered'] as bool? ?? false,
     );
   }
 
@@ -39,6 +42,7 @@ class AttendanceRecord {
       isJustified: isJustified ?? this.isJustified,
       hasMeal: hasMeal ?? this.hasMeal,
       isExtra: isExtra ?? this.isExtra,
+      alreadyRegistered: alreadyRegistered,
     );
   }
   
