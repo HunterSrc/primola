@@ -1,0 +1,82 @@
+# =====================
+# macOS
+# =====================
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# =====================
+# Node.js / Backend
+# =====================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.env
+.env.local
+.env.*.local
+dist/
+build/
+
+# =====================
+# Flutter / Dart
+# =====================
+# Dart/Flutter build outputs
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+build/
+*.g.dart
+
+# iOS
+primola_app/ios/Pods/
+primola_app/ios/.symlinks/
+primola_app/ios/Flutter/Flutter.framework
+primola_app/ios/Flutter/Flutter.podspec
+primola_app/ios/Flutter/Generated.xcconfig
+primola_app/ios/Flutter/app.flx
+primola_app/ios/Flutter/app.zip
+primola_app/ios/Flutter/flutter_assets/
+primola_app/ios/ServiceDefinitions.json
+primola_app/ios/Runner/GeneratedPluginRegistrant.*
+
+# macOS
+primola_app/macos/Flutter/GeneratedPluginRegistrant.swift
+primola_app/macos/Flutter/ephemeral/
+
+# Android
+primola_app/android/.gradle/
+primola_app/android/local.properties
+primola_app/android/key.properties
+primola_app/android/app/google-services.json
+primola_app/android/app/src/*/google-services.json
+
+# Web
+primola_app/web/flutter_bootstrap.js
+
+# =====================
+# Python
+# =====================
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+venv/
+.venv/
+*.egg-info/
+dist/
+.mypy_cache/
+.pytest_cache/
+
+# =====================
+# Editor / IDE
+# =====================
+.vscode/
+.idea/
+*.swp
+*.swo
