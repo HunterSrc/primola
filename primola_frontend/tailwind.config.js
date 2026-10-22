@@ -17,10 +17,23 @@ module.exports = {
           700: '#15803d',
           800: '#166534',
           900: '#14532d',
+          // Brand Colors estratti dal sito ufficiale primola.it
+          blue: {
+            DEFAULT: '#3857F1',
+            light: '#5671F4',
+            dark: '#2640C4',
+          },
+          red: {
+            DEFAULT: '#CD1E14',
+            light: '#E53935',
+            dark: '#B71C1C',
+          },
+          dark: '#23282D',
         }
       },
       fontFamily: {
-        sans: ['Inter', 'Outfit', 'system-ui', 'sans-serif'],
+        sans: ['"Plus Jakarta Sans"', 'Inter', 'Outfit', 'system-ui', 'sans-serif'],
+        display: ['Outfit', 'sans-serif'],
       }
     },
   },

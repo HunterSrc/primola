@@ -7,23 +7,20 @@ import { AuthService } from '../core/services/auth.service';
   standalone: true,
   imports: [RouterOutlet, RouterLink, RouterLinkActive],
   template: `
-    <div class="h-screen overflow-hidden bg-slate-50/70 flex flex-col md:flex-row">
+    <div class="h-screen h-[100dvh] overflow-hidden bg-slate-50/70 flex flex-col md:flex-row">
       
       <!-- Top Bar Mobile (Visibile solo sotto i 768px) -->
-      <header class="md:hidden bg-slate-900 text-white px-4 py-3 border-b border-slate-800 flex items-center justify-between z-30 shrink-0 pt-safe">
-        <div class="flex items-center space-x-2.5">
-          <div class="w-8 h-8 rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-400 flex items-center justify-center shadow-md shadow-emerald-500/20">
-            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-            </svg>
+      <header class="md:hidden bg-slate-900 text-white px-4 pt-safe pb-3 border-b border-slate-800 flex items-center justify-between z-30 shrink-0 shadow-sm">
+        <div class="flex items-center space-x-2.5 pt-1">
+          <div class="h-8 px-2 py-1 bg-white rounded-lg flex items-center justify-center shadow-sm">
+            <img src="assets/images/logo-primola-tight.png" alt="Primola" class="h-5 w-auto object-contain" />
           </div>
-          <span class="font-bold text-base tracking-tight font-['Outfit']">Primola</span>
-          <span class="text-[9px] bg-emerald-500/20 text-emerald-400 font-bold px-1.5 py-0.5 rounded border border-emerald-500/30">v2.0</span>
+          <span class="text-[10px] bg-[#3857F1]/20 text-blue-300 font-bold px-1.5 py-0.5 rounded border border-[#3857F1]/30">Doposcuola</span>
         </div>
 
-        <div class="flex items-center space-x-2">
+        <div class="flex items-center space-x-2 pt-1">
           <div class="flex items-center space-x-2 bg-slate-800/80 px-2.5 py-1 rounded-xl border border-slate-700/60">
-            <div class="w-6 h-6 rounded-lg bg-emerald-600 flex items-center justify-center font-bold text-xs text-white">
+            <div class="w-6 h-6 rounded-lg bg-[#3857F1] flex items-center justify-center font-bold text-xs text-white">
               {{ authService.currentUser()?.name?.charAt(0) ?? 'U' }}
             </div>
             <span class="text-xs font-semibold text-slate-200 max-w-[80px] truncate">{{ authService.currentUser()?.name }}</span>
@@ -45,24 +42,19 @@ import { AuthService } from '../core/services/auth.service';
       <!-- Sidebar Desktop / Tablet (Nascosta su mobile standard) -->
       <aside class="hidden md:flex w-72 h-screen bg-gradient-to-b from-slate-900 via-slate-900 to-slate-950 text-white flex-col justify-between shrink-0 shadow-2xl border-r border-slate-800/80 z-20 overflow-y-auto">
         <div>
-          <!-- Header Logo & Brand -->
-          <div class="p-6 border-b border-slate-800/60 flex items-center space-x-3.5">
-            <div class="w-11 h-11 rounded-2xl bg-gradient-to-tr from-emerald-500 via-emerald-600 to-teal-400 flex items-center justify-center shadow-lg shadow-emerald-500/30 ring-2 ring-emerald-400/20">
-              <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-              </svg>
+          <!-- Header Logo & Brand Primola -->
+          <div class="p-5 border-b border-slate-800/60">
+            <div class="bg-white/95 rounded-2xl p-3 shadow-md border border-white/10 flex items-center justify-center mb-2.5">
+              <img src="assets/images/logo-primola-tight.png" alt="Primola Logo" class="h-10 w-auto object-contain" />
             </div>
-            <div>
-              <div class="flex items-center space-x-1.5">
-                <h1 class="text-xl font-extrabold tracking-tight text-white font-['Outfit']">Primola</h1>
-                <span class="text-[10px] bg-emerald-500/20 text-emerald-400 font-bold px-1.5 py-0.5 rounded border border-emerald-500/30">v2.0</span>
-              </div>
-              <p class="text-xs text-slate-400 font-medium">Gestione Presenze & Mensa</p>
+            <div class="flex items-center justify-between px-1">
+              <span class="text-[11px] font-semibold text-slate-400">Doposcuola & Presenze</span>
+              <span class="text-[9px] bg-[#3857F1]/20 text-blue-400 font-bold px-1.5 py-0.5 rounded border border-[#3857F1]/30">v2.0</span>
             </div>
           </div>
 
           <!-- Section Label -->
-          <div class="px-6 pt-6 pb-2 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+          <div class="px-6 pt-5 pb-2 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
             Menu Principale
           </div>
 
@@ -70,12 +62,12 @@ import { AuthService } from '../core/services/auth.service';
           <nav class="px-4 space-y-1.5">
             <a
               routerLink="/dashboard"
-              routerLinkActive="bg-emerald-600 text-white shadow-lg shadow-emerald-600/30 font-semibold"
+              routerLinkActive="bg-[#3857F1] text-white shadow-lg shadow-blue-600/30 font-semibold"
               [routerLinkActiveOptions]="{ exact: true }"
               class="flex items-center space-x-3.5 px-4 py-3 rounded-2xl text-slate-300 hover:bg-slate-800/80 hover:text-white transition-all group"
             >
               <div class="p-1.5 rounded-xl bg-slate-800/60 group-hover:bg-slate-700/60 transition-colors">
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-emerald-400 group-hover:scale-110 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-blue-400 group-hover:scale-110 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
                 </svg>
               </div>
@@ -84,7 +76,7 @@ import { AuthService } from '../core/services/auth.service';
 
             <a
               routerLink="/anagrafica"
-              routerLinkActive="bg-emerald-600 text-white shadow-lg shadow-emerald-600/30 font-semibold"
+              routerLinkActive="bg-[#3857F1] text-white shadow-lg shadow-blue-600/30 font-semibold"
               class="flex items-center space-x-3.5 px-4 py-3 rounded-2xl text-slate-300 hover:bg-slate-800/80 hover:text-white transition-all group"
             >
               <div class="p-1.5 rounded-xl bg-slate-800/60 group-hover:bg-slate-700/60 transition-colors">
@@ -102,7 +94,7 @@ import { AuthService } from '../core/services/auth.service';
 
               <a
                 routerLink="/admin/dashboard"
-                routerLinkActive="bg-emerald-600 text-white shadow-lg shadow-emerald-600/30 font-semibold"
+                routerLinkActive="bg-[#3857F1] text-white shadow-lg shadow-blue-600/30 font-semibold"
                 class="flex items-center space-x-3.5 px-4 py-3 rounded-2xl text-slate-300 hover:bg-slate-800/80 hover:text-white transition-all group"
               >
                 <div class="p-1.5 rounded-xl bg-slate-800/60 group-hover:bg-slate-700/60 transition-colors">
@@ -123,7 +115,7 @@ import { AuthService } from '../core/services/auth.service';
         <div class="p-4 m-3 rounded-2xl border border-slate-800/90 bg-slate-950/60 backdrop-blur-md">
           <div class="flex items-center justify-between">
             <div class="flex items-center space-x-3 overflow-hidden">
-              <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-slate-700 to-slate-600 flex items-center justify-center font-bold text-white shadow-inner shrink-0">
+              <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#3857F1] to-[#2640C4] flex items-center justify-center font-bold text-white shadow-inner shrink-0">
                 {{ authService.currentUser()?.name?.charAt(0) ?? 'U' }}
               </div>
               <div class="truncate">
@@ -157,7 +149,7 @@ import { AuthService } from '../core/services/auth.service';
         <!-- Tab Presenze -->
         <a
           routerLink="/dashboard"
-          routerLinkActive="text-emerald-400 font-bold"
+          routerLinkActive="text-blue-400 font-bold"
           [routerLinkActiveOptions]="{ exact: true }"
           class="flex flex-col items-center justify-center py-1 px-3 text-slate-400 hover:text-slate-200 transition-colors min-w-[64px]"
         >
@@ -172,7 +164,7 @@ import { AuthService } from '../core/services/auth.service';
         <!-- Tab Anagrafica -->
         <a
           routerLink="/anagrafica"
-          routerLinkActive="text-emerald-400 font-bold"
+          routerLinkActive="text-blue-400 font-bold"
           class="flex flex-col items-center justify-center py-1 px-3 text-slate-400 hover:text-slate-200 transition-colors min-w-[64px]"
         >
           <div class="p-1 rounded-xl">

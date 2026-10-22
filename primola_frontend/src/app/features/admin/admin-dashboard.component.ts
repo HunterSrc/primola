@@ -556,22 +556,27 @@ import { AppDatePipe } from '../../shared/pipes/app-date.pipe';
       <!-- SEZIONE 3: RENDICONTAZIONE MENSA -->
       @if (activeSection() === 'MENSA') {
         <div class="space-y-4 sm:space-y-6">
-          <div class="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div class="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-3">
             <span class="text-xs sm:text-sm font-semibold text-slate-700">Intervallo di Conteggio:</span>
-            <div class="flex items-center space-x-2 w-full sm:w-auto">
-              <input
-                type="date"
-                [(ngModel)]="mensaFrom"
-                (ngModelChange)="loadMensaReport()"
-                class="flex-1 sm:flex-initial px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs sm:text-sm"
-              />
-              <span class="text-slate-400 text-xs">a</span>
-              <input
-                type="date"
-                [(ngModel)]="mensaTo"
-                (ngModelChange)="loadMensaReport()"
-                class="flex-1 sm:flex-initial px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs sm:text-sm"
-              />
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 w-full md:w-auto items-center">
+              <div class="flex items-center space-x-2">
+                <span class="text-xs text-slate-400 w-8">Dal:</span>
+                <input
+                  type="date"
+                  [(ngModel)]="mensaFrom"
+                  (ngModelChange)="loadMensaReport()"
+                  class="flex-1 px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs sm:text-sm text-slate-700 font-medium"
+                />
+              </div>
+              <div class="flex items-center space-x-2">
+                <span class="text-xs text-slate-400 w-8">Al:</span>
+                <input
+                  type="date"
+                  [(ngModel)]="mensaTo"
+                  (ngModelChange)="loadMensaReport()"
+                  class="flex-1 px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs sm:text-sm text-slate-700 font-medium"
+                />
+              </div>
             </div>
           </div>
 

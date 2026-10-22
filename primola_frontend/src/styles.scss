@@ -2,11 +2,19 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --primola-blue: #3857F1;
+  --primola-blue-light: #5671F4;
+  --primola-red: #CD1E14;
+  --primola-dark: #23282D;
+}
+
 @layer base {
   html, body {
-    height: 100%;
     margin: 0;
     padding: 0;
+    min-height: 100%;
+    min-height: 100dvh;
     background-color: #f8fafc;
     color: #0f172a;
     font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
@@ -19,16 +27,28 @@
   }
 }
 
-/* Safe area insets for iOS notch / home bar */
+/* iOS Safari & WebKit Date Input Styling Reset */
+input[type="date"] {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  min-height: 44px;
+  line-height: normal;
+}
+input[type="date"]::-webkit-date-and-time-value {
+  text-align: left;
+}
+
+/* Safe area insets for iOS notch / dynamic island / home bar */
 .pb-safe {
-  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-bottom: max(env(safe-area-inset-bottom, 0px), 12px);
 }
 .pt-safe {
-  padding-top: env(safe-area-inset-top, 0px);
+  padding-top: max(env(safe-area-inset-top, 0px), 16px);
 }
 /* Margine inferiore generoso per consentire lo scroll completo sopra la bottom-nav mobile */
 .pb-mobile-nav {
-  padding-bottom: calc(7.5rem + env(safe-area-inset-bottom, 0px));
+  padding-bottom: calc(9rem + env(safe-area-inset-bottom, 0px));
   -webkit-overflow-scrolling: touch;
   overscroll-behavior-y: contain;
 }

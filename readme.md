@@ -15,9 +15,14 @@ Il repository include i diversi moduli del sistema:
 ```text
 primola/
 ├── Primola_Backend/         # REST API Node.js (Express, PostgreSQL, Swagger)
+│   └── db/                  # Script SQL DDL e Seed (db_schema.sql, db_seed.sql)
 ├── primola_frontend/        # Web App moderna in Angular 19+ (Tailwind CSS, Vitest)
 ├── primola_app/             # Client Mobile/Tablet in Flutter (Dart, Riverpod, Dio)
-└── Primola_Prompts/         # Script SQL DDL/DML e specifiche architetturali
+├── docs/                    # Documentazione di progetto e specifiche
+│   ├── HANDOVER_ANTIGRAVITY.md # Istruzioni per ripresa lavori da parte di Antigravity
+│   ├── ANALISI_FUNZIONALE.md   # Flussi di processo dettagliati
+│   └── tech_summary_db.md      # Specifiche database e indici
+└── .gemini/                 # Regole e configurazioni per agenti Antigravity
 ```
 
 ### Componenti Principali
@@ -33,7 +38,7 @@ primola/
 
 ## 2. Stato di Avanzamento Attuale
 
-### Database (`Primola_Prompts/db_schema.sql` e `db_seed.sql`)
+### Database (`Primola_Backend/db/db_schema.sql` e `db_seed.sql`)
 - [x] Schema DDL completo con tabelle: `users`, `students`, `tutors`, `attendances`.
 - [x] Indici GIN performanti per le ricerche sui giorni della settimana (`SMALLINT[]`).
 - [x] Trigger `BEFORE UPDATE` automatici per l'aggiornamento dei timestamp.
@@ -86,8 +91,8 @@ primola/
 Avviare il server PostgreSQL locale (porta 5432) ed eseguire gli script:
 ```bash
 createdb primola
-psql -d primola -f Primola_Prompts/db_schema.sql
-psql -d primola -f Primola_Prompts/db_seed.sql
+psql -d primola -f Primola_Backend/db/db_schema.sql
+psql -d primola -f Primola_Backend/db/db_seed.sql
 ```
 
 ### 2. Backend Node.js

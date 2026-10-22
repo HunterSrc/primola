@@ -9,18 +9,22 @@ import { AuthService } from '../../core/services/auth.service';
   standalone: true,
   imports: [CommonModule, FormsModule],
   template: `
-    <div class="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-emerald-950 flex items-center justify-center p-4">
+    <div class="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-[#1e2a5e] flex items-center justify-center p-4">
       <div class="max-w-md w-full bg-white/95 backdrop-blur-md rounded-3xl shadow-2xl p-8 border border-white/20">
         
-        <!-- Logo & Titolo -->
-        <div class="text-center mb-8">
-          <div class="inline-flex w-16 h-16 rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-400 items-center justify-center shadow-lg shadow-emerald-500/30 mb-4">
-            <svg xmlns="http://www.w3.org/2000/svg" class="w-10 h-10 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-            </svg>
+        <!-- Logo Primola Ufficiale & Titolo -->
+        <div class="text-center mb-8 flex flex-col items-center">
+          <div class="p-3 bg-white rounded-2xl shadow-sm border border-slate-100 mb-3 flex items-center justify-center">
+            <img 
+              src="assets/images/logo-primola-tight.png" 
+              alt="Logo Primola" 
+              class="h-14 w-auto object-contain"
+            />
           </div>
-          <h1 class="text-3xl font-extrabold text-slate-800 tracking-tight">Primola</h1>
-          <p class="text-slate-500 text-sm mt-1">Accesso Gestionale Presenze</p>
+          <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[#3857F1]/10 text-[#3857F1] border border-[#3857F1]/20 mt-1">
+            Doposcuola & Presenze
+          </span>
+          <p class="text-slate-500 text-xs mt-2">Accesso sicuro al Gestionale</p>
         </div>
 
         <!-- Messaggio di errore -->
@@ -44,7 +48,7 @@ import { AuthService } from '../../core/services/auth.service';
                 name="email"
                 required
                 placeholder="admin@primola.it"
-                class="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50/50 text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition text-sm"
+                class="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50/50 text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#3857F1] focus:border-transparent transition text-sm"
               />
             </div>
           </div>
@@ -58,7 +62,7 @@ import { AuthService } from '../../core/services/auth.service';
                 name="password"
                 required
                 placeholder="••••••••••••"
-                class="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50/50 text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition text-sm"
+                class="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50/50 text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#3857F1] focus:border-transparent transition text-sm"
               />
             </div>
           </div>
@@ -66,7 +70,7 @@ import { AuthService } from '../../core/services/auth.service';
           <button
             type="submit"
             [disabled]="isLoading() || !email || !password"
-            class="w-full mt-2 py-3.5 px-6 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold rounded-xl shadow-lg shadow-emerald-600/25 flex items-center justify-center space-x-2 transition-all hover:scale-[1.01] active:scale-[0.99]"
+            class="w-full mt-2 py-3.5 px-6 bg-gradient-to-r from-[#3857F1] to-[#2640C4] hover:from-[#2e4be0] hover:to-[#1d33a6] disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold rounded-xl shadow-lg shadow-blue-600/25 flex items-center justify-center space-x-2 transition-all hover:scale-[1.01] active:scale-[0.99]"
           >
             @if (isLoading()) {
               <svg class="animate-spin -ml-1 mr-2 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -78,7 +82,7 @@ import { AuthService } from '../../core/services/auth.service';
               <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
               </svg>
-              <span>Accedi come Admin</span>
+              <span>Accedi al Portale</span>
             }
           </button>
         </form>
@@ -88,7 +92,7 @@ import { AuthService } from '../../core/services/auth.service';
           <button
             type="button"
             (click)="prefillAdmin()"
-            class="text-xs text-emerald-600 hover:text-emerald-700 font-medium hover:underline flex items-center space-x-1"
+            class="text-xs text-[#3857F1] hover:text-blue-700 font-medium hover:underline flex items-center space-x-1"
           >
             <span>⚡ Precompila credenziali Admin</span>
           </button>

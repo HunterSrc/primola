@@ -29,13 +29,13 @@ import { AppDatePipe } from '../../shared/pipes/app-date.pipe';
         </div>
 
         <!-- Controls: Data Picker, Add Extra, Save Button -->
-        <div class="flex flex-wrap items-center gap-2 sm:gap-3">
+        <div class="flex flex-col sm:flex-row sm:items-center gap-2.5 sm:gap-3 w-full md:w-auto">
           <div class="relative w-full sm:w-auto">
             <input
               type="date"
               [ngModel]="selectedDate()"
               (ngModelChange)="onDateChange($event)"
-              class="w-full sm:w-auto px-3.5 py-2 sm:px-4 sm:py-2.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl sm:rounded-2xl text-xs sm:text-sm font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-colors shadow-sm cursor-pointer"
+              class="w-full sm:w-auto min-w-[200px] px-3.5 py-2.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl sm:rounded-2xl text-xs sm:text-sm font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-colors shadow-sm cursor-pointer"
             />
           </div>
 
