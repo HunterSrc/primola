@@ -110,7 +110,56 @@ I dati inseriti dallo script di seed (`db_seed.sql`) permettono l'accesso con du
 
 ---
 
-## 7. Verifica Rapida del Corretto Funzionamento (Smoke Test)
+## 7. Setup Tunnel per Accesso Remoto / Test da Dispositivi Mobili
+
+Per testare l'applicazione web (`porta 4200`) o consentire all'app tablet/mobile Flutter di raggiungere il backend locale (`porta 3000`) da dispositivi fisici esterni alla rete LAN locale, è possibile esporre le porte tramite un tunnel sicuro.
+
+### Opzione A: Cloudflare Quick Tunnels (Consigliata - Gratuita e senza account)
+1. Scaricare l'eseguibile `cloudflared` (oppure installarlo con `winget install Cloudflare.cloudflared` su Windows, o `brew install cloudflared` su macOS).
+2. Per esporre il **Backend API** (necessario se l'app mobile punta da remoto):
+   ```bash
+   cloudflared tunnel --url http://localhost:3000
+   ```
+   Verrà generato un URL pubblico HTTPS temporaneo (es. `https://random-subdomain.trycloudflare.com`).
+3. Per esporre il **Frontend Web Angular**:
+   ```bash
+   cloudflared tunnel --url http://localhost:4200
+   ```
+
+### Opzione B: Localtunnel (Nessuna installazione binaria, solo Node/npx)
+Eseguibile istantaneamente tramite `npx`:
+
+- Per il **Frontend**:
+  ```bash
+  npx localtunnel --port 4200
+  ```
+- Per il **Backend**:
+  ```bash
+  npx localtunnel --port 3000
+  ```
+
+### Opzione C: Ngrok
+Se si possiede già un account ngrok:
+```bash
+# Esposizione Frontend
+ngrok http 4200
+
+# Oppure Backend
+ngrok http 3000
+```
+
+> [!IMPORTANT]
+> **Avvertenza CORS & Host Check Angular per i Tunnel**:
+> Quando si accede al frontend Angular tramite tunnel pubblico, avviare il frontend disabilitando il check dell'host:
+> ```bash
+> cd primola_frontend
+> npm start -- --host 0.0.0.0 --disable-host-check
+> ```
+> Se l'app mobile o il frontend puntano all'URL del tunnel backend, ricordarsi di aggiornare l'endpoint base corrispondente (nel client Flutter o nell'ambiente Angular).
+
+---
+
+## 8. Verifica Rapida del Corretto Funzionamento (Smoke Test)
 
 1. Aprire `http://localhost:4200` nel browser.
 2. Eseguire il login con le credenziali **Admin** (`admin` / `admin123`).
