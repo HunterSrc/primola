@@ -428,9 +428,9 @@ import { AppDatePipe } from '../../shared/pipes/app-date.pipe';
               </div>
             </div>
 
-            <!-- Andamento Giornaliero del Mese con tabella scrollabile -->
+            <!-- Andamento Giornaliero del Mese -->
             <div class="bg-white rounded-2xl shadow-sm border border-slate-200/80 overflow-hidden">
-              <div class="p-4 sm:p-5 border-b border-slate-200/80 bg-slate-50/70 flex items-center justify-between">
+              <div class="p-4 sm:p-5 border-b border-slate-200/80 bg-slate-50/70 flex flex-col sm:flex-row sm:items-center justify-between gap-1">
                 <div class="flex items-center space-x-2">
                   <span class="w-3 h-3 rounded-full bg-emerald-500 shrink-0"></span>
                   <h3 class="font-bold text-sm sm:text-base text-slate-800">Andamento Giornaliero</h3>
@@ -438,7 +438,43 @@ import { AppDatePipe } from '../../shared/pipes/app-date.pipe';
                 <span class="text-xs font-mono text-slate-500">Dal {{ mon.from | appDate }} al {{ mon.to | appDate }}</span>
               </div>
 
-              <div class="overflow-x-auto">
+              <!-- Vista Mobile a Card per Andamento Giornaliero (md:hidden) -->
+              <div class="block md:hidden divide-y divide-slate-100">
+                @for (day of mon.dailyTrend; track day.date) {
+                  <div class="p-3.5 space-y-2">
+                    <div class="flex items-center justify-between">
+                      <span class="font-mono font-bold text-slate-900 text-xs">{{ day.date | appDate }}</span>
+                      <span class="text-xs font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+                        🍽️ {{ day.meals }} pasti
+                      </span>
+                    </div>
+
+                    <div class="grid grid-cols-3 gap-2 text-center text-xs pt-1">
+                      <div class="p-2 rounded-xl bg-emerald-50 border border-emerald-100">
+                        <span class="block text-[10px] font-semibold text-emerald-800 uppercase">Presenti</span>
+                        <span class="text-sm font-extrabold text-emerald-700">{{ day.present }}</span>
+                      </div>
+
+                      <div class="p-2 rounded-xl bg-purple-50 border border-purple-100">
+                        <span class="block text-[10px] font-semibold text-purple-800 uppercase">Extra</span>
+                        <span class="text-sm font-extrabold text-purple-700">{{ day.extra }}</span>
+                      </div>
+
+                      <div class="p-2 rounded-xl bg-rose-50 border border-rose-100">
+                        <span class="block text-[10px] font-semibold text-rose-800 uppercase">Assenti</span>
+                        <span class="text-sm font-extrabold text-rose-700">{{ day.absent }}</span>
+                      </div>
+                    </div>
+                  </div>
+                } @empty {
+                  <div class="p-8 text-center text-slate-400 font-medium text-xs">
+                    Nessun dato registrato per questo mese.
+                  </div>
+                }
+              </div>
+
+              <!-- Vista Desktop Tabella Andamento (hidden md:block) -->
+              <div class="hidden md:block overflow-x-auto">
                 <table class="w-full text-left border-collapse min-w-[500px]">
                   <thead>
                     <tr class="bg-slate-50 text-slate-600 text-xs font-semibold uppercase tracking-wider border-b border-slate-200">
@@ -501,7 +537,46 @@ import { AppDatePipe } from '../../shared/pipes/app-date.pipe';
                 </div>
               </div>
 
-              <div class="overflow-x-auto">
+              <!-- Vista Mobile a Card per Studenti Mensili (md:hidden) -->
+              <div class="block md:hidden divide-y divide-slate-100">
+                @for (stu of mon.studentsSummary; track stu.student_id) {
+                  <div class="p-3.5 space-y-2">
+                    <div class="flex items-start justify-between">
+                      <div>
+                        <h4 class="font-bold text-slate-900 text-sm">{{ stu.last_name }} {{ stu.first_name }}</h4>
+                        <p class="text-xs text-slate-500">{{ stu.school || 'Scuola non specificata' }}</p>
+                      </div>
+                      <span class="text-xs font-bold text-amber-700 bg-amber-50 px-2.5 py-0.5 rounded-full border border-amber-200">
+                        🍽️ {{ stu.meals_count }} pasti
+                      </span>
+                    </div>
+
+                    <div class="grid grid-cols-3 gap-2 text-center text-xs pt-1">
+                      <div class="p-2 rounded-xl bg-emerald-50 border border-emerald-100">
+                        <span class="block text-[10px] font-semibold text-emerald-800 uppercase">Presente</span>
+                        <span class="text-sm font-extrabold text-emerald-700">{{ stu.days_present }} gg</span>
+                      </div>
+
+                      <div class="p-2 rounded-xl bg-purple-50 border border-purple-100">
+                        <span class="block text-[10px] font-semibold text-purple-800 uppercase">Extra</span>
+                        <span class="text-sm font-extrabold text-purple-700">{{ stu.extra_days }} gg</span>
+                      </div>
+
+                      <div class="p-2 rounded-xl bg-rose-50 border border-rose-100">
+                        <span class="block text-[10px] font-semibold text-rose-800 uppercase">Assenze</span>
+                        <span class="text-sm font-extrabold text-rose-700">{{ stu.days_absent }} gg</span>
+                      </div>
+                    </div>
+                  </div>
+                } @empty {
+                  <div class="p-8 text-center text-slate-400 font-medium text-xs">
+                    Nessun record studenti per questo mese.
+                  </div>
+                }
+              </div>
+
+              <!-- Vista Desktop Tabella Studenti (hidden md:block) -->
+              <div class="hidden md:block overflow-x-auto">
                 <table class="w-full text-left border-collapse min-w-[500px]">
                   <thead>
                     <tr class="bg-slate-50 text-slate-600 text-xs font-semibold uppercase tracking-wider border-b border-slate-200">
