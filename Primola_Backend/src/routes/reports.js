@@ -36,4 +36,7 @@ router.get('/attendances', verifyToken, requireRole(['ADMIN']), reportController
 // Report mensa per range di date
 router.get('/mensa', verifyToken, requireRole(['ADMIN']), reportController.getMensaReport);
 
+// Report mensile per anno e mese
+router.get('/monthly', verifyToken, requireRole(['ADMIN']), reportController.getMonthlyReport);
+
 module.exports = router;

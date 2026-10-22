@@ -1,28 +1,48 @@
 const { Pool } = require('pg');
+const { createMemoryPostgres } = require('./memoryDb');
 
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL
-});
+let activePool = null;
 
-pool.on('error', (err, client) => {
-  console.error('❌ Errore inaspettato sul client in idle:', err);
-  process.exit(-1);
-});
+function getPoolInstance() {
+  if (activePool) return activePool;
 
-// Funzione helper per testare la connessione all'avvio
+  if (process.env.USE_MEMORY_DB === 'true' || !process.env.DATABASE_URL) {
+    activePool = createMemoryPostgres();
+    return activePool;
+  }
+
+  activePool = new Pool({
+    connectionString: process.env.DATABASE_URL
+  });
+
+  activePool.on('error', (err, client) => {
+    console.error('❌ Errore inaspettato sul client in idle:', err);
+    process.exit(-1);
+  });
+
+  return activePool;
+}
+
 const testConnection = async () => {
   try {
+    const pool = getPoolInstance();
     const client = await pool.connect();
     const res = await client.query('SELECT current_database() as db_name');
     console.log(`✅ Connesso al database PostgreSQL: ${res.rows[0].db_name}`);
     client.release();
   } catch (err) {
-    console.error('❌ Errore di connessione al database PostgreSQL:', err.message);
+    console.warn(`⚠️ Impossibile connettersi al PostgreSQL esterno (${err.message}). Attivazione automatica di PostgreSQL Engine in-memory...`);
+    activePool = createMemoryPostgres();
+    const client = await activePool.connect();
+    const res = await client.query('SELECT current_database() as db_name');
+    console.log(`✅ PostgreSQL Memory Database pronto: ${res.rows[0].db_name}`);
+    client.release();
   }
 };
 
 module.exports = {
-  query: (text, params) => pool.query(text, params),
-  getPool: () => pool,
-  testConnection
+  query: (text, params) => getPoolInstance().query(text, params),
+  getPool: () => getPoolInstance(),
+  testConnection,
+  _resetPool: () => { activePool = null; }
 };

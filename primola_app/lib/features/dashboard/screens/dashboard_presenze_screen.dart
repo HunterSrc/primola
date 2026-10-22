@@ -116,6 +116,9 @@ class DashboardPresenzeScreen extends ConsumerWidget {
                           onTogglePresence: (val) => ref.read(attendanceProvider.notifier).togglePresence(record.studentId, val),
                           onToggleJustified: (val) => ref.read(attendanceProvider.notifier).toggleJustified(record.studentId, val),
                           onToggleMeal: (val) => ref.read(attendanceProvider.notifier).toggleMeal(record.studentId, val),
+                          onRemoveExtra: record.isExtra
+                              ? () => ref.read(attendanceProvider.notifier).removeExtraStudent(record.studentId)
+                              : null,
                         );
                       },
                     ),
@@ -225,12 +228,14 @@ class _AttendanceCard extends StatelessWidget {
   final ValueChanged<bool> onTogglePresence;
   final ValueChanged<bool> onToggleJustified;
   final ValueChanged<bool> onToggleMeal;
+  final VoidCallback? onRemoveExtra;
 
   const _AttendanceCard({
     required this.record,
     required this.onTogglePresence,
     required this.onToggleJustified,
     required this.onToggleMeal,
+    this.onRemoveExtra,
   });
 
   Color get _statusColor {
@@ -325,6 +330,37 @@ class _AttendanceCard extends StatelessWidget {
               activeIcon: Icons.restaurant,
               onChanged: onToggleMeal,
             ),
+            if (record.isExtra && onRemoveExtra != null) ...[
+              const SizedBox(width: 8),
+              IconButton(
+                icon: const Icon(Icons.delete_outline, color: Colors.redAccent, size: 22),
+                tooltip: 'Rimuovi extra',
+                onPressed: () {
+                  showDialog(
+                    context: context,
+                    builder: (ctx) => AlertDialog(
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      title: const Text('Rimuovere studente extra?'),
+                      content: Text('Vuoi davvero rimuovere ${record.studentName} dall\'elenco di oggi?'),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(ctx),
+                          child: const Text('Annulla'),
+                        ),
+                        FilledButton(
+                          style: FilledButton.styleFrom(backgroundColor: Colors.red),
+                          onPressed: () {
+                            Navigator.pop(ctx);
+                            onRemoveExtra!();
+                          },
+                          child: const Text('Rimuovi'),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ],
           ],
         ),
       ),

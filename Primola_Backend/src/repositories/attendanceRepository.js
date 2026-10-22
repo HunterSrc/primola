@@ -10,16 +10,22 @@ const getExpectedStudents = async (dateStr) => {
         s.id AS student_id,
         s.nome AS first_name,
         s.cognome AS last_name,
+        s.scuola,
         s.giorni_abbonamento,
         COALESCE(a.is_present, false)           AS is_present,
         COALESCE(a.is_absent_justified, false)  AS is_absent_justified,
         COALESCE(a.canteen_used, false)         AS canteen_used,
         COALESCE(a.is_extra, false)             AS is_extra,
-        (a.id IS NOT NULL)                      AS already_registered
+        (a.id IS NOT NULL)                      AS already_registered,
+        t.telefono                              AS main_tutor_phone
       FROM students s
       LEFT JOIN attendances a
         ON s.id = a.student_id AND a.date = $1
-      WHERE EXTRACT(ISODOW FROM $1::date) = ANY(s.giorni_abbonamento);
+      LEFT JOIN tutors t
+        ON s.id = t.student_id AND t.is_main_contact = true
+      WHERE EXTRACT(ISODOW FROM $1::date) = ANY(s.giorni_abbonamento)
+         OR a.id IS NOT NULL
+      ORDER BY COALESCE(a.is_extra, false) ASC, s.cognome ASC, s.nome ASC;
     `;
     const result = await db.query(query, [dateStr]);
     return result.rows;
@@ -31,31 +37,19 @@ const getExpectedStudents = async (dateStr) => {
 
 /**
  * Inserimento massivo e idempotente delle presenze.
- * Schema reale: attendances(id, student_id, date, is_present, is_absent_justified, canteen_used, is_extra, created_at, updated_at)
  */
 const bulkUpsertAttendances = async (attendancesList) => {
   if (!attendancesList || attendancesList.length === 0) return [];
-  
-  const studentIds = [];
-  const dates = [];
-  const isPresents = [];
-  const isAbsentJustifieds = [];
-  const canteenUseds = [];
-  const isExtras = [];
 
-  for (const record of attendancesList) {
-    studentIds.push(record.student_id);
-    dates.push(record.date);
-    isPresents.push(!!record.is_present);
-    isAbsentJustifieds.push(!!record.is_absent_justified);
-    canteenUseds.push(!!record.canteen_used);
-    isExtras.push(!!record.is_extra);
-  }
+  const results = [];
+  const client = await db.getPool().connect();
 
   try {
-    const query = `
+    await client.query('BEGIN');
+
+    const upsertQuery = `
       INSERT INTO attendances (student_id, date, is_present, is_absent_justified, canteen_used, is_extra)
-      SELECT * FROM UNNEST ($1::uuid[], $2::date[], $3::boolean[], $4::boolean[], $5::boolean[], $6::boolean[])
+      VALUES ($1, $2, $3, $4, $5, $6)
       ON CONFLICT (student_id, date) 
       DO UPDATE SET 
         is_present = EXCLUDED.is_present,
@@ -65,20 +59,27 @@ const bulkUpsertAttendances = async (attendancesList) => {
         updated_at = NOW()
       RETURNING id, student_id, date, is_present;
     `;
-    
-    const result = await db.query(query, [
-      studentIds, 
-      dates, 
-      isPresents, 
-      isAbsentJustifieds,
-      canteenUseds, 
-      isExtras
-    ]);
-    
-    return result.rows;
+
+    for (const record of attendancesList) {
+      const res = await client.query(upsertQuery, [
+        record.student_id,
+        record.date,
+        !!record.is_present,
+        !!record.is_absent_justified,
+        !!record.canteen_used,
+        !!record.is_extra
+      ]);
+      results.push(res.rows[0]);
+    }
+
+    await client.query('COMMIT');
+    return results;
   } catch (error) {
+    await client.query('ROLLBACK');
     console.error('❌ Errore durante il bulk upsert delle presenze:', error.message);
     throw error;
+  } finally {
+    client.release();
   }
 };
 
@@ -86,4 +87,3 @@ module.exports = {
   getExpectedStudents,
   bulkUpsertAttendances
 };
-

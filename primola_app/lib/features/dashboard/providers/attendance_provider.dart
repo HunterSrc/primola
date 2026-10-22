@@ -119,6 +119,13 @@ class AttendanceNotifier extends StateNotifier<AsyncValue<List<AttendanceRecord>
     ]);
   }
 
+  void removeExtraStudent(String studentId) {
+    if (state.value == null) return;
+    state = AsyncValue.data(
+      state.value!.where((r) => !(r.studentId == studentId && r.isExtra)).toList(),
+    );
+  }
+
   Future<void> saveBulk() async {
     if (state.value == null) return;
     final currentRecords = state.value!;

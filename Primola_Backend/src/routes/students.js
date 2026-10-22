@@ -67,4 +67,48 @@ router.get('/', verifyToken, requireRole(['ADMIN', 'STAFF']), studentController.
  */
 router.post('/', verifyToken, requireRole(['ADMIN', 'STAFF']), studentController.createStudent);
 
+/**
+ * @swagger
+ * /api/students/{id}:
+ *   get:
+ *     summary: Ottieni dettagli di un singolo studente con i suoi tutori
+ *     tags: [Students]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Dettaglio studente recuperato con successo
+ *       404:
+ *         description: Studente non trovato
+ */
+router.get('/:id', verifyToken, requireRole(['ADMIN', 'STAFF']), studentController.getStudentById);
+
+/**
+ * @swagger
+ * /api/students/{id}:
+ *   put:
+ *     summary: Modifica dati studente e anagrafica tutori
+ *     tags: [Students]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Studente modificato con successo
+ *       404:
+ *         description: Studente non trovato
+ */
+router.put('/:id', verifyToken, requireRole(['ADMIN', 'STAFF']), studentController.updateStudent);
+
 module.exports = router;
