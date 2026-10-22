@@ -148,7 +148,7 @@ import { AuthService } from '../core/services/auth.service';
       </aside>
 
       <!-- Main Content Area -->
-      <main class="flex-1 overflow-y-auto pb-24 md:pb-6">
+      <main class="flex-1 overflow-y-auto pb-mobile-nav md:pb-6">
         <router-outlet />
       </main>
 

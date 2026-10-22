@@ -17,7 +17,7 @@ const AUTO_REFRESH_INTERVAL_MS = 50 * 60 * 1000;
 export class AuthService {
   private userSignal = signal<User | null>(this.loadInitialUser());
   private refreshTimer: any = null;
-  private readonly apiUrl = 'http://localhost:3000/api/auth';
+  private readonly apiUrl = '/api/auth';
 
   readonly currentUser = this.userSignal.asReadonly();
   readonly isAuthenticated = computed(() => !!this.userSignal());

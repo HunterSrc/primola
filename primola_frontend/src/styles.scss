@@ -26,6 +26,10 @@
 .pt-safe {
   padding-top: env(safe-area-inset-top, 0px);
 }
+/* Margine inferiore per il contenuto mobile tenendo conto della barra di navigazione fissa + safe area */
+.pb-mobile-nav {
+  padding-bottom: calc(5.5rem + env(safe-area-inset-bottom, 0px));
+}
 
 /* Custom Scrollbar */
 ::-webkit-scrollbar {
