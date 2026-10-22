@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  primola_postgres:
+    image: postgres:16-alpine
+    container_name: primola_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-primola}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres_secure_pwd}
+    ports:
+      - "5432:5432"
+    volumes:
+      # Persistenza permanente dei dati PostgreSQL
+      - primola_pgdata:/var/lib/postgresql/data
+      # Inizializzazione automatica dello schema e dei dati seed al primo avvio
+      - ./Primola_Backend/db/db_schema.sql:/docker-entrypoint-initdb.d/01_schema.sql:ro
+      - ./Primola_Backend/db/db_seed.sql:/docker-entrypoint-initdb.d/02_seed.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-primola}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  primola_pgdata:
+    driver: local

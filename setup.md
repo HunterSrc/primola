@@ -12,6 +12,7 @@ Verificare che sulla macchina siano installati i seguenti strumenti:
 - **PostgreSQL**: v15 o v16 (`psql -V`)
 - **Git**: (`git -v`)
 - *(Opzionale)* **Flutter SDK**: v3.x+ (`flutter --version`) per il client tablet/mobile
+- *(Per deployment su server/VPS)* **Docker & Docker Compose**: per il database PostgreSQL persistente e i backup. Vedere la guida dedicata [docs/setup_docker_debian.md](file:///d:/Projects/primola/docs/setup_docker_debian.md).
 
 ---
 
