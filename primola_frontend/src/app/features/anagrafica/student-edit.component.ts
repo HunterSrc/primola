@@ -10,7 +10,7 @@ import { Student } from '../../core/models';
   standalone: true,
   imports: [CommonModule, ReactiveFormsModule, RouterModule],
   template: `
-    <div class="p-3 sm:p-6 md:p-8 max-w-5xl mx-auto space-y-4 sm:space-y-6">
+    <div class="p-3 sm:p-6 md:p-8 max-w-5xl mx-auto space-y-4 sm:space-y-6 pb-6 md:pb-0">
       
       <!-- Top Navigation & Breadcrumb -->
       <div class="flex items-center justify-between">

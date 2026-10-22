@@ -10,7 +10,7 @@ import { AppDatePipe } from '../../shared/pipes/app-date.pipe';
   standalone: true,
   imports: [CommonModule, FormsModule, AppDatePipe],
   template: `
-    <div class="p-3 sm:p-6 md:p-8 max-w-7xl mx-auto space-y-4 sm:space-y-6">
+    <div class="p-3 sm:p-6 md:p-8 max-w-7xl mx-auto space-y-4 sm:space-y-6 pb-6 md:pb-0">
 
       <!-- Titolo & Switch Sub-Tab -->
       <div class="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-slate-200/80 flex flex-col md:flex-row md:items-center justify-between gap-4">

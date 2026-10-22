@@ -80,3 +80,13 @@ dist/
 .idea/
 *.swp
 *.swo
+
+# =====================
+# Testing / Coverage
+# =====================
+coverage/
+*.lcov
+.nyc_output/
+.coverage
+.coverage.*
+htmlcov/
