@@ -1,0 +1,3 @@
+nome,cognome,data_nascita,luogo_nascita,residenza,scuola,giorni_abbonamento,giorni_mensa,pasti_settimanali,tutore_nome,tutore_cognome,tutore_telefono,tutore_email,tutore_residenza,tutore_ruolo_note,tutore2_nome,tutore2_cognome,tutore2_telefono,tutore2_email,tutore2_residenza,tutore2_ruolo_note
+Mario,Rossi,2015-05-14,Roma,"Via Roma 10, Roma",Scuola Elementare Garibaldi,"1,3,5","1,3",2,Giuseppe,Rossi,+39 333 1112233,giuseppe.rossi@example.com,"Via Roma 10, Roma",Padre,Anna,Verdi,+39 333 4445566,anna.verdi@example.com,"Via Roma 10, Roma",Madre
+Luigi,Bianchi,2016-09-21,Milano,"Via Milano 20, Roma",Scuola Elementare Garibaldi,"2,4","2,4",2,Francesco,Bianchi,+39 333 7778899,francesco.bianchi@example.com,"Via Milano 20, Roma",Nonno / Tutore Legale,,,,,,

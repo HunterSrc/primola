@@ -91,7 +91,15 @@ describe('AdminDashboardComponent', () => {
       getDailyReport: vi.fn().mockReturnValue(of(mockDailyReport)),
       getMonthlyReport: vi.fn().mockReturnValue(of(mockMonthlyReport)),
       getMensaReport: vi.fn().mockReturnValue(of(mockMensaReport)),
-      saveMonthlyPlans: vi.fn().mockReturnValue(of({ success: true }))
+      saveMonthlyPlans: vi.fn().mockReturnValue(of({ success: true })),
+      getSystemSettings: vi.fn().mockReturnValue(of({ list: [], settings: { doposcuola_daily_fee: 12, meal_fee_student: 5.5, meal_cost_provider: 4.8 } })),
+      getFinancialMonthlyReport: vi.fn().mockReturnValue(of({
+        year: 2026,
+        month: 10,
+        doposcuola: { revenues: { actual: 100, expected: 120 }, expenses: { actual: 80, expected: 90 }, margin: { actual: 20, expected: 30 }, total_meals: 15, teachers: [] },
+        courses: { revenues: { actual: 200, expected: 250 }, expenses: { actual: 150, expected: 180 }, margin: { actual: 50, expected: 70 }, teachers: [] },
+        summary: { total_actual_revenues: 300, total_expected_revenues: 370, total_actual_expenses: 230, total_expected_expenses: 270, total_actual_margin: 70, total_expected_margin: 100, total_meals_issued: 15 }
+      }))
     };
 
     TestBed.configureTestingModule({

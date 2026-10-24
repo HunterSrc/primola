@@ -113,6 +113,7 @@ function createMemoryPostgres() {
       type VARCHAR(50) DEFAULT 'CORSO',
       enrollment_fee NUMERIC(10, 2) DEFAULT 0.00,
       max_enrolled INTEGER DEFAULT 0,
+      actual_enrolled INTEGER DEFAULT 0,
       start_date DATE,
       end_date DATE,
       description TEXT,
@@ -120,6 +121,18 @@ function createMemoryPostgres() {
       created_at TIMESTAMP DEFAULT NOW(),
       updated_at TIMESTAMP DEFAULT NOW()
     );
+
+    CREATE TABLE IF NOT EXISTS system_settings (
+      key VARCHAR(100) PRIMARY KEY,
+      value VARCHAR(255) NOT NULL,
+      description TEXT,
+      updated_at TIMESTAMP DEFAULT NOW()
+    );
+
+    INSERT INTO system_settings (key, value, description) VALUES
+      ('doposcuola_daily_fee', '12.00', 'Quota giornaliera doposcuola per studente (€)'),
+      ('meal_fee_student', '5.50', 'Quota pasto addebitata allo studente (€)'),
+      ('meal_cost_provider', '4.80', 'Costo unitario pasto pagato al fornitore catering (€)');
 
     CREATE TABLE IF NOT EXISTS project_teachers (
       project_id UUID NOT NULL,

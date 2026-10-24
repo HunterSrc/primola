@@ -7,6 +7,7 @@ const attendancesRoutes = require('./attendances');
 const usersRoutes = require('./users');
 const projectsRoutes = require('./projects');
 const afterschoolRoutes = require('./afterschool');
+const settingsRoutes = require('./settings');
 
 // Endpoint di test
 router.get('/health', (req, res) => res.json({ status: 'ok' }));
@@ -19,5 +20,6 @@ router.use('/attendances', attendancesRoutes);
 router.use('/users', usersRoutes);
 router.use('/projects', projectsRoutes);
 router.use('/afterschool', afterschoolRoutes);
+router.use('/settings', settingsRoutes);
 
 module.exports = router;

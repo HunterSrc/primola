@@ -220,6 +220,7 @@ export interface Project {
   type?: string;
   enrollment_fee?: number | null;
   max_enrolled?: number | null;
+  actual_enrolled?: number | null;
   start_date?: string | null;
   end_date?: string | null;
   description?: string | null;
@@ -340,4 +341,172 @@ export interface AfterschoolWeekSchedule {
   week_end: string;
   days: AfterschoolWeekDay[];
 }
+
+export interface SystemSettings {
+  doposcuola_daily_fee: number;
+  meal_fee_student: number;
+  meal_cost_provider: number;
+}
+
+export interface FinancialAfterschoolTeacher {
+  user_id: string;
+  name: string;
+  hourly_rate: number;
+  shifts_count: number;
+  total_hours: number;
+  total_cost: number;
+}
+
+export interface FinancialCourseTeacher {
+  project_id: string;
+  project_title: string;
+  user_id: string;
+  teacher_name: string;
+  hourly_rate: number;
+  assigned_hours: number;
+  total_cost: number;
+  is_finished: boolean;
+}
+
+export interface FinancialMonthlyReport {
+  year: number;
+  month: number;
+  from: string;
+  to: string;
+  rates: SystemSettings;
+  doposcuola: {
+    revenues: {
+      expected: number;
+      actual: number;
+      expected_days: number;
+      actual_days: number;
+      expected_meals: number;
+      actual_meals: number;
+    };
+    expenses: {
+      expected: number;
+      actual: number;
+      expected_teacher_cost: number;
+      actual_teacher_cost: number;
+      expected_catering_cost: number;
+      actual_catering_cost: number;
+    };
+    margin: {
+      expected: number;
+      actual: number;
+    };
+    total_meals: number;
+    teachers: FinancialAfterschoolTeacher[];
+  };
+  courses: {
+    revenues: {
+      expected: number;
+      actual: number;
+    };
+    expenses: {
+      expected: number;
+      actual: number;
+    };
+    margin: {
+      expected: number;
+      actual: number;
+    };
+    teachers: FinancialCourseTeacher[];
+  };
+  summary: {
+    total_expected_revenues: number;
+    total_actual_revenues: number;
+    total_expected_expenses: number;
+    total_actual_expenses: number;
+    total_expected_margin: number;
+    total_actual_margin: number;
+    total_meals_issued: number;
+  };
+}
+
+export interface OperationalStudentMeal {
+  student_id: string | number;
+  first_name: string;
+  last_name: string;
+  student_name: string;
+  school: string;
+  days_present: number;
+  meals_consumed: number;
+  expected_meals: number;
+  weekly_meals: number;
+}
+
+export interface OperationalTeacherShiftDetail {
+  id: string;
+  shift_date: string;
+  start_time: string;
+  end_time: string;
+  hours: number;
+  rate: number;
+  cost: number;
+  notes?: string;
+}
+
+export interface OperationalAfterschoolTeacher {
+  user_id: string;
+  first_name: string;
+  last_name: string;
+  teacher_name: string;
+  email: string;
+  phone: string;
+  hourly_rate: number;
+  shifts_count: number;
+  total_hours: number;
+  total_cost: number;
+  shifts: OperationalTeacherShiftDetail[];
+}
+
+export interface OperationalFinishedCourseTeacher {
+  user_id: string;
+  first_name: string;
+  last_name: string;
+  teacher_name: string;
+  email: string;
+  phone: string;
+  hourly_rate: number;
+  assigned_hours: number;
+  total_cost: number;
+}
+
+export interface OperationalFinishedCourse {
+  project_id: string;
+  title: string;
+  type?: string;
+  location?: string;
+  start_date?: string | null;
+  end_date?: string | null;
+  total_hours: number;
+  total_cost: number;
+  teachers: OperationalFinishedCourseTeacher[];
+}
+
+export interface OperationalMonthlyReport {
+  year: number;
+  month: number;
+  from: string;
+  to: string;
+  students_meals: OperationalStudentMeal[];
+  afterschool_teachers: {
+    summary: {
+      total_teachers: number;
+      total_hours: number;
+      total_cost: number;
+    };
+    teachers: OperationalAfterschoolTeacher[];
+  };
+  finished_courses_teachers: {
+    summary: {
+      total_courses: number;
+      total_hours: number;
+      total_cost: number;
+    };
+    courses: OperationalFinishedCourse[];
+  };
+}
+
 

@@ -71,6 +71,17 @@ import { Project, ProjectTeacher, User } from '../../core/models';
           </div>
 
           <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">Numero Iscritti Effettivi / Reali</label>
+            <input
+              type="number"
+              step="1"
+              formControlName="actual_enrolled"
+              placeholder="Es. 12"
+              class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:border-[#3857F1]"
+            />
+          </div>
+
+          <div>
             <label class="block text-xs font-semibold text-slate-600 mb-1">Data Inizio</label>
             <input
               type="date"
@@ -274,6 +285,7 @@ export class ProjectDetailComponent implements OnInit {
     type: ['CORSO'],
     enrollment_fee: [0],
     max_enrolled: [0],
+    actual_enrolled: [0],
     start_date: [''],
     end_date: [''],
     location: [''],
@@ -304,6 +316,7 @@ export class ProjectDetailComponent implements OnInit {
           type: proj.type || 'CORSO',
           enrollment_fee: proj.enrollment_fee || 0,
           max_enrolled: proj.max_enrolled || 0,
+          actual_enrolled: proj.actual_enrolled || 0,
           start_date: proj.start_date || '',
           end_date: proj.end_date || '',
           location: proj.location || '',

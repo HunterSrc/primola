@@ -6,7 +6,7 @@ class ProjectRepository {
    */
   async findAll() {
     const query = `
-      SELECT p.id, p.title, p.type, p.enrollment_fee, p.max_enrolled, p.start_date, p.end_date,
+      SELECT p.id, p.title, p.type, p.enrollment_fee, p.max_enrolled, p.actual_enrolled, p.start_date, p.end_date,
              p.description, p.location, p.created_at, p.updated_at,
              COUNT(DISTINCT pt.user_id)::int AS teachers_count,
              COALESCE(
@@ -36,7 +36,7 @@ class ProjectRepository {
    */
   async findById(id) {
     const query = `
-      SELECT p.id, p.title, p.type, p.enrollment_fee, p.max_enrolled, p.start_date, p.end_date,
+      SELECT p.id, p.title, p.type, p.enrollment_fee, p.max_enrolled, p.actual_enrolled, p.start_date, p.end_date,
              p.description, p.location, p.created_at, p.updated_at
       FROM projects p
       WHERE p.id = $1
@@ -48,11 +48,11 @@ class ProjectRepository {
   /**
    * Crea una nuova commessa/corso
    */
-  async create({ title, description, location, type = 'CORSO', enrollment_fee = 0, max_enrolled = 0, start_date = null, end_date = null }) {
+  async create({ title, description, location, type = 'CORSO', enrollment_fee = 0, max_enrolled = 0, actual_enrolled = 0, start_date = null, end_date = null }) {
     const query = `
-      INSERT INTO projects (title, description, location, type, enrollment_fee, max_enrolled, start_date, end_date)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-      RETURNING id, title, description, location, type, enrollment_fee, max_enrolled, start_date, end_date, created_at, updated_at
+      INSERT INTO projects (title, description, location, type, enrollment_fee, max_enrolled, actual_enrolled, start_date, end_date)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      RETURNING id, title, description, location, type, enrollment_fee, max_enrolled, actual_enrolled, start_date, end_date, created_at, updated_at
     `;
     const result = await db.query(query, [
       title.trim(),
@@ -61,6 +61,7 @@ class ProjectRepository {
       (type || 'CORSO').toUpperCase().trim(),
       enrollment_fee !== undefined && enrollment_fee !== null ? Number(enrollment_fee) : 0,
       max_enrolled !== undefined && max_enrolled !== null ? Number(max_enrolled) : 0,
+      actual_enrolled !== undefined && actual_enrolled !== null ? Number(actual_enrolled) : 0,
       start_date || null,
       end_date || null
     ]);
@@ -70,7 +71,7 @@ class ProjectRepository {
   /**
    * Aggiorna una commessa/corso esistente
    */
-  async update(id, { title, description, location, type, enrollment_fee, max_enrolled, start_date, end_date }) {
+  async update(id, { title, description, location, type, enrollment_fee, max_enrolled, actual_enrolled, start_date, end_date }) {
     const updates = [];
     const params = [];
     let idx = 1;
@@ -99,6 +100,10 @@ class ProjectRepository {
       updates.push(`max_enrolled = $${idx++}`);
       params.push(max_enrolled !== null ? Number(max_enrolled) : 0);
     }
+    if (actual_enrolled !== undefined) {
+      updates.push(`actual_enrolled = $${idx++}`);
+      params.push(actual_enrolled !== null ? Number(actual_enrolled) : 0);
+    }
     if (start_date !== undefined) {
       updates.push(`start_date = $${idx++}`);
       params.push(start_date || null);
@@ -115,7 +120,7 @@ class ProjectRepository {
       UPDATE projects
       SET ${updates.join(', ')}, updated_at = NOW()
       WHERE id = $${idx}
-      RETURNING id, title, description, location, type, enrollment_fee, max_enrolled, start_date, end_date, created_at, updated_at
+      RETURNING id, title, description, location, type, enrollment_fee, max_enrolled, actual_enrolled, start_date, end_date, created_at, updated_at
     `;
     const result = await db.query(query, params);
     return result.rows.length > 0 ? result.rows[0] : null;

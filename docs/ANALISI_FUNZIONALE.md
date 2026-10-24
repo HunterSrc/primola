@@ -6,12 +6,14 @@ Il presente documento descrive le **funzionalità e le capacità a livello di pr
 
 ## 1. Mappa dei Ruoli e Attori di Processo
 
-L'accesso alle funzioni e la visibilità dei dati sono regolati da un modello **Role-Based Access Control (RBAC)** a due livelli:
+L'accesso alle funzioni e la visibilità dei dati sono regolati da un modello **Role-Based Access Control (RBAC)** a quattro livelli:
 
 | Ruolo | Responsabilità nel Processo | Permessi Chiave |
 |---|---|---|
-| **Operatore Staff** | Rilevazione presenze sul campo, accoglienza studenti, inserimento nuove schede anagrafiche. | - Segnare presenze e pasti del giorno.<br>- Aggiungere studenti extra fuori abbonamento.<br>- Registrare nuovi studenti e tutori.<br>- Consultare la rubrica iscritti. |
-| **Amministratore (Admin)** | Supervisione globale del doposcuola, quadratura amministrativa dei servizi mensa, gestione sicurezza e contatti con le famiglie per assenze ingiustificate. | - Tutti i permessi dello Staff.<br>- Accesso esclusivo alla Reportistica Giornaliera.<br>- Accesso al Rendiconto Mensa per intervallo temporale.<br>- Visualizzazione e gestione assenze ingiustificate. |
+| **Operatore Staff / Educator** | Rilevazione presenze sul campo, accoglienza studenti, inserimento nuove schede anagrafiche. | - Segnare presenze e pasti del giorno.<br>- Aggiungere studenti extra fuori abbonamento.<br>- Registrare nuovi studenti e tutori.<br>- Consultare la rubrica iscritti. |
+| **Docente (Teacher)** | Conduzione corsi/laboratori specialistici e turni doposcuola assegnati. | - Visualizzare i propri turni doposcuola a calendario.<br>- Consultare i progetti e le ore assegnate.<br>- Nessun accesso ai dati economici globali o tariffe orarie colleghi. |
+| **Segreteria (Office)** | Pianificazione operativa, turnazione docenti, gestione commesse/corsi, import massivo e rendicontazione operativa. | - Gestione anagrafiche studenti, import CSV/Excel.<br>- Gestione calendario doposcuola (turni, assegnazione docenti, chiusure straordinarie).<br>- Gestione commesse e corsi extracurricolari.<br>- Accesso ai report operativi mensili e quadratura presenze pagate. |
+| **Amministratore (Admin)** | Controllo economico-gestionale, marginalità, report finanziari, configurazione tariffe e gestione utenti/ruoli. | - Tutti i permessi di Office e Staff.<br>- Accesso esclusivo al Report Finanziario Mensile (marginalità, incassi previsti/effettivi, uscite docenti e pasti).<br>- Configurazione parametri economici globali (`system_settings`).<br>- Creazione/modifica utenti, ruoli e tariffe orarie (`hourly_rate`). |
 
 ---
 
@@ -127,15 +129,123 @@ flowchart TD
 
 ---
 
-## 6. Matrice Funzionalità vs Requisiti di Processo
+## 6. Processo 5: Gestione Calendario Doposcuola, Turni Docenti e Chiusure
+
+### Obiettivo del Processo
+Pianificare su base mensile e settimanale la copertura del doposcuola, allocando il personale docente sui turni, visualizzando in anteprima il carico studenti attesi per giorno, e programmando giorni festivi e chiusure straordinarie della struttura.
+
+```mermaid
+flowchart TD
+    A([Apertura Calendario Doposcuola]) --> B[Selezione Mese e Anno]
+    B --> C[Caricamento Giorni Lavorativi, Festività Nazionali e Chiusure]
+    C --> D[Calcolo Studenti Attesi per Giorno da Abbonamento]
+    D --> E{Pianificazione Operatore}
+    E --> F1[Configurazione Orario Turno Doposcuola: Da - A]
+    E --> F2[Assegnazione Docenti al Turno del Giorno]
+    E --> F3[Aggiunta Chiusura Straordinaria con Motivazione]
+    F1 --> G[Verifica Monte Ore e Copertura Docente / Studente]
+    F2 --> G
+    F3 --> G
+    G --> H[Salvataggio Turni e Chiusure a Database]
+    H --> I([Calendario Consolidato - Visibile ai Docenti])
+```
+
+### Punti Chiave del Processo:
+1. **Calcolo Carico Bambini per Giornata**:
+   - Integrazione istantanea con i giorni di abbonamento attivi (`giorni_abbonamento`), visualizzando il badge del numero di studenti previsti per ogni cella del calendario.
+2. **Turnazione e Orari Flessibili**:
+   - Definizione orari di inizio e fine turno del doposcuola (es. 13:00 - 17:00), con calcolo ore automatico.
+   - Assegnazione multipla di docenti con indicazione delle ore svolte per il calcolo compensi.
+3. **Festività e Chiusure Straordinarie**:
+   - Riconoscimento automatico delle festività fisse e mobili (es. Pasqua, Lunedì dell'Angelo).
+   - Gestione delle chiusure straordinarie (`closure_days`) con esclusione automatica dal conteggio presenze previste e calcoli di fatturazione mensile.
+
+---
+
+## 7. Processo 6: Gestione Commesse, Corsi Extracurricolari e Docenti
+
+### Obiettivo del Processo
+Gestire il ciclo di vita delle commesse e dei corsi a catalogo dell'associazione (teatro, lingue, musica, laboratori), monitorando iscritti effettivi, docenti incaricati, ore previste e sostenibilità economica.
+
+```mermaid
+flowchart TD
+    A([Creazione Nuova Commessa / Corso]) --> B[Inserimento Dati: Titolo, Tipologia, Date, Sede]
+    B --> C[Impostazione Quota Iscrizione e Target Iscritti: Max / Effettivi]
+    C --> D[Assegnazione Docenti: Ore Previste e Tariffa Oraria]
+    D --> E[Monitoraggio Avanzamento Corso]
+    E --> F{Corso Terminato?}
+    F -- No --> G[Erogazione in Corso e Tracciamento Ore]
+    F -- Sì --> H[Inclusione nel Rendiconto Corsi Conclusi del Mese]
+    H --> I[Calcolo Margine Economico: Quota x Iscritti - Costo Docenti]
+```
+
+### Regole di Business:
+- **Tipologia Commessa**: Distinzione tra tipologia `CORSO` e `COMMESSA`.
+- **Rapporto Finanziario di Commessa**:
+  - Entrata prevista = Quota iscrizione (`enrollment_fee`) × Iscritti effettivi (`actual_enrolled`).
+  - Uscita compensi = $\sum (\text{Ore assegnate} \times \text{Tariffa oraria docente})$.
+- **Chiusura e Liquidazione**: Al termine del corso (`end_date`), la commessa confluisce nel riepilogo liquidazione compensi docenti.
+
+---
+
+## 8. Processo 7: Configurazione Parametri Economici di Sistema
+
+### Obiettivo del Processo
+Consentire all'amministratore di governare centralmente le tariffe applicate per il doposcuola e per il servizio mensa, evitando valori hardcoded nel codice e garantendo uniformità nei calcoli di rendiconto.
+
+### Parametri Gestiti (`system_settings`):
+- `doposcuola_daily_fee`: Quota giornaliera addebitata per la frequenza del doposcuola (€/giorno).
+- `meal_fee_student`: Quota pasto addebitata allo studente (€/pasto).
+- `meal_cost_provider`: Costo unitario pasto riconosciuto al fornitore catering (€/pasto).
+
+---
+
+## 9. Processo 8: Controllo di Gestione, Report Finanziario e Report Operativo
+
+### Obiettivo del Processo
+Fornire alla direzione un quadro consolidato sia dal punto di vista operativo (quadratura presenze effettive vs pagate) sia dal punto di vista economico (entrate stimate, entrate effettive, costi docenti, costi pasti e margine netto).
+
+### 9.1 Report Operativo Mensile (Accesso: Admin e Office)
+- **Quadratura Studenti**:
+  - Giorni di frequenza previsti nel mese (al netto delle chiusure).
+  - Presenze effettive registrate a registro.
+  - Presenze concordate/pagate inserite nel piano mensile (`student_monthly_plans`).
+  - Calcolo del delta tra presenze effettive e pagate per recuperi o conguagli a favore della famiglia/associazione.
+- **Riepilogo Pasti per Fornitore**: Totale pasti consumati dagli studenti nel mese.
+- **Liquidazione Docenti Doposcuola**: Totale ore prestate nei turni di doposcuola per ciascun docente con relativo costo.
+- **Liquidazione Docenti Corsi Conclusi**: Corsi terminati nel mese con ore, tariffa oraria e totale da liquidare.
+
+### 9.2 Report Finanziario Mensile (Accesso Esclusivo: Admin)
+- **Entrate Doposcuola**:
+  - *Previste*: Giorni studente teorici da abbonamento $\times$ `doposcuola_daily_fee`.
+  - *Effettive da presenze*: Presenze effettive a registro $\times$ `doposcuola_daily_fee`.
+  - *Effettive da piani pagati*: Presenze pagate a piano $\times$ `doposcuola_daily_fee`.
+- **Entrate e Costi Servizio Mensa**:
+  - *Incasso pasti studenti*: Pasti consumati $\times$ `meal_fee_student`.
+  - *Costo fornitore catering*: Pasti erogati $\times$ `meal_cost_provider`.
+  - *Margine operativo mensa*: Differenziale tra incasso e costo fornitore.
+- **Entrate Corsi Extracurricolari**: Somma ricavi per commesse concluse nel mese.
+- **Uscite Complessive Personale**: Costi docenti doposcuola + costi docenti corsi terminati.
+- **Margine Operativo Globale Netto**: Entrate totali - Uscite complessive (personale + catering).
+
+---
+
+## 10. Matrice Funzionalità vs Requisiti di Processo
 
 | Requisito di Processo | Stato di Copertura | Componente Responsabile |
 |---|---|---|
-| Autenticazione operatore e segregazione ruoli | **Completo** | Backend (JWT/RBAC) + Frontend (Guards) |
+| Autenticazione operatore e segregazione ruoli (4 livelli) | **Completo** | Backend (JWT/RBAC) + Frontend (AuthGuard/RbacGuard) |
 | Calcolo automatico attesi giornalieri | **Completo** | DB (GIN/SQL) + Backend (`/attendances/expected`) |
 | Check-in rapido presenze e pasti | **Completo** | Frontend Dashboard Presenze |
 | Gestione alunni extra non schedulati | **Completo** | Frontend (Modal Extra) + DB (`is_extra`) |
 | Gestione anagrafica studente e tutori multipli | **Completo** | Frontend (Reactive Form) + DB (Relazione 1:N) |
+| Import massivo anagrafica studenti (CSV/XLSX) | **Completo** | Template import + Backend/Frontend API |
+| Gestione utenti, ruoli e tariffe orarie | **Completo** | Frontend Users + Backend (`/users`) |
+| Calendario Doposcuola con turni docenti e chiusure | **Completo** | Frontend Afterschool Calendar + Backend (`/afterschool`) |
+| Gestione commesse, corsi ed iscritti effettivi | **Completo** | Frontend Projects + Backend (`/projects`) |
+| Configurazione dinamica tariffe e parametri economici | **Completo** | Backend (`/settings`) + DB (`system_settings`) |
 | Allarmi assenze ingiustificate e contatto rapido | **Completo** | Frontend Admin + Backend (`/reports/attendances`) |
 | Rendicontazione pasti per catering | **Completo** | Frontend Admin + Backend (`/reports/mensa`) |
+| Report Operativo Mensile e quadratura presenze pagate | **Completo** | Frontend Reports + Backend (`/reports/operational-monthly`, `/reports/monthly-plans`) |
+| Report Finanziario Mensile e marginalità economica | **Completo** | Frontend Reports + Backend (`/reports/financial-monthly`) |
 | Modalità offline/fallback di emergenza | **Completo** | Frontend ApiService (Fallback a Mock reattivi) |

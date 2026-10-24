@@ -53,7 +53,7 @@ class ProjectController {
    */
   async createProject(req, res) {
     try {
-      const { title, description, location, type, enrollment_fee, max_enrolled, start_date, end_date } = req.body;
+      const { title, description, location, type, enrollment_fee, max_enrolled, actual_enrolled, start_date, end_date } = req.body;
       if (!title || !title.trim()) {
         return sendError(res, 400, 'Il titolo del corso/commessa è obbligatorio.');
       }
@@ -65,6 +65,7 @@ class ProjectController {
         type,
         enrollment_fee,
         max_enrolled,
+        actual_enrolled,
         start_date,
         end_date
       });
@@ -82,7 +83,7 @@ class ProjectController {
   async updateProject(req, res) {
     try {
       const { id } = req.params;
-      const { title, description, location, type, enrollment_fee, max_enrolled, start_date, end_date } = req.body;
+      const { title, description, location, type, enrollment_fee, max_enrolled, actual_enrolled, start_date, end_date } = req.body;
 
       const updated = await projectRepository.update(id, {
         title,
@@ -91,6 +92,7 @@ class ProjectController {
         type,
         enrollment_fee,
         max_enrolled,
+        actual_enrolled,
         start_date,
         end_date
       });

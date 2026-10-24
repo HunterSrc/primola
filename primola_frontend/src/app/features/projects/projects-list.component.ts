@@ -244,8 +244,8 @@ import { Project } from '../../core/models';
                       <div class="font-semibold text-slate-700">
                         € {{ (proj.enrollment_fee || 0) | number:'1.2-2' }}
                       </div>
-                      <div class="text-[11px] text-slate-400">
-                        Max: {{ proj.max_enrolled || 0 }} iscritti
+                      <div class="text-[11px] text-slate-500 font-medium">
+                        Iscritti: <span class="font-bold text-slate-700">{{ proj.actual_enrolled || 0 }}</span> / {{ proj.max_enrolled || 0 }}
                       </div>
                     </td>
 

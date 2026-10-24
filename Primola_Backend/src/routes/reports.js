@@ -74,4 +74,10 @@ router.put('/monthly-plans', verifyToken, requireRole(['ADMIN', 'OFFICE']), repo
 // Report Commesse e Ore Docenti
 router.get('/projects', verifyToken, requireRole(['ADMIN', 'OFFICE']), reportController.getProjectsReport);
 
+// Report Finanziario Mensile (Solo ADMIN)
+router.get('/financial-monthly', verifyToken, requireRole(['ADMIN']), reportController.getFinancialMonthlyReport);
+
+// Report Operativo Mensile (ADMIN e OFFICE)
+router.get('/operational-monthly', verifyToken, requireRole(['ADMIN', 'OFFICE']), reportController.getOperationalMonthlyReport);
+
 module.exports = router;

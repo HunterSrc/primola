@@ -1,7 +1,25 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable, map, of, catchError } from 'rxjs';
-import { ApiResponse, Student, Tutor, DailyReport, MensaReport, MonthlyReport, AttendanceRecord, User, Project, ProjectReportData, AfterschoolAssignment, AfterschoolWeekSchedule, TeacherShift, ClosureDay } from '../models';
+import {
+  ApiResponse,
+  Student,
+  Tutor,
+  DailyReport,
+  MensaReport,
+  MonthlyReport,
+  AttendanceRecord,
+  User,
+  Project,
+  ProjectReportData,
+  AfterschoolAssignment,
+  AfterschoolWeekSchedule,
+  TeacherShift,
+  ClosureDay,
+  FinancialMonthlyReport,
+  OperationalMonthlyReport,
+  SystemSettings
+} from '../models';
 
 @Injectable({
   providedIn: 'root'
@@ -571,6 +589,33 @@ export class ApiService {
   // ================= REPORTS API =================
   getProjectsReport(): Observable<ProjectReportData> {
     return this.http.get<ApiResponse<ProjectReportData>>(`${this.baseUrl}/reports/projects`).pipe(
+      map(res => res.data)
+    );
+  }
+
+  getFinancialMonthlyReport(year: number, month: number): Observable<FinancialMonthlyReport> {
+    const params = new HttpParams().set('year', year.toString()).set('month', month.toString());
+    return this.http.get<ApiResponse<FinancialMonthlyReport>>(`${this.baseUrl}/reports/financial-monthly`, { params }).pipe(
+      map(res => res.data)
+    );
+  }
+
+  getOperationalMonthlyReport(year: number, month: number): Observable<OperationalMonthlyReport> {
+    const params = new HttpParams().set('year', year.toString()).set('month', month.toString());
+    return this.http.get<ApiResponse<OperationalMonthlyReport>>(`${this.baseUrl}/reports/operational-monthly`, { params }).pipe(
+      map(res => res.data)
+    );
+  }
+
+  // ================= SETTINGS API =================
+  getSystemSettings(): Observable<{ list: any[]; settings: SystemSettings }> {
+    return this.http.get<ApiResponse<{ list: any[]; settings: SystemSettings }>>(`${this.baseUrl}/settings`).pipe(
+      map(res => res.data)
+    );
+  }
+
+  updateSystemSettings(settings: Partial<SystemSettings>): Observable<any> {
+    return this.http.put<ApiResponse<any>>(`${this.baseUrl}/settings`, settings).pipe(
       map(res => res.data)
     );
   }
