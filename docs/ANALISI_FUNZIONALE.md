@@ -47,6 +47,12 @@ flowchart TD
    - Per ciascun tutore: nome, cognome, numero di telefono, email e note operative (es. orari di reperibilità).
    - **Regola di validazione**: Obbligo di designare almeno un tutore come referente principale (`is_main_contact` / `is_main = true`).
 
+### 2.1 Importazione Massiva Studenti (CSV / XLSX)
+Per accelerare l'avvio dell'anno scolastico o il caricamento di grandi elenchi iscritti, l'applicazione supporta il caricamento da file template preformattato (`template_import_studenti.xlsx` o `.csv`):
+- **Campi supportati**: Dati anagrafici studente, giorni abbonamento doposcuola (es. `1,2,3,4,5`), giorni mensa, dati anagrafici e recapiti del tutore principale.
+- **Validazione preventiva**: Verifica univocità codice fiscale / combinazione anagrafica, parsing formati date e validazione array giorni settimanale (1=Lunedì, 5=Venerdì).
+- **Esito operazione**: Notifica a video del numero di schede create con successo ed evidenza di eventuali record scartati con motivazione di errore.
+
 ---
 
 ## 3. Processo 2: Gestione Operativa Presenze Giornaliere (Check-in & Mensa)
