@@ -18,15 +18,14 @@ Questo documento riassume le attività di ingegnerizzazione e implementazione de
 
 ## 4. API & Standardizzazione Dati
 - **Response Wrapper**: Implementazione rigorosa del pattern `{ success: boolean, data: any, error: string | null }` (`src/utils/responseFormat.js`) imposto come contratto architetturale per uniformare il parsing lato frontend.
-- **Reports Module (`GET /api/reports/attendances`)**:
+- **Reports Module (`GET /api/reports/attendances`, `GET /api/reports/mensa`, `GET /api/reports/monthly`)**:
   - Restrizione: Solo `ADMIN`.
-  - Implementazione controller (`reportController.js`) con esecuzione concorrente di due statement SQL via `Promise.all()`:
-    1. Query aggregata (`COUNT(CASE WHEN...)`) per statistiche raw (presenti, assenti, ecc.).
-    2. Query complessa (Multi-`LEFT JOIN`) per estrarre la lista delle assenze ingiustificate unitamente ai dati anagrafici del *Main Tutor*.
-- **Students Module (`GET /api/students`)**:
+  - Report Giornaliero (`attendances`): statistiche aggregate e assenze ingiustificate con *Main Tutor*.
+  - Report Mensa (`mensa?year=YYYY&month=MM`): raggruppamento mensile dei pasti consegnati regolari (`deliveredRegular`), pasti consegnati extra (`deliveredExtra`), pasti previsti stimati (`expectedMeals`, calcolati settimana per settimana in base a `giorni_abbonamento` e `pasti_settimanali` di ciascuno studente), più breakdown giornaliero e per singolo studente.
+- **Students Module (`GET / POST / PUT /api/students`)**:
   - Restrizione: `ADMIN` o `STAFF`.
-  - Architettura a layer con introduzione del `studentRepository.js` (DAO Pattern) che astrae l'accesso al DB eseguendo una query relazionale tra `students`, `student_tutors` e `tutors`.
-  - Integrazione col controller dedicato e mounting su Express router.
+  - Gestione anagrafica completa inclusi `giorni_abbonamento` e `pasti_settimanali` (intero validato `0 <= pasti_settimanali <= giorni_abbonamento.length`).
+  - Architettura a layer con `studentRepository.js` (DAO Pattern) e transazioni atomiche tra `students` e `tutors`.
 
 ## 5. Documentazione Interattiva (OpenAPI/Swagger)
 - **Setup API Docs**: Integrazione dell'interfaccia Swagger UI esposta su `/api-docs`.

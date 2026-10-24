@@ -5,7 +5,14 @@ import { AttendanceDashboardComponent } from './features/attendance/attendance-d
 import { AnagraficaComponent } from './features/anagrafica/anagrafica.component';
 import { StudentEditComponent } from './features/anagrafica/student-edit.component';
 import { AdminDashboardComponent } from './features/admin/admin-dashboard.component';
-import { authGuard, adminGuard, guestGuard } from './core/guards/auth.guard';
+import { AfterschoolCalendarComponent } from './features/afterschool/afterschool-calendar.component';
+import { UsersListComponent } from './features/users/users-list.component';
+import { UserFormComponent } from './features/users/user-form.component';
+import { ProjectsListComponent } from './features/projects/projects-list.component';
+import { ProjectDetailComponent } from './features/projects/project-detail.component';
+import { AfterschoolListComponent } from './features/afterschool/afterschool-list.component';
+import { ReportsComponent } from './features/reports/reports.component';
+import { authGuard, adminGuard, guestGuard, adminOrOfficeGuard, reportsGuard } from './core/guards/auth.guard';
 
 export const routes: Routes = [
   {
@@ -28,12 +35,56 @@ export const routes: Routes = [
         component: AttendanceDashboardComponent
       },
       {
+        path: 'afterschool-calendar',
+        component: AfterschoolCalendarComponent
+      },
+      {
         path: 'anagrafica',
-        component: AnagraficaComponent
+        component: AnagraficaComponent,
+        canActivate: [adminOrOfficeGuard]
       },
       {
         path: 'anagrafica/:id/edit',
-        component: StudentEditComponent
+        component: StudentEditComponent,
+        canActivate: [adminOrOfficeGuard]
+      },
+      {
+        path: 'users',
+        component: UsersListComponent
+      },
+      {
+        path: 'users/new',
+        component: UserFormComponent,
+        canActivate: [adminOrOfficeGuard]
+      },
+      {
+        path: 'users/:id',
+        component: UserFormComponent
+      },
+      {
+        path: 'projects',
+        component: ProjectsListComponent,
+        canActivate: [adminOrOfficeGuard]
+      },
+      {
+        path: 'projects/new',
+        component: ProjectDetailComponent,
+        canActivate: [adminOrOfficeGuard]
+      },
+      {
+        path: 'projects/:id',
+        component: ProjectDetailComponent,
+        canActivate: [adminOrOfficeGuard]
+      },
+      {
+        path: 'afterschool',
+        component: AfterschoolListComponent,
+        canActivate: [adminOrOfficeGuard]
+      },
+      {
+        path: 'reports',
+        component: ReportsComponent,
+        canActivate: [reportsGuard]
       },
       {
         path: 'admin/dashboard',

@@ -10,11 +10,26 @@ exports.getAllStudents = async (req, res, next) => {
   }
 };
 
+const validateWeeklyMeals = (student) => {
+  if (student.pasti_settimanali === undefined) return null;
+  const days = Array.isArray(student.giorni_abbonamento) ? student.giorni_abbonamento : [];
+  const meals = student.pasti_settimanali;
+  if (!Number.isInteger(meals) || meals < 0 || meals > days.length) {
+    return `Il campo 'pasti_settimanali' deve essere un numero intero compreso tra 0 e ${days.length} (numero di giorni di abbonamento).`;
+  }
+  return null;
+};
+
 exports.createStudent = async (req, res, next) => {
   const { student, tutors } = req.body;
 
   if (!student || !student.first_name || !student.last_name) {
     return sendError(res, 400, "I campi 'first_name' e 'last_name' dello studente sono obbligatori.");
+  }
+
+  const mealsError = validateWeeklyMeals(student);
+  if (mealsError) {
+    return sendError(res, 400, mealsError);
   }
 
   try {
@@ -44,6 +59,11 @@ exports.updateStudent = async (req, res, next) => {
 
   if (!student || !student.first_name || !student.last_name) {
     return sendError(res, 400, "I campi 'first_name' e 'last_name' dello studente sono obbligatori.");
+  }
+
+  const mealsError = validateWeeklyMeals(student);
+  if (mealsError) {
+    return sendError(res, 400, mealsError);
   }
 
   try {

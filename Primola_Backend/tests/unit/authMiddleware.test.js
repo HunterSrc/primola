@@ -89,6 +89,18 @@ describe('authMiddleware', () => {
       expect(nextFn).not.toHaveBeenCalled();
     });
 
+    it('should return custom status code (e.g. 401) if specified and role is not allowed', () => {
+      mockReq.user = { id: 2, role: 'STAFF', groups: ['TEACHER'] };
+      const middleware = requireRole(['ADMIN', 'OFFICE'], 401);
+      middleware(mockReq, mockRes, nextFn);
+
+      expect(mockRes.status).toHaveBeenCalledWith(401);
+      expect(mockRes.json).toHaveBeenCalledWith(expect.objectContaining({
+        error: 'Accesso riservato ai ruoli: ADMIN, OFFICE.'
+      }));
+      expect(nextFn).not.toHaveBeenCalled();
+    });
+
     it('should call next() if user role is allowed', () => {
       mockReq.user = { id: 1, role: 'ADMIN' };
       const middleware = requireRole(['ADMIN', 'STAFF']);

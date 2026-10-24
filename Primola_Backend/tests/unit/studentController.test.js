@@ -170,9 +170,34 @@ describe('studentController unit tests', () => {
       });
     });
 
+    it('should return 400 if pasti_settimanali exceeds giorni_abbonamento or is invalid in createStudent', async () => {
+      mockReq.body = {
+        student: { first_name: 'Luca', last_name: 'Verdi', giorni_abbonamento: [1, 3, 5], pasti_settimanali: 4 }
+      };
+
+      await studentController.createStudent(mockReq, mockRes, nextFn);
+      expect(mockRes.status).toHaveBeenCalledWith(400);
+
+      mockReq.body = {
+        student: { first_name: 'Luca', last_name: 'Verdi', giorni_abbonamento: [1, 3, 5], pasti_settimanali: -1 }
+      };
+      await studentController.createStudent(mockReq, mockRes, nextFn);
+      expect(mockRes.status).toHaveBeenCalledWith(400);
+    });
+
+    it('should return 400 if pasti_settimanali exceeds giorni_abbonamento in updateStudent', async () => {
+      mockReq.params = { id: '1' };
+      mockReq.body = {
+        student: { first_name: 'Mario', last_name: 'Rossi', giorni_abbonamento: [1, 2], pasti_settimanali: 3 }
+      };
+
+      await studentController.updateStudent(mockReq, mockRes, nextFn);
+      expect(mockRes.status).toHaveBeenCalledWith(400);
+    });
+
     it('should call next(err) if repository throws in updateStudent', async () => {
       mockReq.params = { id: '1' };
-      mockReq.body = { student: { first_name: 'Mario', last_name: 'Rossi' } };
+      mockReq.body = { student: { first_name: 'Mario', last_name: 'Rossi', giorni_abbonamento: [1, 2], pasti_settimanali: 2 } };
       const err = new Error('Update error');
       studentRepository.updateStudentWithTutors.mockRejectedValue(err);
 

@@ -1,5 +1,10 @@
-const { Pool } = require('pg');
+const { Pool, types } = require('pg');
 const { createMemoryPostgres } = require('./memoryDb');
+
+// Mantieni i campi DATE PostgreSQL (OID 1082) come stringhe 'YYYY-MM-DD' evitando lo shift UTC
+if (types && typeof types.setTypeParser === 'function') {
+  types.setTypeParser(1082, (val) => val);
+}
 
 let activePool = null;
 

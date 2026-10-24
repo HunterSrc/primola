@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable, map, of, catchError } from 'rxjs';
-import { ApiResponse, Student, Tutor, DailyReport, MensaReport, MonthlyReport, AttendanceRecord } from '../models';
+import { ApiResponse, Student, Tutor, DailyReport, MensaReport, MonthlyReport, AttendanceRecord, User, Project, ProjectReportData, AfterschoolAssignment, AfterschoolWeekSchedule, TeacherShift, ClosureDay } from '../models';
 
 @Injectable({
   providedIn: 'root'
@@ -33,6 +33,7 @@ export class ApiService {
             sub_mer: subDays.includes(3),
             sub_gio: subDays.includes(4),
             sub_ven: subDays.includes(5),
+            weekly_meals: item.pasti_settimanali !== undefined ? Number(item.pasti_settimanali) : (item.weekly_meals ?? 0),
             main_tutor_name: (item.tutor_first_name && item.tutor_last_name) ? `${item.tutor_first_name} ${item.tutor_last_name}` : item.main_tutor_name,
             main_tutor_phone: item.tutor_phone || item.main_tutor_phone
           };
@@ -59,7 +60,7 @@ export class ApiService {
               phone: t.telefono || t.phone || '',
               email: t.email || '',
               is_main: !!t.is_main_contact || !!t.is_main,
-              relationship: t.relationship || 'Genitore'
+              relationship: t.relationship || t.note || 'Genitore'
             }))
           : [];
 
@@ -70,7 +71,7 @@ export class ApiService {
           first_name: item.nome || item.first_name,
           last_name: item.cognome || item.last_name,
           school: item.scuola || item.school || '',
-          birth_date: item.data_nascita ? item.data_nascita.slice(0, 10) : (item.birth_date || ''),
+          birth_date: item.data_nascita ? String(item.data_nascita).slice(0, 10) : (item.birth_date || ''),
           birth_place: item.luogo_nascita || item.birth_place || '',
           residence: item.residenza || item.residence || '',
           created_at: item.created_at,
@@ -80,6 +81,7 @@ export class ApiService {
           sub_mer: subDays.includes(3),
           sub_gio: subDays.includes(4),
           sub_ven: subDays.includes(5),
+          weekly_meals: item.pasti_settimanali !== undefined ? Number(item.pasti_settimanali) : (item.weekly_meals ?? 0),
           main_tutor_name: tutors.find(t => t.is_main)?.first_name ? `${tutors.find(t => t.is_main)?.first_name} ${tutors.find(t => t.is_main)?.last_name}` : undefined,
           main_tutor_phone: tutors.find(t => t.is_main)?.phone,
           tutors
@@ -100,6 +102,8 @@ export class ApiService {
     if (studentData.sub_gio) days.push(4);
     if (studentData.sub_ven) days.push(5);
 
+    const weeklyMeals = Number(studentData.weekly_meals ?? 0);
+
     const payload = {
       student: {
         first_name: studentData.first_name,
@@ -108,7 +112,8 @@ export class ApiService {
         data_nascita: studentData.birth_date || '2016-01-01',
         luogo_nascita: studentData.birth_place || '',
         residenza: studentData.residence || 'N/D',
-        giorni_abbonamento: days
+        giorni_abbonamento: days,
+        pasti_settimanali: isNaN(weeklyMeals) ? 0 : weeklyMeals
       },
       tutors: (studentData.tutors || []).map((t, idx) => ({
         first_name: t.first_name,
@@ -124,11 +129,12 @@ export class ApiService {
     return this.http.put<ApiResponse<any>>(`${this.baseUrl}/students/${id}`, payload).pipe(
       map(res => ({
         id,
-        ...studentData
+        ...studentData,
+        weekly_meals: isNaN(weeklyMeals) ? 0 : weeklyMeals
       } as Student)),
       catchError(err => {
         console.warn('Backend unavailable, simulating mock update', err);
-        return of({ id, ...studentData } as Student);
+        return of({ id, ...studentData, weekly_meals: isNaN(weeklyMeals) ? 0 : weeklyMeals } as Student);
       })
     );
   }
@@ -141,6 +147,8 @@ export class ApiService {
     if (studentData.sub_gio) days.push(4);
     if (studentData.sub_ven) days.push(5);
 
+    const weeklyMeals = Number(studentData.weekly_meals ?? 0);
+
     const payload = {
       student: {
         first_name: studentData.first_name,
@@ -149,7 +157,8 @@ export class ApiService {
         data_nascita: studentData.birth_date || '2016-01-01',
         luogo_nascita: studentData.birth_place || '',
         residenza: studentData.residence || 'N/D',
-        giorni_abbonamento: days
+        giorni_abbonamento: days,
+        pasti_settimanali: isNaN(weeklyMeals) ? 0 : weeklyMeals
       },
       tutors: (studentData.tutors || []).map((t, idx) => ({
         first_name: t.first_name,
@@ -164,11 +173,12 @@ export class ApiService {
     return this.http.post<ApiResponse<any>>(`${this.baseUrl}/students`, payload).pipe(
       map(res => ({
         id: res.data?.student_id || Math.floor(Math.random() * 1000) + 10,
-        ...studentData
+        ...studentData,
+        weekly_meals: isNaN(weeklyMeals) ? 0 : weeklyMeals
       } as Student)),
       catchError(err => {
         console.warn('Backend unavailable, simulating mock create', err);
-        return of({ id: Math.floor(Math.random() * 1000) + 10, ...studentData } as Student);
+        return of({ id: Math.floor(Math.random() * 1000) + 10, ...studentData, weekly_meals: isNaN(weeklyMeals) ? 0 : weeklyMeals } as Student);
       })
     );
   }
@@ -187,9 +197,7 @@ export class ApiService {
           main_tutor_phone: item.main_tutor_phone || item.tutor_phone || '',
           is_present: !!item.is_present,
           has_meal: !!item.canteen_used || !!item.has_meal,
-          is_excused: !!item.is_absent_justified || !!item.is_excused,
-          notes: item.notes || '',
-          is_extra: !!item.is_extra
+          notes: item.notes || ''
         }));
       }),
       catchError(err => {
@@ -204,9 +212,8 @@ export class ApiService {
       student_id: r.student_id,
       date,
       is_present: !!r.is_present,
-      is_absent_justified: !r.is_present && !!r.is_excused,
-      canteen_used: !!r.is_present && !!r.has_meal,
-      is_extra: !!r.is_extra
+      canteen_used: !!r.has_meal,
+      notes: r.notes || ''
     }));
 
     return this.http.post<ApiResponse<any>>(`${this.baseUrl}/attendances/bulk`, payload).pipe(
@@ -278,25 +285,62 @@ export class ApiService {
     );
   }
 
-  getMensaReport(from: string, to: string): Observable<MensaReport> {
-    const params = new HttpParams().set('from', from).set('to', to);
+  getMensaReport(yearOrFrom: number | string, monthOrTo: number | string): Observable<MensaReport> {
+    let params = new HttpParams();
+    let fallbackFrom = '';
+    let fallbackTo = '';
+    let parsedYear: number | undefined;
+    let parsedMonth: number | undefined;
+
+    if (typeof yearOrFrom === 'number' && typeof monthOrTo === 'number') {
+      parsedYear = yearOrFrom;
+      parsedMonth = monthOrTo;
+      params = params.set('year', yearOrFrom.toString()).set('month', monthOrTo.toString());
+      fallbackFrom = `${yearOrFrom}-${String(monthOrTo).padStart(2, '0')}-01`;
+      const lastDay = new Date(yearOrFrom, monthOrTo, 0).getDate();
+      fallbackTo = `${yearOrFrom}-${String(monthOrTo).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+    } else {
+      fallbackFrom = String(yearOrFrom);
+      fallbackTo = String(monthOrTo);
+      params = params.set('from', fallbackFrom).set('to', fallbackTo);
+    }
+
     return this.http.get<ApiResponse<any>>(`${this.baseUrl}/reports/mensa`, { params }).pipe(
       map(res => {
         const d = res.data;
         return {
-          from: d.range?.from || from,
-          to: d.range?.to || to,
-          total_meals: d.totalMensa ?? 0,
+          year: d.year ?? parsedYear,
+          month: d.month ?? parsedMonth,
+          from: d.from || d.range?.from || fallbackFrom,
+          to: d.to || d.range?.to || fallbackTo,
+          total_meals: d.deliveredTotal ?? d.totalMensa ?? 0,
+          delivered_regular: d.deliveredRegular ?? (d.totalMensa !== undefined && d.extraMensa !== undefined ? d.totalMensa - d.extraMensa : 0),
+          delivered_extra: d.deliveredExtra ?? d.extraMensa ?? 0,
+          expected_meals: d.expectedMeals ?? d.expectedMensa ?? 0,
           breakdown: (d.dailyBreakdown || []).map((b: any) => ({
             date: b.date,
+            regular_meals: b.regularMensa ?? 0,
+            extra_meals: b.extraMensa ?? 0,
             total_meals: b.totalMensa ?? 0,
-            students: []
+            students: Array.isArray(b.students) ? b.students : []
+          })),
+          students_breakdown: (d.studentsBreakdown || []).map((s: any) => ({
+            student_id: s.student_id,
+            first_name: s.first_name,
+            last_name: s.last_name,
+            studentName: s.studentName || `${s.first_name} ${s.last_name}`,
+            school: s.school || '',
+            weekly_meals: s.pasti_settimanali ?? 0,
+            expected_meals: s.expectedMeals ?? 0,
+            delivered_regular: s.deliveredRegular ?? 0,
+            delivered_extra: s.deliveredExtra ?? 0,
+            delivered_total: s.deliveredTotal ?? 0
           }))
         };
       }),
       catchError(err => {
         console.warn('Backend unavailable, using mock mensa report', err);
-        return of(this.getMockMensaReport(from, to));
+        return of(this.getMockMensaReport(fallbackFrom, fallbackTo, parsedYear, parsedMonth));
       })
     );
   }
@@ -327,18 +371,24 @@ export class ApiService {
             excused: r.excused ?? 0,
             meals: r.meals ?? 0
           })),
-          studentsSummary: (d.studentsSummary || []).map((s: any) => ({
-            student_id: s.student_id,
-            first_name: s.first_name,
-            last_name: s.last_name,
-            studentName: s.studentName || `${s.first_name} ${s.last_name}`,
-            school: s.school || '',
-            days_present: s.days_present ?? 0,
-            extra_days: s.extra_days ?? 0,
-            days_absent: s.days_absent ?? 0,
-            days_excused: s.days_excused ?? 0,
-            meals_count: s.meals_count ?? 0
-          }))
+          studentsSummary: (d.studentsSummary || []).map((s: any) => {
+            const daysPresent = s.days_present ?? 0;
+            const daysAbsent = s.days_absent ?? 0;
+            const presenzePagate = s.presenze_pagate ?? 0;
+            const eccedenza = s.eccedenza ?? ((daysPresent + daysAbsent) - presenzePagate);
+            return {
+              student_id: s.student_id,
+              first_name: s.first_name,
+              last_name: s.last_name,
+              studentName: s.studentName || `${s.first_name} ${s.last_name}`,
+              school: s.school || '',
+              days_present: daysPresent,
+              days_absent: daysAbsent,
+              meals_count: s.meals_count ?? 0,
+              presenze_pagate: presenzePagate,
+              eccedenza: eccedenza
+            };
+          })
         } as MonthlyReport;
       }),
       catchError(err => {
@@ -346,6 +396,20 @@ export class ApiService {
         return of(this.getMockMonthlyReport(year, month));
       })
     );
+  }
+
+  saveMonthlyPlans(
+    yearOrPayload: number | { year: number; month: number; plans: { student_id: number | string; presenze_pagate: number }[] },
+    month?: number,
+    plans?: { student_id: number | string; presenze_pagate: number }[]
+  ): Observable<ApiResponse<any>> {
+    let body: { year: number; month: number; plans: { student_id: number | string; presenze_pagate: number }[] };
+    if (typeof yearOrPayload === 'object' && yearOrPayload !== null) {
+      body = yearOrPayload;
+    } else {
+      body = { year: yearOrPayload, month: month!, plans: plans! };
+    }
+    return this.http.put<ApiResponse<any>>(`${this.baseUrl}/reports/monthly-plans`, body);
   }
 
   // Fallback Mocks
@@ -361,6 +425,7 @@ export class ApiService {
         sub_mer: true,
         sub_gio: true,
         sub_ven: true,
+        weekly_meals: 5,
         main_tutor_name: 'Marco Bianchi',
         main_tutor_phone: '+39 340 1234567'
       }
@@ -369,25 +434,31 @@ export class ApiService {
 
   private getMockExpectedAttendances(): AttendanceRecord[] {
     return [
-      { student_id: 1, first_name: 'Leonardo', last_name: 'Bianchi', school: 'Scuola Primaria Rodari', is_present: true, has_meal: true, is_excused: false }
+      { student_id: 1, first_name: 'Leonardo', last_name: 'Bianchi', school: 'Scuola Primaria Rodari', is_present: true, has_meal: true }
     ];
   }
 
   private getMockDailyReport(date: string): DailyReport {
     return {
       date,
-      statistics: { totalExpected: 18, present: 14, extraPresent: 2, absent: 3, excused: 1 },
+      statistics: { totalExpected: 18, present: 14, extraPresent: 0, absent: 4, excused: 0 },
       extraStudents: [],
       unjustifiedAbsences: []
     };
   }
 
-  private getMockMensaReport(from: string, to: string): MensaReport {
+  private getMockMensaReport(from: string, to: string, year?: number, month?: number): MensaReport {
     return {
+      year,
+      month,
       from,
       to,
       total_meals: 42,
-      breakdown: []
+      delivered_regular: 42,
+      delivered_extra: 0,
+      expected_meals: 44,
+      breakdown: [],
+      students_breakdown: []
     };
   }
 
@@ -399,14 +470,180 @@ export class ApiService {
       to: `${year}-${String(month).padStart(2, '0')}-28`,
       summary: {
         totalPresent: 50,
-        totalExtraPresent: 5,
-        totalUnjustifiedAbsent: 3,
-        totalExcused: 2,
+        totalExtraPresent: 0,
+        totalUnjustifiedAbsent: 5,
+        totalExcused: 0,
         totalMeals: 45,
         activeDays: 15
       },
       dailyTrend: [],
-      studentsSummary: []
+      studentsSummary: [
+        {
+          student_id: 1,
+          first_name: 'Leonardo',
+          last_name: 'Bianchi',
+          studentName: 'Leonardo Bianchi',
+          school: 'Scuola Primaria Rodari',
+          days_present: 15,
+          days_absent: 2,
+          meals_count: 15,
+          presenze_pagate: 16,
+          eccedenza: 1 // (15 + 2) - 16 = 1
+        }
+      ]
     };
   }
+
+  // ================= USERS API =================
+  getUsers(): Observable<User[]> {
+    return this.http.get<ApiResponse<User[]>>(`${this.baseUrl}/users`).pipe(
+      map(res => res.data || [])
+    );
+  }
+
+  getUserById(id: string | number): Observable<User> {
+    return this.http.get<ApiResponse<User>>(`${this.baseUrl}/users/${id}`).pipe(
+      map(res => res.data)
+    );
+  }
+
+  createUser(userData: Partial<User> & { password?: string }): Observable<User> {
+    return this.http.post<ApiResponse<User>>(`${this.baseUrl}/users`, userData).pipe(
+      map(res => res.data)
+    );
+  }
+
+  updateUser(id: string | number, userData: Partial<User> & { password?: string }): Observable<User> {
+    return this.http.put<ApiResponse<User>>(`${this.baseUrl}/users/${id}`, userData).pipe(
+      map(res => res.data)
+    );
+  }
+
+  deleteUser(id: string | number): Observable<boolean> {
+    return this.http.delete<ApiResponse<{ message: string }>>(`${this.baseUrl}/users/${id}`).pipe(
+      map(res => res.success)
+    );
+  }
+
+  // ================= PROJECTS API =================
+  getProjects(): Observable<Project[]> {
+    return this.http.get<ApiResponse<Project[]>>(`${this.baseUrl}/projects`).pipe(
+      map(res => res.data || [])
+    );
+  }
+
+  getProjectById(id: string): Observable<Project> {
+    return this.http.get<ApiResponse<Project>>(`${this.baseUrl}/projects/${id}`).pipe(
+      map(res => res.data)
+    );
+  }
+
+  createProject(projectData: Partial<Project>): Observable<Project> {
+    return this.http.post<ApiResponse<Project>>(`${this.baseUrl}/projects`, projectData).pipe(
+      map(res => res.data)
+    );
+  }
+
+  updateProject(id: string, projectData: Partial<Project>): Observable<Project> {
+    return this.http.put<ApiResponse<Project>>(`${this.baseUrl}/projects/${id}`, projectData).pipe(
+      map(res => res.data)
+    );
+  }
+
+  deleteProject(id: string): Observable<boolean> {
+    return this.http.delete<ApiResponse<{ message: string }>>(`${this.baseUrl}/projects/${id}`).pipe(
+      map(res => res.success)
+    );
+  }
+
+  assignTeacherToProject(projectId: string, data: { user_id: string; hourly_rate?: number | null; assigned_hours?: number | null }): Observable<any> {
+    return this.http.post<ApiResponse<any>>(`${this.baseUrl}/projects/${projectId}/teachers`, data).pipe(
+      map(res => res.data)
+    );
+  }
+
+  removeTeacherFromProject(projectId: string, userId: string): Observable<boolean> {
+    return this.http.delete<ApiResponse<any>>(`${this.baseUrl}/projects/${projectId}/teachers/${userId}`).pipe(
+      map(res => res.success)
+    );
+  }
+
+  // ================= REPORTS API =================
+  getProjectsReport(): Observable<ProjectReportData> {
+    return this.http.get<ApiResponse<ProjectReportData>>(`${this.baseUrl}/reports/projects`).pipe(
+      map(res => res.data)
+    );
+  }
+
+  // ================= AFTERSCHOOL COMMESSA SPECIALE API =================
+  getAfterschoolAssignments(): Observable<AfterschoolAssignment[]> {
+    return this.http.get<ApiResponse<AfterschoolAssignment[]>>(`${this.baseUrl}/afterschool/assignments`).pipe(
+      map(res => res.data || [])
+    );
+  }
+
+  getAfterschoolAssignmentByUser(userId: string): Observable<AfterschoolAssignment | null> {
+    return this.http.get<ApiResponse<AfterschoolAssignment | null>>(`${this.baseUrl}/afterschool/assignments/${userId}`).pipe(
+      map(res => res.data || null)
+    );
+  }
+
+  assignAfterschool(data: { user_id: string; hourly_rate: number; notes?: string | null }): Observable<AfterschoolAssignment> {
+    return this.http.post<ApiResponse<AfterschoolAssignment>>(`${this.baseUrl}/afterschool/assignments`, data).pipe(
+      map(res => res.data)
+    );
+  }
+
+  removeAfterschoolAssignment(userId: string): Observable<boolean> {
+    return this.http.delete<ApiResponse<{ message: string }>>(`${this.baseUrl}/afterschool/assignments/${userId}`).pipe(
+      map(res => res.success)
+    );
+  }
+
+  // ================= CALENDARIO SETTIMANALE DOPOSCUOLA & TURNI TEACHER =================
+  getAfterschoolWeekSchedule(startDate: string): Observable<AfterschoolWeekSchedule> {
+    const params = new HttpParams().set('startDate', startDate);
+    return this.http.get<ApiResponse<AfterschoolWeekSchedule>>(`${this.baseUrl}/afterschool/week-summary`, { params }).pipe(
+      map(res => res.data)
+    );
+  }
+
+  createTeacherShift(data: { user_id: string; shift_date: string; start_time: string; end_time: string; notes?: string }): Observable<TeacherShift> {
+    return this.http.post<ApiResponse<TeacherShift>>(`${this.baseUrl}/afterschool/shifts`, data).pipe(
+      map(res => res.data)
+    );
+  }
+
+  updateTeacherShift(id: string, data: { user_id?: string; shift_date?: string; start_time?: string; end_time?: string; notes?: string }): Observable<TeacherShift> {
+    return this.http.put<ApiResponse<TeacherShift>>(`${this.baseUrl}/afterschool/shifts/${id}`, data).pipe(
+      map(res => res.data)
+    );
+  }
+
+  deleteTeacherShift(id: string): Observable<boolean> {
+    return this.http.delete<ApiResponse<{ message: string }>>(`${this.baseUrl}/afterschool/shifts/${id}`).pipe(
+      map(res => res.success)
+    );
+  }
+
+  // ================= CHIUSURE STRAORDINARIE (SOLO ADMIN) =================
+  getAfterschoolClosures(): Observable<ClosureDay[]> {
+    return this.http.get<ApiResponse<ClosureDay[]>>(`${this.baseUrl}/afterschool/closures`).pipe(
+      map(res => res.data || [])
+    );
+  }
+
+  createAfterschoolClosure(data: { date: string; title: string; notes?: string | null }): Observable<ClosureDay> {
+    return this.http.post<ApiResponse<ClosureDay>>(`${this.baseUrl}/afterschool/closures`, data).pipe(
+      map(res => res.data)
+    );
+  }
+
+  deleteAfterschoolClosure(id: string): Observable<boolean> {
+    return this.http.delete<ApiResponse<{ message: string }>>(`${this.baseUrl}/afterschool/closures/${id}`).pipe(
+      map(res => res.success)
+    );
+  }
 }
+
+

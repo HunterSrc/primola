@@ -197,4 +197,30 @@ describe('StudentEditComponent', () => {
     component.goBack();
     expect(mockRouter.navigate).toHaveBeenCalledWith(['/anagrafica']);
   });
+
+  it('should validate weekly_meals against selected attendance days', () => {
+    component.ngOnInit(); // sub_lun: true, sub_mar: true, sub_mer: false, sub_gio: true, sub_ven: false -> 3 days
+    expect(component.selectedDaysCount()).toBe(3);
+
+    component.editForm.patchValue({ weekly_meals: 3 });
+    expect(component.editForm.valid).toBe(true);
+
+    component.editForm.patchValue({ weekly_meals: 4 });
+    expect(component.editForm.invalid).toBe(true);
+    expect(component.editForm.hasError('exceedsAttendanceDays')).toBe(true);
+  });
+
+  it('should block non-digit keys in onlyDigits and sanitize non-digits in sanitizeDigitsInput', () => {
+    const preventSpy = vi.fn();
+    component.onlyDigits({ key: 'a', preventDefault: preventSpy } as any);
+    expect(preventSpy).toHaveBeenCalled();
+
+    const preventDigitSpy = vi.fn();
+    component.onlyDigits({ key: '3', preventDefault: preventDigitSpy } as any);
+    expect(preventDigitSpy).not.toHaveBeenCalled();
+
+    component.editForm.get('weekly_meals')?.setValue('2abc');
+    component.sanitizeDigitsInput();
+    expect(component.editForm.get('weekly_meals')?.value).toBe(2);
+  });
 });

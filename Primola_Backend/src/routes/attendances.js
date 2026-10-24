@@ -22,7 +22,7 @@ const { verifyToken, requireRole } = require('../middlewares/authMiddleware');
  *       200:
  *         description: Array di studenti attesi
  */
-router.get('/expected', verifyToken, requireRole(['ADMIN', 'STAFF']), attendanceController.getExpected);
+router.get('/expected', verifyToken, requireRole(['ADMIN', 'OFFICE', 'TEACHER', 'STAFF']), attendanceController.getExpected);
 
 /**
  * @swagger
@@ -47,16 +47,12 @@ router.get('/expected', verifyToken, requireRole(['ADMIN', 'STAFF']), attendance
  *                   type: string
  *                 is_present:
  *                   type: boolean
- *                 is_absent_justified:
- *                   type: boolean
  *                 canteen_used:
- *                   type: boolean
- *                 is_extra:
  *                   type: boolean
  *     responses:
  *       200:
  *         description: Operazione bulk completata
  */
-router.post('/bulk', verifyToken, requireRole(['ADMIN', 'STAFF']), attendanceController.bulkUpsert);
+router.post('/bulk', verifyToken, requireRole(['ADMIN', 'OFFICE', 'TEACHER', 'STAFF']), attendanceController.bulkUpsert);
 
 module.exports = router;

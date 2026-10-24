@@ -19,7 +19,26 @@ export const adminGuard: CanActivateFn = () => {
   if (authService.isAuthenticated() && authService.isAdmin()) {
     return true;
   }
-  // Se loggato ma non admin, rimanda a /dashboard
+  return router.parseUrl('/dashboard');
+};
+
+export const adminOrOfficeGuard: CanActivateFn = () => {
+  const authService = inject(AuthService);
+  const router = inject(Router);
+
+  if (authService.isAuthenticated() && (authService.isAdmin() || authService.isOffice())) {
+    return true;
+  }
+  return router.parseUrl('/dashboard');
+};
+
+export const reportsGuard: CanActivateFn = () => {
+  const authService = inject(AuthService);
+  const router = inject(Router);
+
+  if (authService.isAuthenticated() && (authService.isAdmin() || authService.isOffice())) {
+    return true;
+  }
   return router.parseUrl('/dashboard');
 };
 

@@ -155,6 +155,32 @@ import { Student } from '../../core/models';
                   <span class="text-xs sm:text-sm font-semibold text-slate-700">Venerdì</span>
                 </label>
               </div>
+
+              <!-- Pasti Settimanali -->
+              <div class="pt-2">
+                <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1.5">
+                  Pasti Settimanali Spettanti (Max: {{ selectedDaysCount() }}) *
+                </label>
+                <div class="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+                  <input
+                    type="text"
+                    inputmode="numeric"
+                    pattern="[0-9]*"
+                    formControlName="weekly_meals"
+                    (keydown)="onlyDigits($event)"
+                    (input)="sanitizeDigitsInput()"
+                    class="w-full sm:w-40 px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-slate-50/50 text-sm font-semibold"
+                  />
+                  <span class="text-xs text-slate-500">
+                    Numero intero tra 0 e {{ selectedDaysCount() }} (in base ai giorni di abbonamento selezionati)
+                  </span>
+                </div>
+                @if (editForm.hasError('exceedsAttendanceDays') || editForm.get('weekly_meals')?.invalid) {
+                  <p class="text-xs text-rose-600 font-semibold mt-1.5">
+                    Il numero di pasti settimanali non può superare i giorni di presenza ({{ selectedDaysCount() }}) e deve essere un intero valido.
+                  </p>
+                }
+              </div>
             </div>
 
             <!-- Sezione Tutori / Contatti -->
@@ -303,11 +329,52 @@ export class StudentEditComponent implements OnInit {
     sub_mer: [true],
     sub_gio: [true],
     sub_ven: [true],
+    weekly_meals: [0, [Validators.required, Validators.min(0), Validators.pattern(/^\d+$/)]],
     tutors: this.fb.array([])
-  });
+  }, { validators: (group) => this.validateWeeklyMeals(group as FormGroup) });
 
   get tutors(): FormArray {
     return this.editForm.get('tutors') as FormArray;
+  }
+
+  selectedDaysCount(group: FormGroup = this.editForm): number {
+    if (!group) return 0;
+    const keys = ['sub_lun', 'sub_mar', 'sub_mer', 'sub_gio', 'sub_ven'];
+    return keys.filter(k => !!group.get(k)?.value).length;
+  }
+
+  validateWeeklyMeals(group: FormGroup): { [key: string]: any } | null {
+    const maxDays = this.selectedDaysCount(group);
+    const rawVal = group.get('weekly_meals')?.value;
+    const meals = Number(rawVal);
+    if (rawVal === '' || rawVal === null || rawVal === undefined || isNaN(meals) || !Number.isInteger(meals) || meals < 0) {
+      return { invalidWeeklyMeals: true };
+    }
+    if (meals > maxDays) {
+      return { exceedsAttendanceDays: { max: maxDays, actual: meals } };
+    }
+    return null;
+  }
+
+  onlyDigits(event: KeyboardEvent): void {
+    const allowedKeys = ['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'];
+    if (allowedKeys.includes(event.key) || event.ctrlKey || event.metaKey) {
+      return;
+    }
+    if (!/^[0-9]$/.test(event.key)) {
+      event.preventDefault();
+    }
+  }
+
+  sanitizeDigitsInput(): void {
+    const ctrl = this.editForm.get('weekly_meals');
+    if (!ctrl) return;
+    const raw = String(ctrl.value ?? '');
+    const cleaned = raw.replace(/[^0-9]/g, '');
+    const numVal = cleaned === '' ? 0 : parseInt(cleaned, 10);
+    if (String(ctrl.value) !== String(numVal)) {
+      ctrl.setValue(numVal);
+    }
   }
 
   ngOnInit(): void {
@@ -347,7 +414,8 @@ export class StudentEditComponent implements OnInit {
       sub_mar: student.sub_mar ?? true,
       sub_mer: student.sub_mer ?? true,
       sub_gio: student.sub_gio ?? true,
-      sub_ven: student.sub_ven ?? true
+      sub_ven: student.sub_ven ?? true,
+      weekly_meals: student.weekly_meals ?? 0
     });
 
     this.tutors.clear();

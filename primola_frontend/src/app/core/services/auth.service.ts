@@ -2,7 +2,7 @@ import { Injectable, signal, computed } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { Observable, tap, catchError, throwError } from 'rxjs';
-import { User, UserRole, ApiResponse, AuthResponseData } from '../models';
+import { User, UserRole, UserGroup, ApiResponse, AuthResponseData } from '../models';
 
 const STORAGE_KEY = 'primola_user';
 const ACCESS_TOKEN_KEY = 'jwt_token';
@@ -21,9 +21,32 @@ export class AuthService {
 
   readonly currentUser = this.userSignal.asReadonly();
   readonly isAuthenticated = computed(() => !!this.userSignal());
+  readonly groups = computed<UserGroup[]>(() => {
+    const user = this.userSignal();
+    if (!user) return [];
+    if (user.groups && user.groups.length > 0) return user.groups;
+    if (user.role) {
+      const r = String(user.role).toUpperCase();
+      return [(r === 'STAFF' ? 'TEACHER' : r) as UserGroup];
+    }
+    return [];
+  });
   readonly role = computed(() => this.userSignal()?.role ?? null);
-  readonly isAdmin = computed(() => this.userSignal()?.role === 'ADMIN');
-  readonly isStaff = computed(() => this.userSignal()?.role === 'STAFF');
+  readonly isAdmin = computed(() => this.groups().includes('ADMIN'));
+  readonly isOffice = computed(() => this.groups().includes('OFFICE'));
+  readonly isTeacher = computed(() => this.groups().includes('TEACHER'));
+  readonly isStaff = computed(() => this.isAdmin() || this.isOffice());
+
+  readonly canManageUsers = computed(() => this.isAdmin() || this.isOffice());
+  readonly canManageStudents = computed(() => this.isAdmin() || this.isOffice());
+  readonly canEditRoles = computed(() => this.isAdmin());
+  readonly canViewReports = computed(() => this.isAdmin() || this.isOffice());
+  readonly canViewCompensation = computed(() => this.isAdmin() || this.isOffice());
+
+  // Segna Presenze RBAC
+  readonly canManageAttendanceStudents = computed(() => this.isAdmin() || this.isOffice());
+  readonly canManageAttendanceMeals = computed(() => this.isAdmin() || this.isOffice());
+  readonly canManageAttendanceExcuses = computed(() => this.isAdmin() || this.isOffice());
 
   constructor(
     private router: Router,
@@ -77,11 +100,22 @@ export class AuthService {
   }
 
   private handleAuthSuccess(data: AuthResponseData): void {
+    const rawUser = data.user;
+    const firstName = rawUser.first_name || rawUser.nome || '';
+    const lastName = rawUser.last_name || rawUser.cognome || '';
+    const groups: UserGroup[] = (rawUser.groups && rawUser.groups.length > 0)
+      ? rawUser.groups
+      : [((rawUser.role === 'STAFF' ? 'TEACHER' : rawUser.role) || 'TEACHER') as UserGroup];
+
     const user: User = {
-      id: data.user.id,
-      name: `${data.user.nome} ${data.user.cognome || ''}`.trim(),
-      email: data.user.email,
-      role: data.user.role,
+      id: rawUser.id,
+      name: `${firstName} ${lastName}`.trim() || rawUser.email,
+      email: rawUser.email,
+      first_name: firstName,
+      last_name: lastName,
+      phone: rawUser.phone,
+      groups: groups,
+      role: rawUser.role || groups[0],
       token: data.accessToken
     };
 

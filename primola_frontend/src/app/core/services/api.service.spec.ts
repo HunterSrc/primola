@@ -218,9 +218,7 @@ describe('ApiService', () => {
           last_name: 'B',
           scuola: 'Scuola',
           is_present: true,
-          canteen_used: true,
-          is_absent_justified: false,
-          is_extra: true
+          canteen_used: true
         }
       ];
       mockHttp.get.mockReturnValue(of({ success: true, data: backendAttendances }));
@@ -231,7 +229,6 @@ describe('ApiService', () => {
       expect(result).toBeDefined();
       expect(result![0].student_id).toBe(1);
       expect(result![0].has_meal).toBe(true);
-      expect(result![0].is_extra).toBe(true);
     });
 
     it('should handle non-array data gracefully', () => {
@@ -342,14 +339,22 @@ describe('ApiService', () => {
         to: '2026-10-31',
         summary: {
           totalPresent: 80,
-          totalExtraPresent: 10,
           totalUnjustifiedAbsent: 5,
-          totalExcused: 3,
           totalMeals: 75,
           activeDays: 20
         },
-        dailyTrend: [{ date: '2026-10-01', present: 4, extra: 1, absent: 0, excused: 0, meals: 4 }],
-        studentsSummary: [{ student_id: 1, first_name: 'Mario', last_name: 'Rossi', days_present: 18 }]
+        dailyTrend: [{ date: '2026-10-01', present: 4, absent: 0, meals: 4 }],
+        studentsSummary: [
+          {
+            student_id: 1,
+            first_name: 'Mario',
+            last_name: 'Rossi',
+            days_present: 18,
+            days_absent: 2,
+            presenze_pagate: 20,
+            eccedenza: 0
+          }
+        ]
       };
       mockHttp.get.mockReturnValue(of({ success: true, data: backendReport }));
 
@@ -358,9 +363,11 @@ describe('ApiService', () => {
 
       expect(result.year).toBe(2026);
       expect(result.summary.totalPresent).toBe(80);
-      expect(result.summary.totalExtraPresent).toBe(10);
+      expect(result.summary.totalUnjustifiedAbsent).toBe(5);
       expect(result.dailyTrend[0].present).toBe(4);
       expect(result.studentsSummary[0].days_present).toBe(18);
+      expect(result.studentsSummary[0].presenze_pagate).toBe(20);
+      expect(result.studentsSummary[0].eccedenza).toBe(0);
     });
 
     it('should fallback to mock monthly report when API fails', () => {
@@ -373,6 +380,53 @@ describe('ApiService', () => {
       expect(result).toBeDefined();
       expect(warnSpy).toHaveBeenCalled();
       warnSpy.mockRestore();
+    });
+  });
+
+  describe('saveMonthlyPlans', () => {
+    it('should put monthly plans to API', () => {
+      const payload = {
+        year: 2026,
+        month: 10,
+        plans: [{ student_id: 1, presenze_pagate: 20 }]
+      };
+      mockHttp.put.mockReturnValue(of({ success: true, data: { updated: 1 } }));
+
+      let result: any;
+      service.saveMonthlyPlans(payload).subscribe(res => { result = res; });
+
+      expect(mockHttp.put).toHaveBeenCalledWith('/api/reports/monthly-plans', payload);
+      expect(result.success).toBe(true);
+    });
+  });
+
+  describe('getMensaReport', () => {
+    it('should map mensa report with year and month from API payload', () => {
+      const backendReport = {
+        year: 2026,
+        month: 10,
+        from: '2026-10-01',
+        to: '2026-10-31',
+        deliveredTotal: 35,
+        deliveredRegular: 30,
+        deliveredExtra: 5,
+        expectedMeals: 36,
+        dailyBreakdown: [{ date: '2026-10-15', regularMensa: 5, extraMensa: 1, totalMensa: 6, students: [] }],
+        studentsBreakdown: [{ student_id: 1, first_name: 'Mario', last_name: 'Rossi', pasti_settimanali: 2, expectedMeals: 9, deliveredRegular: 8, deliveredExtra: 1, deliveredTotal: 9 }]
+      };
+      mockHttp.get.mockReturnValue(of({ success: true, data: backendReport }));
+
+      let result: any;
+      service.getMensaReport(2026, 10).subscribe(res => { result = res; });
+
+      expect(result.year).toBe(2026);
+      expect(result.month).toBe(10);
+      expect(result.total_meals).toBe(35);
+      expect(result.delivered_regular).toBe(30);
+      expect(result.delivered_extra).toBe(5);
+      expect(result.expected_meals).toBe(36);
+      expect(result.students_breakdown.length).toBe(1);
+      expect(result.students_breakdown[0].weekly_meals).toBe(2);
     });
   });
 });

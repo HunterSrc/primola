@@ -55,8 +55,31 @@ describe('AuthService', () => {
     expect(service.isAuthenticated()).toBe(true);
     expect(service.currentUser()?.name).toBe('Saved Admin');
     expect(service.isAdmin()).toBe(true);
+    expect(service.canManageStudents()).toBe(true);
     expect(service.getToken()).toBe('jwt-admin-token');
     expect(service.getRefreshToken()).toBe('jwt-refresh-token');
+  });
+
+  it('should verify canManageStudents is true for OFFICE and false for TEACHER', () => {
+    mockStorage['primola_user'] = JSON.stringify({
+      id: 'usr-2',
+      name: 'Office User',
+      groups: ['OFFICE'],
+      token: 'jwt-office-token'
+    });
+    service = new AuthService(mockRouter as Router, mockHttp as HttpClient);
+    expect(service.isOffice()).toBe(true);
+    expect(service.canManageStudents()).toBe(true);
+
+    mockStorage['primola_user'] = JSON.stringify({
+      id: 'usr-3',
+      name: 'Teacher User',
+      groups: ['TEACHER'],
+      token: 'jwt-teacher-token'
+    });
+    service = new AuthService(mockRouter as Router, mockHttp as HttpClient);
+    expect(service.isTeacher()).toBe(true);
+    expect(service.canManageStudents()).toBe(false);
   });
 
   it('should handle JSON parse error gracefully when loading initial user', () => {

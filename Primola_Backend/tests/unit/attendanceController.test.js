@@ -89,6 +89,29 @@ describe('attendanceController unit tests', () => {
       });
     });
 
+    it('should sanitize meal when caller is TEACHER only', async () => {
+      mockReq.user = { role: 'TEACHER' };
+      mockReq.body = [
+        { student_id: 1, date: '2026-10-22', is_present: true, canteen_used: true }
+      ];
+      attendanceRepository.getExpectedStudents.mockResolvedValue([
+        { student_id: 1, is_present: false, canteen_used: false }
+      ]);
+      attendanceRepository.bulkUpsertAttendances.mockImplementation(async (list) => list);
+
+      await attendanceController.bulkUpsert(mockReq, mockRes, nextFn);
+
+      expect(attendanceRepository.bulkUpsertAttendances).toHaveBeenCalledWith([
+        expect.objectContaining({
+          student_id: 1,
+          date: '2026-10-22',
+          is_present: true,
+          canteen_used: false
+        })
+      ]);
+      expect(mockRes.status).toHaveBeenCalledWith(200);
+    });
+
     it('should call next(err) if bulkUpsertAttendances rejects', async () => {
       mockReq.body = [{ student_id: 1 }];
       const err = new Error('Upsert error');

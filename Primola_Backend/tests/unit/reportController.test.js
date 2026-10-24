@@ -44,7 +44,7 @@ describe('reportController unit tests', () => {
 
       mockClient.query
         .mockResolvedValueOnce({
-          rows: [{ total_expected: '10', total_present: '8', total_extra_present: '2', total_absent: '2', total_excused: '1' }]
+          rows: [{ total_expected: '10', total_present: '8', total_absent: '2' }]
         })
         .mockResolvedValueOnce({
           rows: [
@@ -54,12 +54,7 @@ describe('reportController unit tests', () => {
         })
         .mockResolvedValueOnce({
           rows: [
-            { student_id: 3, first_name: 'Extra', last_name: 'Stud', scuola: 'Scuola A', has_meal: true, tutor_first_name: 'Papa', tutor_last_name: 'S', tutor_phone: '456' }
-          ]
-        })
-        .mockResolvedValueOnce({
-          rows: [
-            { attendance_id: 'a-1', student_id: 3, first_name: 'Extra', last_name: 'Stud', is_present: true, is_extra: true, canteen_used: true }
+            { attendance_id: 'a-1', student_id: 3, first_name: 'Stud', last_name: 'Tre', is_present: true, canteen_used: true }
           ]
         });
 
@@ -70,13 +65,11 @@ describe('reportController unit tests', () => {
         success: true,
         data: expect.objectContaining({
           date: '2026-10-22',
-          statistics: { totalExpected: 10, present: 8, extraPresent: 2, absent: 2, excused: 1, totalInserted: 1 },
+          statistics: { totalExpected: 10, present: 8, extraPresent: 0, absent: 2, excused: 0, totalInserted: 1 },
           allAttendances: expect.arrayContaining([
-            expect.objectContaining({ student_id: 3, studentName: 'Extra Stud', is_present: true, is_extra: true })
+            expect.objectContaining({ student_id: 3, studentName: 'Stud Tre', is_present: true })
           ]),
-          extraStudents: expect.arrayContaining([
-            expect.objectContaining({ student_id: 3, studentName: 'Extra Stud', has_meal: true })
-          ])
+          unjustifiedAbsences: expect.any(Array)
         })
       }));
       expect(mockClient.release).toHaveBeenCalled();
@@ -86,7 +79,6 @@ describe('reportController unit tests', () => {
       mockReq.query.date = '2026-10-22';
 
       mockClient.query
-        .mockResolvedValueOnce({ rows: [] })
         .mockResolvedValueOnce({ rows: [] })
         .mockResolvedValueOnce({ rows: [] })
         .mockResolvedValueOnce({ rows: [] });
@@ -116,29 +108,62 @@ describe('reportController unit tests', () => {
   });
 
   describe('getMensaReport', () => {
-    it('should return 400 when from or to are missing or invalid', async () => {
+    it('should return 400 when parameters are missing or invalid', async () => {
       await reportController.getMensaReport(mockReq, mockRes, nextFn);
       expect(mockRes.status).toHaveBeenCalledWith(400);
 
       mockReq.query = { from: '2026-10-01', to: 'invalid' };
       await reportController.getMensaReport(mockReq, mockRes, nextFn);
       expect(mockRes.status).toHaveBeenCalledWith(400);
+
+      mockReq.query = { year: '2026' };
+      await reportController.getMensaReport(mockReq, mockRes, nextFn);
+      expect(mockRes.status).toHaveBeenCalledWith(400);
+
+      mockReq.query = { year: '2026', month: '15' };
+      await reportController.getMensaReport(mockReq, mockRes, nextFn);
+      expect(mockRes.status).toHaveBeenCalledWith(400);
     });
 
-    it('should return 200 with mensa breakdown and total meals', async () => {
-      mockReq.query = { from: '2026-10-01', to: '2026-10-22' };
+    it('should return 200 with mensa breakdown, delivered regular/extra and estimated expected meals by year/month', async () => {
+      mockReq.query = { year: '2026', month: '10' };
 
       mockClient.query
         .mockResolvedValueOnce({ rows: [{ total_mensa: '30' }] })
-        .mockResolvedValueOnce({ rows: [{ expected_mensa: '25' }] })
-        .mockResolvedValueOnce({ rows: [{ extra_mensa: '5' }] })
         .mockResolvedValueOnce({
           rows: [
             {
               date: '2026-10-15',
               regular_mensa: '5',
-              extra_mensa: '1',
-              total_mensa: '6'
+              extra_mensa: '0',
+              total_mensa: '5',
+              students: [{ id: 's1', name: 'Mario Rossi' }]
+            }
+          ]
+        })
+        .mockResolvedValueOnce({
+          rows: [
+            {
+              id: 's1',
+              first_name: 'Mario',
+              last_name: 'Rossi',
+              scuola: 'Rodari',
+              giorni_abbonamento: [1, 3, 5],
+              pasti_settimanali: 2,
+              delivered_regular: '8',
+              delivered_extra: '0',
+              delivered_total: '8'
+            },
+            {
+              id: 's2',
+              first_name: 'Luigi',
+              last_name: 'Bianchi',
+              scuola: 'Rodari',
+              giorni_abbonamento: [2, 4],
+              pasti_settimanali: 0,
+              delivered_regular: '0',
+              delivered_extra: '0',
+              delivered_total: '0'
             }
           ]
         });
@@ -149,10 +174,27 @@ describe('reportController unit tests', () => {
       expect(mockRes.json).toHaveBeenCalledWith(expect.objectContaining({
         success: true,
         data: expect.objectContaining({
+          year: 2026,
+          month: 10,
+          from: '2026-10-01',
+          to: '2026-10-31',
           totalMensa: 30,
-          expectedMensa: 25,
-          extraMensa: 5,
-          dailyBreakdown: expect.any(Array)
+          deliveredTotal: 30,
+          deliveredRegular: 30,
+          deliveredExtra: 0,
+          expectedMeals: 9,
+          extraMensa: 0,
+          dailyBreakdown: expect.any(Array),
+          studentsBreakdown: expect.arrayContaining([
+            expect.objectContaining({
+              student_id: 's1',
+              pasti_settimanali: 2,
+              expectedMeals: 9,
+              deliveredRegular: 8,
+              deliveredExtra: 0,
+              deliveredTotal: 8
+            })
+          ])
         })
       }));
       expect(mockClient.release).toHaveBeenCalled();
@@ -164,7 +206,6 @@ describe('reportController unit tests', () => {
       mockClient.query
         .mockResolvedValueOnce({ rows: [] })
         .mockResolvedValueOnce({ rows: [] })
-        .mockResolvedValueOnce({ rows: [] })
         .mockResolvedValueOnce({ rows: [] });
 
       await reportController.getMensaReport(mockReq, mockRes, nextFn);
@@ -173,15 +214,18 @@ describe('reportController unit tests', () => {
       expect(mockRes.json).toHaveBeenCalledWith(expect.objectContaining({
         data: expect.objectContaining({
           totalMensa: 0,
-          expectedMensa: 0,
+          deliveredRegular: 0,
+          deliveredExtra: 0,
+          expectedMeals: 0,
           extraMensa: 0,
-          dailyBreakdown: []
+          dailyBreakdown: [],
+          studentsBreakdown: []
         })
       }));
     });
 
     it('should call next(err) and release client when mensa query fails', async () => {
-      mockReq.query = { from: '2026-10-01', to: '2026-10-22' };
+      mockReq.query = { year: '2026', month: '10' };
       const err = new Error('Mensa query error');
       mockClient.query.mockRejectedValue(err);
 
@@ -215,9 +259,7 @@ describe('reportController unit tests', () => {
           rows: [
             {
               total_present: '80',
-              total_extra_present: '10',
               total_unjustified_absent: '5',
-              total_excused: '3',
               total_meals: '75',
               active_days: '20'
             }
@@ -228,9 +270,7 @@ describe('reportController unit tests', () => {
             {
               date: '2026-10-01',
               present: '4',
-              extra: '1',
               absent: '0',
-              excused: '0',
               meals: '4'
             }
           ]
@@ -243,10 +283,9 @@ describe('reportController unit tests', () => {
               last_name: 'Rossi',
               scuola: 'Rodari',
               days_present: '18',
-              extra_days: '2',
-              days_absent: '1',
-              days_excused: '1',
-              meals_count: '18'
+              days_absent: '2',
+              meals_count: '18',
+              presenze_pagate: 16
             }
           ]
         });
@@ -261,14 +300,22 @@ describe('reportController unit tests', () => {
           month: 10,
           summary: {
             totalPresent: 80,
-            totalExtraPresent: 10,
+            totalExtraPresent: 0,
             totalUnjustifiedAbsent: 5,
-            totalExcused: 3,
+            totalExcused: 0,
             totalMeals: 75,
             activeDays: 20
           },
           dailyTrend: expect.any(Array),
-          studentsSummary: expect.any(Array)
+          studentsSummary: expect.arrayContaining([
+            expect.objectContaining({
+              student_id: 1,
+              days_present: 18,
+              days_absent: 2,
+              presenze_pagate: 16,
+              eccedenza: 4 // (18 + 2) - 16 = 4
+            })
+          ])
         })
       }));
       expect(mockClient.release).toHaveBeenCalled();
@@ -281,6 +328,65 @@ describe('reportController unit tests', () => {
 
       await reportController.getMonthlyReport(mockReq, mockRes, nextFn);
 
+      expect(nextFn).toHaveBeenCalledWith(err);
+      expect(mockClient.release).toHaveBeenCalled();
+    });
+  });
+
+  describe('saveMonthlyPlans', () => {
+    it('should return 400 if parameters are missing or invalid', async () => {
+      mockReq.body = { year: 2026 };
+      await reportController.saveMonthlyPlans(mockReq, mockRes, nextFn);
+      expect(mockRes.status).toHaveBeenCalledWith(400);
+
+      mockReq.body = { year: 2026, month: 13, plans: [] };
+      await reportController.saveMonthlyPlans(mockReq, mockRes, nextFn);
+      expect(mockRes.status).toHaveBeenCalledWith(400);
+    });
+
+    it('should upsert monthly plans and return 200', async () => {
+      mockReq.body = {
+        year: 2026,
+        month: 10,
+        plans: [
+          { student_id: 's1', presenze_pagate: 20 },
+          { student_id: 's2', presenze_pagate: 15 }
+        ]
+      };
+
+      mockClient.query
+        .mockResolvedValueOnce({}) // BEGIN
+        .mockResolvedValueOnce({ rows: [{ id: 'p1', student_id: 's1', presenze_pagate: 20 }] })
+        .mockResolvedValueOnce({ rows: [{ id: 'p2', student_id: 's2', presenze_pagate: 15 }] })
+        .mockResolvedValueOnce({}); // COMMIT
+
+      await reportController.saveMonthlyPlans(mockReq, mockRes, nextFn);
+
+      expect(mockRes.status).toHaveBeenCalledWith(200);
+      expect(mockRes.json).toHaveBeenCalledWith(expect.objectContaining({
+        success: true,
+        data: expect.objectContaining({
+          message: '2 piani mensili aggiornati con successo.'
+        })
+      }));
+      expect(mockClient.release).toHaveBeenCalled();
+    });
+
+    it('should rollback and call next(err) on db failure', async () => {
+      mockReq.body = {
+        year: 2026,
+        month: 10,
+        plans: [{ student_id: 's1', presenze_pagate: 20 }]
+      };
+
+      const err = new Error('Upsert plan failed');
+      mockClient.query
+        .mockResolvedValueOnce({}) // BEGIN
+        .mockRejectedValueOnce(err);
+
+      await reportController.saveMonthlyPlans(mockReq, mockRes, nextFn);
+
+      expect(mockClient.query).toHaveBeenCalledWith('ROLLBACK');
       expect(nextFn).toHaveBeenCalledWith(err);
       expect(mockClient.release).toHaveBeenCalled();
     });

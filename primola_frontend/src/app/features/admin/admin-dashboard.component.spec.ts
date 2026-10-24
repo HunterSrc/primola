@@ -21,21 +21,17 @@ describe('AdminDashboardComponent', () => {
         last_name: 'Rossi',
         school: 'Rodari',
         is_present: true,
-        is_absent_justified: false,
-        canteen_used: true,
-        is_extra: false
+        canteen_used: true
       },
       {
         attendance_id: 'a-2',
         date: '2026-10-22',
         student_id: 2,
-        first_name: 'Extra',
-        last_name: 'Stud',
+        first_name: 'Luigi',
+        last_name: 'Verdi',
         school: 'Manzoni',
         is_present: false,
-        is_absent_justified: false,
-        canteen_used: false,
-        is_extra: true
+        canteen_used: false
       }
     ],
     unjustifiedAbsences: [
@@ -51,12 +47,18 @@ describe('AdminDashboardComponent', () => {
   };
 
   const mockMensaReport: MensaReport = {
+    year: 2026,
+    month: 10,
     from: '2026-10-01',
-    to: '2026-10-22',
+    to: '2026-10-31',
     total_meals: 35,
+    delivered_regular: 30,
+    delivered_extra: 5,
+    expected_meals: 36,
     breakdown: [
       { date: '2026-10-22', total_meals: 12, students: [{ id: 1, name: 'Leo' }] }
-    ]
+    ],
+    students_breakdown: []
   };
 
   const mockMonthlyReport: any = {
@@ -66,21 +68,30 @@ describe('AdminDashboardComponent', () => {
     to: '2026-10-31',
     summary: {
       totalPresent: 50,
-      totalExtraPresent: 5,
       totalUnjustifiedAbsent: 2,
-      totalExcused: 1,
       totalMeals: 48,
       activeDays: 14
     },
-    dailyTrend: [{ date: '2026-10-01', present: 5, extra: 1, absent: 0, excused: 0, meals: 5 }],
-    studentsSummary: [{ student_id: 1, first_name: 'Mario', last_name: 'Rossi', days_present: 10 }]
+    dailyTrend: [{ date: '2026-10-01', present: 5, absent: 0, meals: 5 }],
+    studentsSummary: [
+      {
+        student_id: 1,
+        first_name: 'Mario',
+        last_name: 'Rossi',
+        days_present: 10,
+        days_absent: 2,
+        presenze_pagate: 10,
+        eccedenza: 2
+      }
+    ]
   };
 
   beforeEach(() => {
     mockApi = {
       getDailyReport: vi.fn().mockReturnValue(of(mockDailyReport)),
       getMonthlyReport: vi.fn().mockReturnValue(of(mockMonthlyReport)),
-      getMensaReport: vi.fn().mockReturnValue(of(mockMensaReport))
+      getMensaReport: vi.fn().mockReturnValue(of(mockMensaReport)),
+      saveMonthlyPlans: vi.fn().mockReturnValue(of({ success: true }))
     };
 
     TestBed.configureTestingModule({
@@ -117,11 +128,11 @@ describe('AdminDashboardComponent', () => {
     expect(mockApi.getDailyReport).toHaveBeenCalledWith('2026-11-01');
   });
 
-  it('should reload mensa report when date range changes', () => {
-    component.mensaFrom = '2026-09-01';
-    component.mensaTo = '2026-09-30';
+  it('should reload mensa report when month or year changes', () => {
+    component.mensaYear = 2026;
+    component.mensaMonth = 9;
     component.loadMensaReport();
-    expect(mockApi.getMensaReport).toHaveBeenCalledWith('2026-09-01', '2026-09-30');
+    expect(mockApi.getMensaReport).toHaveBeenCalledWith(2026, 9);
   });
 
   it('should filter attendances by search query and status', () => {
@@ -138,9 +149,28 @@ describe('AdminDashboardComponent', () => {
 
     component.statusFilter = 'ABSENT';
     expect(component.filteredAttendances().length).toBe(1);
+  });
 
-    component.statusFilter = 'EXTRA';
-    expect(component.filteredAttendances().length).toBe(1);
-    expect(component.filteredAttendances()[0].is_extra).toBe(true);
+  it('should calculate eccedenza correctly and save student plan', () => {
+    const stu: any = {
+      student_id: 1,
+      days_present: 18,
+      days_absent: 2,
+      presenze_pagate: 20
+    };
+    expect(component.getEccedenza(stu)).toBe(0);
+
+    stu.presenze_pagate = 15;
+    expect(component.getEccedenza(stu)).toBe(5);
+
+    component.selectedYear = 2026;
+    component.selectedMonth = 10;
+    component.saveStudentPlan(stu);
+    expect(mockApi.saveMonthlyPlans).toHaveBeenCalledWith({
+      year: 2026,
+      month: 10,
+      plans: [{ student_id: 1, presenze_pagate: 15 }]
+    });
+    expect(stu.eccedenza).toBe(5);
   });
 });

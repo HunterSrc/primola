@@ -1,7 +1,7 @@
 const db = require('../config/database');
 
 /**
- * Recupera gli studenti attesi in base ai giorni di abbonamento.
+ * Recupera gli studenti registrati per una data (presenze registrate o inserite).
  */
 const getExpectedStudents = async (dateStr) => {
   try {
@@ -13,24 +13,26 @@ const getExpectedStudents = async (dateStr) => {
         s.scuola,
         s.giorni_abbonamento,
         COALESCE(a.is_present, false)           AS is_present,
-        COALESCE(a.is_absent_justified, false)  AS is_absent_justified,
         COALESCE(a.canteen_used, false)         AS canteen_used,
-        COALESCE(a.is_extra, false)             AS is_extra,
+        COALESCE(a.notes, '')                   AS notes,
         (a.id IS NOT NULL)                      AS already_registered,
         t.telefono                              AS main_tutor_phone
       FROM students s
-      LEFT JOIN attendances a
+      JOIN attendances a
         ON s.id = a.student_id AND a.date = $1
       LEFT JOIN tutors t
-        ON s.id = t.student_id AND t.is_main_contact = true
-      WHERE EXTRACT(ISODOW FROM $1::date) = ANY(s.giorni_abbonamento)
-         OR a.id IS NOT NULL
-      ORDER BY COALESCE(a.is_extra, false) ASC, s.cognome ASC, s.nome ASC;
+        ON t.id = (
+          SELECT id FROM tutors
+          WHERE student_id = s.id
+          ORDER BY is_main_contact DESC, created_at ASC
+          LIMIT 1
+        )
+      ORDER BY s.cognome ASC, s.nome ASC;
     `;
     const result = await db.query(query, [dateStr]);
     return result.rows;
   } catch (error) {
-    console.error('❌ Errore durante il fetch degli studenti attesi:', error.message);
+    console.error('❌ Errore durante il fetch delle presenze del giorno:', error.message);
     throw error;
   }
 };
@@ -48,14 +50,13 @@ const bulkUpsertAttendances = async (attendancesList) => {
     await client.query('BEGIN');
 
     const upsertQuery = `
-      INSERT INTO attendances (student_id, date, is_present, is_absent_justified, canteen_used, is_extra)
-      VALUES ($1, $2, $3, $4, $5, $6)
+      INSERT INTO attendances (student_id, date, is_present, canteen_used, notes)
+      VALUES ($1, $2, $3, $4, $5)
       ON CONFLICT (student_id, date) 
       DO UPDATE SET 
         is_present = EXCLUDED.is_present,
-        is_absent_justified = EXCLUDED.is_absent_justified,
         canteen_used = EXCLUDED.canteen_used,
-        is_extra = EXCLUDED.is_extra,
+        notes = EXCLUDED.notes,
         updated_at = NOW()
       RETURNING id, student_id, date, is_present;
     `;
@@ -65,9 +66,8 @@ const bulkUpsertAttendances = async (attendancesList) => {
         record.student_id,
         record.date,
         !!record.is_present,
-        !!record.is_absent_justified,
         !!record.canteen_used,
-        !!record.is_extra
+        record.notes || ''
       ]);
       results.push(res.rows[0]);
     }

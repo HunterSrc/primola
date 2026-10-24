@@ -2,6 +2,8 @@
 
 Questo file viene letto da Antigravity per garantire continuità di standard e architettura nello sviluppo del gestionale Primola.
 
+> **IMPORTANTE**: Salvo diversa indicazione esplicita, ogni richiesta relativa al frontend/UI si riferisce SEMPRE al frontend Angular (`primola_frontend`), NON all'app Flutter (`primola_app`).
+
 ## Linee Guida Architetturali
 
 1. **Monorepo Structure**:

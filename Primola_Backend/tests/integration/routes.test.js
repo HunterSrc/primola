@@ -16,12 +16,14 @@ jest.mock('../../src/config/database', () => ({
 describe('API Integration Endpoints', () => {
   const SECRET = 'test-secret';
   let adminToken;
+  let officeToken;
   let staffToken;
 
   beforeAll(() => {
     process.env.JWT_SECRET = SECRET;
-    adminToken = jwt.sign({ id: 1, role: 'ADMIN' }, SECRET);
-    staffToken = jwt.sign({ id: 2, role: 'STAFF' }, SECRET);
+    adminToken = jwt.sign({ id: 1, role: 'ADMIN', groups: ['ADMIN'] }, SECRET);
+    officeToken = jwt.sign({ id: 2, role: 'OFFICE', groups: ['OFFICE'] }, SECRET);
+    staffToken = jwt.sign({ id: 3, role: 'STAFF', groups: ['TEACHER'] }, SECRET);
   });
 
   describe('GET /api/health', () => {
@@ -39,11 +41,20 @@ describe('API Integration Endpoints', () => {
       expect(res.body.success).toBe(false);
     });
 
-    it('should allow STAFF to access students', async () => {
-      studentRepository.getStudentsWithTutors.mockResolvedValue([]);
+    it('should return 401 when non-ADMIN non-OFFICE (e.g. TEACHER/STAFF) tries to access students', async () => {
       const res = await request(app)
         .get('/api/students')
         .set('Authorization', `Bearer ${staffToken}`);
+
+      expect(res.status).toBe(401);
+      expect(res.body.success).toBe(false);
+    });
+
+    it('should allow OFFICE to access students', async () => {
+      studentRepository.getStudentsWithTutors.mockResolvedValue([{ id: 2 }]);
+      const res = await request(app)
+        .get('/api/students')
+        .set('Authorization', `Bearer ${officeToken}`);
 
       expect(res.status).toBe(200);
       expect(res.body.success).toBe(true);

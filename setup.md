@@ -104,10 +104,10 @@ flutter run -d chrome  # oppure selezionare un dispositivo/emulatore collegato
 
 I dati inseriti dallo script di seed (`db_seed.sql`) permettono l'accesso con due profili:
 
-| Ruolo | Username | Password | Permessi Chiave |
+| Ruolo | Email | Password | Permessi Chiave |
 |---|---|---|---|
-| **Amministratore (Admin)** | `admin` | `admin123` | Accesso completo: Anagrafica, Presenze, Dashboard Reportistica, Quadratura Mensa, Assenze Ingiustificate con contatti tutori. |
-| **Operatore (Staff)** | `staff` | `staff123` | Registrazione anagrafica, check-in presenze del giorno, spunta mensa, aggiunta studenti extra. |
+| **Amministratore (Admin)** | `admin@primola.it` | `AdminPrimola2026!` | Accesso completo: Anagrafica, Presenze, Dashboard Reportistica, Quadratura Mensa, Assenze Ingiustificate con contatti tutori. |
+| **Operatore (Staff)** | `staff@primola.it` | `StaffPrimola2026!` | Registrazione anagrafica, check-in presenze del giorno, spunta mensa, aggiunta studenti extra. |
 
 ---
 

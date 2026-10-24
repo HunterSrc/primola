@@ -5,6 +5,7 @@
 - **Ottimizzazione Query (GIN)**: Implementazione di array di interi (`SMALLINT[]`) per i campi `giorni_abbonamento` e `giorni_mensa` all'interno della tabella `students`. Questi campi sono stati indicizzati tramite **Generalized Inverted Index (GIN)** (`USING GIN`) per garantire performance O(1) e sfruttare operatori di overlapping/contenimento (es. `<@`).
 - **Integrità Referenziale e Vincoli**:
   - Utilizzo sistematico di `UUID` (generati nativamente via `gen_random_uuid()`) per tutte le Primary Key.
+  - Vincolo `CHECK (pasti_settimanali >= 0 AND pasti_settimanali <= cardinality(giorni_abbonamento))` sulla colonna `pasti_settimanali` (`SMALLINT`) in `students` per garantire che i pasti settimanali spettanti non superino mai i giorni di presenza in abbonamento.
   - Implementazione di vincoli di `FOREIGN KEY` con politica `ON DELETE CASCADE` per il corretto cleanup delle associazioni (Tutors e Attendances).
   - Adozione di un vincolo `UNIQUE(student_id, date)` su `attendances` per l'idempotenza e per prevenire race conditions lato backend durante l'inserimento delle presenze.
 - **Automazione Timestamp**: Creazione di una function `PL/pgSQL` accoppiata a `BEFORE UPDATE TRIGGER` per l'aggiornamento automatico e delegato a basso livello della colonna `updated_at`.

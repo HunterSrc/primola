@@ -8,7 +8,7 @@ const { verifyToken, requireRole } = require('../middlewares/authMiddleware');
  * /api/students:
  *   get:
  *     summary: Ottieni la lista degli studenti e i relativi tutori
- *     description: Restituisce l'anagrafica degli studenti unita a quella dei tutori. L'accesso è consentito ai ruoli ADMIN e STAFF.
+ *     description: Restituisce l'anagrafica degli studenti unita a quella dei tutori. L'accesso è consentito ai ruoli ADMIN e OFFICE.
  *     tags: [Students]
  *     security:
  *       - bearerAuth: []
@@ -16,17 +16,16 @@ const { verifyToken, requireRole } = require('../middlewares/authMiddleware');
  *       200:
  *         description: Lista degli studenti recuperata con successo
  *       401:
- *         description: Accesso negato (Token mancante o non valido)
- *       403:
- *         description: Utente non autorizzato
+ *         description: Accesso negato (Token mancante, non valido o ruolo non autorizzato)
  */
-router.get('/', verifyToken, requireRole(['ADMIN', 'STAFF']), studentController.getAllStudents);
+router.get('/', verifyToken, requireRole(['ADMIN', 'OFFICE'], 401), studentController.getAllStudents);
 
 /**
  * @swagger
  * /api/students:
  *   post:
  *     summary: Crea un nuovo studente e i relativi tutori
+ *     description: Accesso riservato ai ruoli ADMIN e OFFICE.
  *     tags: [Students]
  *     security:
  *       - bearerAuth: []
@@ -64,14 +63,17 @@ router.get('/', verifyToken, requireRole(['ADMIN', 'STAFF']), studentController.
  *     responses:
  *       201:
  *         description: Studente creato con successo
+ *       401:
+ *         description: Accesso negato
  */
-router.post('/', verifyToken, requireRole(['ADMIN', 'STAFF']), studentController.createStudent);
+router.post('/', verifyToken, requireRole(['ADMIN', 'OFFICE'], 401), studentController.createStudent);
 
 /**
  * @swagger
  * /api/students/{id}:
  *   get:
  *     summary: Ottieni dettagli di un singolo studente con i suoi tutori
+ *     description: Accesso riservato ai ruoli ADMIN e OFFICE.
  *     tags: [Students]
  *     security:
  *       - bearerAuth: []
@@ -84,16 +86,19 @@ router.post('/', verifyToken, requireRole(['ADMIN', 'STAFF']), studentController
  *     responses:
  *       200:
  *         description: Dettaglio studente recuperato con successo
+ *       401:
+ *         description: Accesso negato
  *       404:
  *         description: Studente non trovato
  */
-router.get('/:id', verifyToken, requireRole(['ADMIN', 'STAFF']), studentController.getStudentById);
+router.get('/:id', verifyToken, requireRole(['ADMIN', 'OFFICE'], 401), studentController.getStudentById);
 
 /**
  * @swagger
  * /api/students/{id}:
  *   put:
  *     summary: Modifica dati studente e anagrafica tutori
+ *     description: Accesso riservato ai ruoli ADMIN e OFFICE.
  *     tags: [Students]
  *     security:
  *       - bearerAuth: []
@@ -106,9 +111,11 @@ router.get('/:id', verifyToken, requireRole(['ADMIN', 'STAFF']), studentControll
  *     responses:
  *       200:
  *         description: Studente modificato con successo
+ *       401:
+ *         description: Accesso negato
  *       404:
  *         description: Studente non trovato
  */
-router.put('/:id', verifyToken, requireRole(['ADMIN', 'STAFF']), studentController.updateStudent);
+router.put('/:id', verifyToken, requireRole(['ADMIN', 'OFFICE'], 401), studentController.updateStudent);
 
 module.exports = router;

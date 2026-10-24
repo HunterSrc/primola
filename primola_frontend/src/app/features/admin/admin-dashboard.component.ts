@@ -2,7 +2,7 @@ import { Component, inject, signal, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../core/services/api.service';
-import { DailyReport, MensaReport, MonthlyReport } from '../../core/models';
+import { DailyReport, MensaReport, MonthlyReport, MonthlyStudentSummary } from '../../core/models';
 import { AppDatePipe } from '../../shared/pipes/app-date.pipe';
 
 @Component({
@@ -75,7 +75,7 @@ import { AppDatePipe } from '../../shared/pipes/app-date.pipe';
 
           <!-- Cards Statistiche -->
           @if (dailyReport(); as rep) {
-            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2.5 sm:gap-4">
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-4">
               <div class="bg-white p-3.5 sm:p-5 rounded-2xl border border-slate-200/80 shadow-2xs">
                 <p class="text-[10px] sm:text-xs font-semibold text-slate-400 uppercase">Attesi</p>
                 <p class="text-xl sm:text-3xl font-extrabold text-slate-800 mt-1">{{ rep.statistics.totalExpected }}</p>
@@ -90,21 +90,13 @@ import { AppDatePipe } from '../../shared/pipes/app-date.pipe';
                 </p>
               </div>
 
-              <div class="bg-white p-3.5 sm:p-5 rounded-2xl border border-slate-200/80 shadow-2xs border-l-4 border-l-amber-500">
-                <p class="text-[10px] sm:text-xs font-semibold text-amber-600 uppercase">Di cui Extra</p>
-                <p class="text-xl sm:text-3xl font-extrabold text-amber-600 mt-1">{{ rep.statistics.extraPresent ?? rep.extraStudents?.length ?? 0 }}</p>
-                <p class="text-[10px] sm:text-[11px] text-amber-600 font-medium mt-0.5">fuori piano</p>
+              <div class="bg-white p-3.5 sm:p-5 rounded-2xl border border-slate-200/80 shadow-2xs">
+                <p class="text-[10px] sm:text-xs font-semibold text-slate-400 uppercase">Assenti Ingiustificati</p>
+                <p class="text-xl sm:text-3xl font-extrabold text-rose-600 mt-1">{{ rep.statistics.absent }}</p>
+                <p class="text-[10px] sm:text-[11px] text-rose-500 font-medium mt-0.5">non presenti</p>
               </div>
 
               <div class="bg-white p-3.5 sm:p-5 rounded-2xl border border-slate-200/80 shadow-2xs">
-                <p class="text-[10px] sm:text-xs font-semibold text-slate-400 uppercase">Assenti</p>
-                <p class="text-xl sm:text-3xl font-extrabold text-rose-600 mt-1">{{ rep.statistics.absent }}</p>
-                <p class="text-[10px] sm:text-[11px] text-rose-500 font-medium mt-0.5">
-                  {{ rep.statistics.absent - rep.statistics.excused }} ingiustificati
-                </p>
-              </div>
-
-              <div class="col-span-2 sm:col-span-1 bg-white p-3.5 sm:p-5 rounded-2xl border border-slate-200/80 shadow-2xs">
                 <p class="text-[10px] sm:text-xs font-semibold text-slate-400 uppercase">Tot. Registrati</p>
                 <p class="text-xl sm:text-3xl font-extrabold text-indigo-600 mt-1">{{ rep.allAttendances?.length || rep.statistics.totalInserted || 0 }}</p>
                 <p class="text-[10px] sm:text-[11px] text-indigo-500 font-medium mt-0.5">record salvati</p>
@@ -222,7 +214,6 @@ import { AppDatePipe } from '../../shared/pipes/app-date.pipe';
                     <option value="ALL">Tutti</option>
                     <option value="PRESENT">Presenti</option>
                     <option value="ABSENT">Assenti</option>
-                    <option value="EXTRA">Extra</option>
                   </select>
                 </div>
               </div>
@@ -235,9 +226,6 @@ import { AppDatePipe } from '../../shared/pipes/app-date.pipe';
                       <div>
                         <div class="flex items-center space-x-1.5">
                           <span class="font-bold text-slate-900 text-sm">{{ item.last_name }} {{ item.first_name }}</span>
-                          @if (item.is_extra) {
-                            <span class="px-1.5 py-0.5 rounded text-[9px] font-extrabold bg-purple-100 text-purple-800 uppercase">Extra</span>
-                          }
                         </div>
                         <p class="text-xs text-slate-500">{{ item.school || 'Scuola non specificata' }}</p>
                       </div>
@@ -246,10 +234,6 @@ import { AppDatePipe } from '../../shared/pipes/app-date.pipe';
                         @if (item.is_present) {
                           <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
                             ✓ Presente
-                          </span>
-                        } @else if (item.is_absent_justified) {
-                          <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800 border border-blue-200">
-                            Giustificato
                           </span>
                         } @else {
                           <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-200">
@@ -290,7 +274,6 @@ import { AppDatePipe } from '../../shared/pipes/app-date.pipe';
                       <th class="py-3.5 px-6">Studente</th>
                       <th class="py-3.5 px-6">Scuola</th>
                       <th class="py-3.5 px-6 text-center whitespace-nowrap">Stato Presenza</th>
-                      <th class="py-3.5 px-6 text-center whitespace-nowrap">Tipo</th>
                       <th class="py-3.5 px-6 text-center whitespace-nowrap min-w-[100px]">Mensa</th>
                       <th class="py-3.5 px-6">Tutore</th>
                     </tr>
@@ -312,23 +295,10 @@ import { AppDatePipe } from '../../shared/pipes/app-date.pipe';
                             <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
                               ✓ Presente
                             </span>
-                          } @else if (item.is_absent_justified) {
-                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-100 text-blue-800 border border-blue-200">
-                              Giustificato
-                            </span>
                           } @else {
                             <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-rose-100 text-rose-800 border border-rose-200">
                               ✕ Assente Ingiustificato
                             </span>
-                          }
-                        </td>
-                        <td class="py-3.5 px-6 text-center whitespace-nowrap">
-                          @if (item.is_extra) {
-                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-purple-100 text-purple-800 border border-purple-200 uppercase">
-                              Extra
-                            </span>
-                          } @else {
-                            <span class="text-xs text-slate-400 font-medium">Standard</span>
                           }
                         </td>
                         <td class="py-3.5 px-6 text-center whitespace-nowrap min-w-[100px]">
@@ -349,7 +319,7 @@ import { AppDatePipe } from '../../shared/pipes/app-date.pipe';
                       </tr>
                     } @empty {
                       <tr>
-                        <td colspan="7" class="py-10 text-center text-slate-400 font-medium">
+                        <td colspan="6" class="py-10 text-center text-slate-400 font-medium">
                           Nessun record di presenza salvato per la data selezionata ({{ reportDate() | appDate }}).
                         </td>
                       </tr>
@@ -396,7 +366,7 @@ import { AppDatePipe } from '../../shared/pipes/app-date.pipe';
 
           @if (monthlyReport(); as mon) {
             <!-- KPI Cards Mensili -->
-            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2.5 sm:gap-4">
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-4">
               <div class="bg-white p-3.5 sm:p-5 rounded-2xl border border-slate-200/80 shadow-2xs">
                 <p class="text-[10px] sm:text-xs font-semibold text-slate-400 uppercase">Giorni Attivi</p>
                 <p class="text-xl sm:text-3xl font-extrabold text-slate-800 mt-1">{{ mon.summary.activeDays }}</p>
@@ -409,19 +379,13 @@ import { AppDatePipe } from '../../shared/pipes/app-date.pipe';
                 <p class="text-[10px] sm:text-[11px] text-emerald-600 font-medium mt-0.5">nel mese</p>
               </div>
 
-              <div class="bg-white p-3.5 sm:p-5 rounded-2xl border border-slate-200/80 shadow-2xs border-l-4 border-l-purple-500">
-                <p class="text-[10px] sm:text-xs font-semibold text-purple-600 uppercase">Di cui Extra</p>
-                <p class="text-xl sm:text-3xl font-extrabold text-purple-600 mt-1">{{ mon.summary.totalExtraPresent }}</p>
-                <p class="text-[10px] sm:text-[11px] text-purple-600 font-medium mt-0.5">fuori piano</p>
+              <div class="bg-white p-3.5 sm:p-5 rounded-2xl border border-slate-200/80 shadow-2xs">
+                <p class="text-[10px] sm:text-xs font-semibold text-slate-400 uppercase">Assenze Ingiustificate</p>
+                <p class="text-xl sm:text-3xl font-extrabold text-rose-600 mt-1">{{ mon.summary.totalUnjustifiedAbsent }}</p>
+                <p class="text-[10px] sm:text-[11px] text-rose-500 font-medium mt-0.5">nel mese</p>
               </div>
 
               <div class="bg-white p-3.5 sm:p-5 rounded-2xl border border-slate-200/80 shadow-2xs">
-                <p class="text-[10px] sm:text-xs font-semibold text-slate-400 uppercase">Assenti</p>
-                <p class="text-xl sm:text-3xl font-extrabold text-rose-600 mt-1">{{ mon.summary.totalUnjustifiedAbsent }}</p>
-                <p class="text-[10px] sm:text-[11px] text-rose-500 font-medium mt-0.5">{{ mon.summary.totalExcused }} giustif.</p>
-              </div>
-
-              <div class="col-span-2 sm:col-span-1 bg-white p-3.5 sm:p-5 rounded-2xl border border-slate-200/80 shadow-2xs">
                 <p class="text-[10px] sm:text-xs font-semibold text-slate-400 uppercase">Pasti Mensa</p>
                 <p class="text-xl sm:text-3xl font-extrabold text-amber-600 mt-1">{{ mon.summary.totalMeals }}</p>
                 <p class="text-[10px] sm:text-[11px] text-amber-600 font-medium mt-0.5">consumati</p>
@@ -449,15 +413,10 @@ import { AppDatePipe } from '../../shared/pipes/app-date.pipe';
                       </span>
                     </div>
 
-                    <div class="grid grid-cols-3 gap-2 text-center text-xs pt-1">
+                    <div class="grid grid-cols-2 gap-2 text-center text-xs pt-1">
                       <div class="p-2 rounded-xl bg-emerald-50 border border-emerald-100">
                         <span class="block text-[10px] font-semibold text-emerald-800 uppercase">Presenti</span>
                         <span class="text-sm font-extrabold text-emerald-700">{{ day.present }}</span>
-                      </div>
-
-                      <div class="p-2 rounded-xl bg-purple-50 border border-purple-100">
-                        <span class="block text-[10px] font-semibold text-purple-800 uppercase">Extra</span>
-                        <span class="text-sm font-extrabold text-purple-700">{{ day.extra }}</span>
                       </div>
 
                       <div class="p-2 rounded-xl bg-rose-50 border border-rose-100">
@@ -480,7 +439,6 @@ import { AppDatePipe } from '../../shared/pipes/app-date.pipe';
                     <tr class="bg-slate-50 text-slate-600 text-xs font-semibold uppercase tracking-wider border-b border-slate-200">
                       <th class="py-3 px-4 sm:px-6">Data</th>
                       <th class="py-3 px-4 sm:px-6 text-center">Presenti</th>
-                      <th class="py-3 px-4 sm:px-6 text-center">Extra</th>
                       <th class="py-3 px-4 sm:px-6 text-center">Assenti</th>
                       <th class="py-3 px-4 sm:px-6 text-center">Mensa</th>
                     </tr>
@@ -493,15 +451,6 @@ import { AppDatePipe } from '../../shared/pipes/app-date.pipe';
                           <span class="px-2 py-0.5 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
                             {{ day.present }}
                           </span>
-                        </td>
-                        <td class="py-3 px-4 sm:px-6 text-center">
-                          @if (day.extra > 0) {
-                            <span class="px-2 py-0.5 rounded-full text-xs font-extrabold bg-purple-100 text-purple-800 border border-purple-200">
-                              {{ day.extra }}
-                            </span>
-                          } @else {
-                            <span class="text-xs text-slate-300">0</span>
-                          }
                         </td>
                         <td class="py-3 px-4 sm:px-6 text-center">
                           @if (day.absent > 0) {
@@ -518,7 +467,7 @@ import { AppDatePipe } from '../../shared/pipes/app-date.pipe';
                       </tr>
                     } @empty {
                       <tr>
-                        <td colspan="5" class="py-8 text-center text-slate-400 font-medium text-xs">
+                        <td colspan="4" class="py-8 text-center text-slate-400 font-medium text-xs">
                           Nessun dato registrato per questo mese.
                         </td>
                       </tr>
@@ -551,20 +500,41 @@ import { AppDatePipe } from '../../shared/pipes/app-date.pipe';
                       </span>
                     </div>
 
-                    <div class="grid grid-cols-3 gap-2 text-center text-xs pt-1">
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-xs pt-1">
                       <div class="p-2 rounded-xl bg-emerald-50 border border-emerald-100">
                         <span class="block text-[10px] font-semibold text-emerald-800 uppercase">Presente</span>
                         <span class="text-sm font-extrabold text-emerald-700">{{ stu.days_present }} gg</span>
                       </div>
 
-                      <div class="p-2 rounded-xl bg-purple-50 border border-purple-100">
-                        <span class="block text-[10px] font-semibold text-purple-800 uppercase">Extra</span>
-                        <span class="text-sm font-extrabold text-purple-700">{{ stu.extra_days }} gg</span>
-                      </div>
-
                       <div class="p-2 rounded-xl bg-rose-50 border border-rose-100">
                         <span class="block text-[10px] font-semibold text-rose-800 uppercase">Assenze</span>
                         <span class="text-sm font-extrabold text-rose-700">{{ stu.days_absent }} gg</span>
+                      </div>
+
+                      <div class="p-2 rounded-xl bg-slate-50 border border-slate-200 text-left">
+                        <label class="block text-[10px] font-semibold text-slate-600 uppercase mb-1">Pagate</label>
+                        <input
+                          type="number"
+                          min="0"
+                          [(ngModel)]="stu.presenze_pagate"
+                          (change)="saveStudentPlan(stu)"
+                          class="w-full px-2 py-1 bg-white border border-slate-300 rounded text-xs font-bold text-slate-800 text-center"
+                        />
+                      </div>
+
+                      <div class="p-2 rounded-xl bg-indigo-50 border border-indigo-100">
+                        <span class="block text-[10px] font-semibold text-indigo-800 uppercase">Eccedenza</span>
+                        <span
+                          class="inline-block mt-0.5 px-2 py-0.5 rounded-full text-xs font-black"
+                          [class.bg-emerald-100]="getEccedenza(stu) === 0"
+                          [class.text-emerald-800]="getEccedenza(stu) === 0"
+                          [class.bg-purple-100]="getEccedenza(stu) > 0"
+                          [class.text-purple-800]="getEccedenza(stu) > 0"
+                          [class.bg-rose-100]="getEccedenza(stu) < 0"
+                          [class.text-rose-800]="getEccedenza(stu) < 0"
+                        >
+                          {{ getEccedenza(stu) > 0 ? '+' + getEccedenza(stu) : getEccedenza(stu) }}
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -577,14 +547,15 @@ import { AppDatePipe } from '../../shared/pipes/app-date.pipe';
 
               <!-- Vista Desktop Tabella Studenti (hidden md:block) -->
               <div class="hidden md:block overflow-x-auto">
-                <table class="w-full text-left border-collapse min-w-[500px]">
+                <table class="w-full text-left border-collapse min-w-[650px]">
                   <thead>
                     <tr class="bg-slate-50 text-slate-600 text-xs font-semibold uppercase tracking-wider border-b border-slate-200">
                       <th class="py-3 px-4 sm:px-6">Studente</th>
                       <th class="py-3 px-4 sm:px-6 text-center">Presente</th>
-                      <th class="py-3 px-4 sm:px-6 text-center">Extra</th>
                       <th class="py-3 px-4 sm:px-6 text-center">Assenze</th>
                       <th class="py-3 px-4 sm:px-6 text-center">Pasti</th>
+                      <th class="py-3 px-4 sm:px-6 text-center w-36">Presenze Pagate</th>
+                      <th class="py-3 px-4 sm:px-6 text-center">Eccedenza</th>
                     </tr>
                   </thead>
                   <tbody class="divide-y divide-slate-100 text-sm">
@@ -597,25 +568,41 @@ import { AppDatePipe } from '../../shared/pipes/app-date.pipe';
                         <td class="py-3 px-4 sm:px-6 text-center font-bold text-emerald-700 text-xs sm:text-sm">
                           {{ stu.days_present }}
                         </td>
-                        <td class="py-3 px-4 sm:px-6 text-center">
-                          @if (stu.extra_days > 0) {
-                            <span class="px-2 py-0.5 rounded-full text-xs font-bold bg-purple-100 text-purple-800 border border-purple-200">
-                              {{ stu.extra_days }}
-                            </span>
-                          } @else {
-                            <span class="text-xs text-slate-300">0</span>
-                          }
-                        </td>
                         <td class="py-3 px-4 sm:px-6 text-center font-medium text-rose-600 text-xs sm:text-sm">
                           {{ stu.days_absent }}
                         </td>
                         <td class="py-3 px-4 sm:px-6 text-center font-bold text-amber-700 text-xs sm:text-sm">
                           {{ stu.meals_count }}
                         </td>
+                        <td class="py-3 px-4 sm:px-6 text-center">
+                          <input
+                            type="number"
+                            min="0"
+                            [(ngModel)]="stu.presenze_pagate"
+                            (change)="saveStudentPlan(stu)"
+                            class="w-20 px-2 py-1 text-center bg-slate-50 border border-slate-300 rounded-lg text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                          />
+                        </td>
+                        <td class="py-3 px-4 sm:px-6 text-center">
+                          <span
+                            class="inline-block px-2.5 py-0.5 rounded-full text-xs font-black border"
+                            [class.bg-emerald-50]="getEccedenza(stu) === 0"
+                            [class.text-emerald-700]="getEccedenza(stu) === 0"
+                            [class.border-emerald-200]="getEccedenza(stu) === 0"
+                            [class.bg-purple-100]="getEccedenza(stu) > 0"
+                            [class.text-purple-800]="getEccedenza(stu) > 0"
+                            [class.border-purple-200]="getEccedenza(stu) > 0"
+                            [class.bg-rose-50]="getEccedenza(stu) < 0"
+                            [class.text-rose-700]="getEccedenza(stu) < 0"
+                            [class.border-rose-200]="getEccedenza(stu) < 0"
+                          >
+                            {{ getEccedenza(stu) > 0 ? '+' + getEccedenza(stu) : getEccedenza(stu) }}
+                          </span>
+                        </td>
                       </tr>
                     } @empty {
                       <tr>
-                        <td colspan="5" class="py-8 text-center text-slate-400 font-medium text-xs">
+                        <td colspan="6" class="py-8 text-center text-slate-400 font-medium text-xs">
                           Nessun record studenti per questo mese.
                         </td>
                       </tr>
@@ -631,42 +618,112 @@ import { AppDatePipe } from '../../shared/pipes/app-date.pipe';
       <!-- SEZIONE 3: RENDICONTAZIONE MENSA -->
       @if (activeSection() === 'MENSA') {
         <div class="space-y-4 sm:space-y-6">
-          <div class="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-3">
-            <span class="text-xs sm:text-sm font-semibold text-slate-700">Intervallo di Conteggio:</span>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 w-full md:w-auto items-center">
-              <div class="flex items-center space-x-2">
-                <span class="text-xs text-slate-400 w-8">Dal:</span>
-                <input
-                  type="date"
-                  [(ngModel)]="mensaFrom"
-                  (ngModelChange)="loadMensaReport()"
-                  class="flex-1 px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs sm:text-sm text-slate-700 font-medium"
-                />
-              </div>
-              <div class="flex items-center space-x-2">
-                <span class="text-xs text-slate-400 w-8">Al:</span>
-                <input
-                  type="date"
-                  [(ngModel)]="mensaTo"
-                  (ngModelChange)="loadMensaReport()"
-                  class="flex-1 px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs sm:text-sm text-slate-700 font-medium"
-                />
-              </div>
+          <div class="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <span class="text-xs sm:text-sm font-semibold text-slate-700">Seleziona Mese di Analisi Mensa:</span>
+            <div class="flex items-center space-x-2.5 w-full sm:w-auto">
+              <select
+                [(ngModel)]="mensaMonth"
+                (ngModelChange)="loadMensaReport()"
+                class="flex-1 sm:flex-initial px-3.5 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs sm:text-sm font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              >
+                @for (m of monthsList; track m.value) {
+                  <option [value]="m.value">{{ m.name }}</option>
+                }
+              </select>
+
+              <select
+                [(ngModel)]="mensaYear"
+                (ngModelChange)="loadMensaReport()"
+                class="flex-1 sm:flex-initial px-3.5 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs sm:text-sm font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              >
+                @for (y of yearsList; track y) {
+                  <option [value]="y">{{ y }}</option>
+                }
+              </select>
             </div>
           </div>
 
           @if (mensaReport(); as mensa) {
-            <!-- Card Totale Pasti -->
-            <div class="bg-gradient-to-r from-amber-500 to-orange-500 rounded-2xl p-5 sm:p-6 text-white shadow-lg shadow-orange-500/20 flex items-center justify-between">
-              <div>
-                <p class="text-amber-100 text-[11px] sm:text-xs font-semibold uppercase tracking-wider">Totale Pasti Consumati</p>
-                <h2 class="text-3xl sm:text-4xl font-extrabold mt-1">{{ mensa.total_meals }}</h2>
-                <p class="text-amber-100 text-xs mt-1">Dal {{ mensa.from | appDate }} al {{ mensa.to | appDate }}</p>
+            <!-- KPI Raggruppamento Mensa -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+              <div class="bg-gradient-to-r from-amber-500 to-orange-500 rounded-2xl p-4 sm:p-5 text-white shadow-md shadow-orange-500/15">
+                <p class="text-amber-100 text-[10px] sm:text-xs font-semibold uppercase tracking-wider">Totale Consegnati</p>
+                <h2 class="text-2xl sm:text-4xl font-extrabold mt-1">{{ mensa.total_meals }}</h2>
+                <p class="text-amber-100 text-[11px] mt-1">Dal {{ mensa.from | appDate }} al {{ mensa.to | appDate }}</p>
               </div>
-              <div class="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-white/20 flex items-center justify-center text-2xl sm:text-3xl shrink-0">
-                🍲
+
+              <div class="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-2xs border-l-4 border-l-emerald-500">
+                <p class="text-[10px] sm:text-xs font-semibold text-slate-500 uppercase">Pasti Consegnati (Regolari)</p>
+                <p class="text-2xl sm:text-3xl font-extrabold text-emerald-600 mt-1">{{ mensa.delivered_regular }}</p>
+                <p class="text-[11px] text-slate-400 mt-1">in abbonamento</p>
+              </div>
+
+              <div class="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-2xs border-l-4 border-l-purple-500">
+                <p class="text-[10px] sm:text-xs font-semibold text-purple-600 uppercase">Pasti Consegnati Extra</p>
+                <p class="text-2xl sm:text-3xl font-extrabold text-purple-600 mt-1">{{ mensa.delivered_extra }}</p>
+                <p class="text-[11px] text-purple-500 mt-1">fuori abbonamento</p>
+              </div>
+
+              <div class="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-2xs border-l-4 border-l-indigo-500">
+                <p class="text-[10px] sm:text-xs font-semibold text-indigo-600 uppercase">Pasti Previsti Stimati</p>
+                <p class="text-2xl sm:text-3xl font-extrabold text-indigo-700 mt-1">{{ mensa.expected_meals }}</p>
+                <p class="text-[11px] text-slate-400 mt-1">su base presenze mensili</p>
               </div>
             </div>
+
+            <!-- Riepilogo Pasti per Studente -->
+            @if (mensa.students_breakdown && mensa.students_breakdown.length > 0) {
+              <div class="bg-white rounded-2xl shadow-sm border border-slate-200/80 overflow-hidden">
+                <div class="p-4 border-b border-slate-200 font-bold text-sm sm:text-base text-slate-800">
+                  Dettaglio Mensile Pasti per Studente ({{ mensa.students_breakdown.length }})
+                </div>
+                <div class="overflow-x-auto">
+                  <table class="w-full text-left border-collapse min-w-[520px]">
+                    <thead>
+                      <tr class="bg-slate-50 text-slate-600 text-xs font-semibold uppercase tracking-wider border-b border-slate-200">
+                        <th class="py-3 px-4 sm:px-6">Studente</th>
+                        <th class="py-3 px-4 sm:px-6 text-center">Diritto Sett.</th>
+                        <th class="py-3 px-4 sm:px-6 text-center">Previsti Mese</th>
+                        <th class="py-3 px-4 sm:px-6 text-center">Consegnati Reg.</th>
+                        <th class="py-3 px-4 sm:px-6 text-center">Consegnati Extra</th>
+                        <th class="py-3 px-4 sm:px-6 text-center">Totale</th>
+                      </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100 text-xs sm:text-sm">
+                      @for (stu of mensa.students_breakdown; track stu.student_id) {
+                        <tr class="hover:bg-slate-50/60 transition-colors">
+                          <td class="py-3 px-4 sm:px-6">
+                            <p class="font-semibold text-slate-800">{{ stu.last_name }} {{ stu.first_name }}</p>
+                            <p class="text-[11px] text-slate-400">{{ stu.school || 'Non spec.' }}</p>
+                          </td>
+                          <td class="py-3 px-4 sm:px-6 text-center font-medium text-slate-600">
+                            {{ stu.weekly_meals }} / sett.
+                          </td>
+                          <td class="py-3 px-4 sm:px-6 text-center font-bold text-indigo-700">
+                            {{ stu.expected_meals }}
+                          </td>
+                          <td class="py-3 px-4 sm:px-6 text-center font-bold text-emerald-700">
+                            {{ stu.delivered_regular }}
+                          </td>
+                          <td class="py-3 px-4 sm:px-6 text-center">
+                            @if (stu.delivered_extra > 0) {
+                              <span class="px-2 py-0.5 rounded-full text-xs font-bold bg-purple-100 text-purple-800 border border-purple-200">
+                                {{ stu.delivered_extra }}
+                              </span>
+                            } @else {
+                              <span class="text-slate-300">0</span>
+                            }
+                          </td>
+                          <td class="py-3 px-4 sm:px-6 text-center font-extrabold text-amber-700">
+                            {{ stu.delivered_total }}
+                          </td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            }
 
             <!-- Breakdown per Giorno -->
             <div class="bg-white rounded-2xl shadow-sm border border-slate-200/80 overflow-hidden">
@@ -680,9 +737,20 @@ import { AppDatePipe } from '../../shared/pipes/app-date.pipe';
                         {{ day.students.length }} studenti serviti
                       </p>
                     </div>
-                    <span class="px-3 py-1 bg-amber-50 text-amber-700 font-bold text-xs sm:text-sm rounded-xl border border-amber-200">
-                      {{ day.total_meals }} pasti
-                    </span>
+                    <div class="flex items-center space-x-2">
+                      @if (day.extra_meals && day.extra_meals > 0) {
+                        <span class="px-2.5 py-1 bg-purple-50 text-purple-700 font-bold text-xs rounded-xl border border-purple-200">
+                          {{ day.extra_meals }} extra
+                        </span>
+                      }
+                      <span class="px-3 py-1 bg-amber-50 text-amber-700 font-bold text-xs sm:text-sm rounded-xl border border-amber-200">
+                        {{ day.total_meals }} pasti
+                      </span>
+                    </div>
+                  </div>
+                } @empty {
+                  <div class="p-8 text-center text-slate-400 font-medium text-xs">
+                    Nessun pasto registrato per questo mese.
                   </div>
                 }
               </div>
@@ -706,6 +774,9 @@ export class AdminDashboardComponent implements OnInit {
   selectedYear = new Date().getFullYear();
   selectedMonth = new Date().getMonth() + 1;
 
+  mensaYear = new Date().getFullYear();
+  mensaMonth = new Date().getMonth() + 1;
+
   readonly monthsList = [
     { value: 1, name: 'Gennaio' },
     { value: 2, name: 'Febbraio' },
@@ -723,10 +794,8 @@ export class AdminDashboardComponent implements OnInit {
 
   readonly yearsList = [2024, 2025, 2026, 2027, 2028];
 
-  mensaFrom = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];
-  mensaTo = new Date().toISOString().split('T')[0];
   searchAttendanceQuery = '';
-  statusFilter: 'ALL' | 'PRESENT' | 'ABSENT' | 'EXTRA' = 'ALL';
+  statusFilter: 'ALL' | 'PRESENT' | 'ABSENT' = 'ALL';
 
   filteredAttendances() {
     const list = this.dailyReport()?.allAttendances || [];
@@ -741,8 +810,38 @@ export class AdminDashboardComponent implements OnInit {
 
       if (this.statusFilter === 'PRESENT') return item.is_present;
       if (this.statusFilter === 'ABSENT') return !item.is_present;
-      if (this.statusFilter === 'EXTRA') return item.is_extra;
       return true;
+    });
+  }
+
+  getEccedenza(stu: MonthlyStudentSummary): number {
+    const present = Number(stu.days_present) || 0;
+    const absent = Number(stu.days_absent) || 0;
+    const paid = Number(stu.presenze_pagate) || 0;
+    return (present + absent) - paid;
+  }
+
+  saveStudentPlan(stu: MonthlyStudentSummary): void {
+    const paid = Number(stu.presenze_pagate) || 0;
+    stu.presenze_pagate = paid;
+    stu.eccedenza = this.getEccedenza(stu);
+
+    this.api.saveMonthlyPlans({
+      year: this.selectedYear,
+      month: this.selectedMonth,
+      plans: [
+        {
+          student_id: stu.student_id,
+          presenze_pagate: paid
+        }
+      ]
+    }).subscribe({
+      next: () => {
+        // Updated successfully
+      },
+      error: (err) => {
+        console.error('Errore salvataggio piano mensile studente', err);
+      }
     });
   }
 
@@ -766,6 +865,6 @@ export class AdminDashboardComponent implements OnInit {
   }
 
   loadMensaReport(): void {
-    this.api.getMensaReport(this.mensaFrom, this.mensaTo).subscribe(rep => this.mensaReport.set(rep));
+    this.api.getMensaReport(Number(this.mensaYear), Number(this.mensaMonth)).subscribe(rep => this.mensaReport.set(rep));
   }
 }

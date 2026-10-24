@@ -10,17 +10,24 @@ const getAccessSecret = () => process.env.JWT_SECRET || 'primola_access_secret_f
 const getRefreshSecret = () => process.env.JWT_REFRESH_SECRET || 'primola_refresh_secret_fallback';
 
 const generateTokens = (user) => {
+  const groups = user.groups && user.groups.length > 0 
+    ? user.groups 
+    : [user.role === 'STAFF' ? 'TEACHER' : (user.role || 'TEACHER')];
+
   const payload = {
     id: user.id,
     email: user.email,
-    role: user.role,
-    name: `${user.nome} ${user.cognome || ''}`.trim()
+    groups: groups,
+    role: groups[0], // retrocompatibilità per client legacy
+    first_name: user.first_name || user.nome || '',
+    last_name: user.last_name || user.cognome || '',
+    name: `${user.first_name || user.nome || ''} ${user.last_name || user.cognome || ''}`.trim()
   };
 
   const accessToken = jwt.sign(payload, getAccessSecret(), { expiresIn: ACCESS_TOKEN_EXPIRY });
   const refreshToken = jwt.sign(payload, getRefreshSecret(), { expiresIn: REFRESH_TOKEN_EXPIRY });
 
-  return { accessToken, refreshToken };
+  return { accessToken, refreshToken, groups };
 };
 
 const login = async (req, res) => {
@@ -41,15 +48,19 @@ const login = async (req, res) => {
       return sendError(res, 401, 'Credenziali non valide.');
     }
 
-    const { accessToken, refreshToken } = generateTokens(user);
+    const { accessToken, refreshToken, groups } = generateTokens(user);
 
     return sendSuccess(res, 200, {
       user: {
         id: user.id,
         email: user.email,
+        first_name: user.first_name,
+        last_name: user.last_name,
+        phone: user.phone,
         nome: user.nome,
         cognome: user.cognome,
-        role: user.role
+        groups: groups,
+        role: groups[0]
       },
       accessToken,
       refreshToken
@@ -78,7 +89,6 @@ const refresh = async (req, res) => {
       return sendError(res, 403, 'Refresh token non valido.');
     }
 
-    // Verifica che l'utente esista ancora
     const user = await userRepository.findById(decoded.id);
     if (!user) {
       return sendError(res, 401, 'Utente non più valido.');
@@ -92,9 +102,13 @@ const refresh = async (req, res) => {
       user: {
         id: user.id,
         email: user.email,
+        first_name: user.first_name,
+        last_name: user.last_name,
+        phone: user.phone,
         nome: user.nome,
         cognome: user.cognome,
-        role: user.role
+        groups: tokens.groups,
+        role: tokens.groups[0]
       }
     });
   } catch (error) {
@@ -113,9 +127,13 @@ const getMe = async (req, res) => {
     return sendSuccess(res, 200, {
       id: user.id,
       email: user.email,
+      first_name: user.first_name,
+      last_name: user.last_name,
+      phone: user.phone,
       nome: user.nome,
       cognome: user.cognome,
-      role: user.role
+      groups: user.groups,
+      role: user.groups[0]
     });
   } catch (error) {
     console.error('Errore nel recupero utente:', error);
