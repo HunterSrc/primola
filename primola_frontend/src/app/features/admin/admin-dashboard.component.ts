@@ -858,7 +858,7 @@ import { AppDatePipe } from '../../shared/pipes/app-date.pipe';
                   {{ fin.summary.total_meals_issued }} pasti
                 </p>
                 <p class="text-[10px] sm:text-[11px] text-amber-100 mt-0.5">
-                  Costo fornitore: € {{ fin.doposcuola.expenses.actual_catering_cost | number:'1.2-2' }}
+                  Spese mensa caricate: € {{ fin.doposcuola.expenses.actual_catering_cost | number:'1.2-2' }}
                 </p>
               </div>
             </div>
@@ -897,8 +897,10 @@ import { AppDatePipe } from '../../shared/pipes/app-date.pipe';
                   <p class="text-xs text-slate-400 mt-0.5">
                     Previste: € {{ fin.doposcuola.expenses.expected | number:'1.2-2' }}
                   </p>
-                  <div class="mt-2 text-[11px] text-slate-500 pt-1 border-t border-slate-200/60">
-                    Docenti: € {{ fin.doposcuola.expenses.actual_teacher_cost | number:'1.2-2' }} • Fornitore pasti: € {{ fin.doposcuola.expenses.actual_catering_cost | number:'1.2-2' }}
+                  <div class="mt-2 text-[11px] text-slate-500 pt-1 border-t border-slate-200/60 space-y-0.5">
+                    <div>Docenti: <span class="font-semibold text-slate-700">€ {{ fin.doposcuola.expenses.actual_teacher_cost | number:'1.2-2' }}</span></div>
+                    <div>Note Spese Mensa: <span class="font-semibold text-amber-700">€ {{ fin.doposcuola.expenses.actual_catering_cost | number:'1.2-2' }}</span></div>
+                    <div>Note Spese Altro: <span class="font-semibold text-purple-700">€ {{ (fin.doposcuola.expenses.actual_other_expenses ?? 0) | number:'1.2-2' }}</span></div>
                   </div>
                 </div>
 
@@ -1079,14 +1081,8 @@ import { AppDatePipe } from '../../shared/pipes/app-date.pipe';
                 />
               </div>
 
-              <div>
-                <label class="block font-semibold text-slate-700 mb-1">Costo Pasto Fornitore Catering (€ / pasto pagato)</label>
-                <input
-                  type="number"
-                  step="0.1"
-                  [(ngModel)]="editSettings.meal_cost_provider"
-                  class="w-full px-3 py-2 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 font-semibold"
-                />
+              <div class="p-3 bg-amber-50/80 border border-amber-200/80 rounded-xl text-xs text-amber-800">
+                💡 I costi di riferimento della mensa sono ora calcolati automaticamente dal totale delle note spese inserite nella sezione <strong>Gestione Mensa & Spese</strong>.
               </div>
             </div>
 
@@ -1134,8 +1130,7 @@ export class AdminDashboardComponent implements OnInit {
 
   editSettings: SystemSettings = {
     doposcuola_daily_fee: 12.00,
-    meal_fee_student: 5.50,
-    meal_cost_provider: 4.80
+    meal_fee_student: 5.50
   };
 
   selectedYear = new Date().getFullYear();

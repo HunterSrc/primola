@@ -601,7 +601,6 @@ exports.getFinancialMonthlyReport = async (req, res, next) => {
     const settings = await settingsRepository.getSettingsMap();
     const doposcuolaFee = Number(settings.doposcuola_daily_fee || 12.00);
     const mealFee = Number(settings.meal_fee_student || 5.50);
-    const mealCostProvider = Number(settings.meal_cost_provider || 4.80);
 
     // 1. Chiusure straordinarie del mese
     const closuresRes = await client.query(
@@ -641,7 +640,38 @@ exports.getFinancialMonthlyReport = async (req, res, next) => {
     // Pasti previsti
     const { totalExpected: totalExpectedMeals } = computeExpectedMeals(students, fromDate, toDate);
 
-    // 3. Presenze registrate e pasti effettivi
+    // 3. Calcolo entrate doposcuola da pacchetti assegnati, extra e pasti
+    // Tariffa una tantum per il mese
+    const oneOffTariffRes = await client.query(
+      `SELECT t.price 
+       FROM afterschool_packages p
+       JOIN afterschool_tariffs t ON p.id = t.package_id
+       WHERE p.code = 'ONE_OFF'
+         AND t.valid_from <= $1 AND t.valid_to >= $1
+       ORDER BY t.valid_from DESC LIMIT 1`,
+      [fromDate]
+    );
+    const oneOffFee = oneOffTariffRes.rows.length > 0 ? Number(oneOffTariffRes.rows[0].price) : 15.00;
+
+    // Pacchetti assegnati agli studenti nel mese
+    const assignedTariffsRes = await client.query(
+      `SELECT student_id, amount_paid, covered_days
+       FROM student_monthly_tariffs
+       WHERE year = $1 AND month = $2`,
+      [y, m]
+    );
+
+    let totalPackagesRevenue = 0;
+    const coverageByStudent = new Map();
+    for (const row of assignedTariffsRes.rows) {
+      totalPackagesRevenue += Number(row.amount_paid || 0);
+      coverageByStudent.set(
+        row.student_id,
+        (coverageByStudent.get(row.student_id) || 0) + Number(row.covered_days || 0)
+      );
+    }
+
+    // Presenze registrate e pasti effettivi
     const attendancesRes = await client.query(
       `SELECT student_id, date, is_present, canteen_used 
        FROM attendances 
@@ -649,36 +679,40 @@ exports.getFinancialMonthlyReport = async (req, res, next) => {
       [fromDate, toDate]
     );
     const attendances = attendancesRes.rows;
-
     const actualMealsCount = attendances.filter(a => a.canteen_used).length;
 
-    // Presenze pagate da student_monthly_plans
-    const plansRes = await client.query(
-      `SELECT student_id, presenze_pagate 
-       FROM student_monthly_plans 
-       WHERE year = $1 AND month = $2`,
-      [y, m]
-    );
-    const planMap = new Map();
-    for (const p of plansRes.rows) {
-      planMap.set(p.student_id, Number(p.presenze_pagate || 0));
-    }
-
-    // Calcolo presenze effettive/pagate
-    let totalActualStudentDays = 0;
-    for (const s of students) {
-      const paid = planMap.get(s.id) || 0;
-      if (paid > 0) {
-        totalActualStudentDays += paid;
-      } else {
-        const actualPresent = attendances.filter(a => a.student_id === s.id && a.is_present).length;
-        totalActualStudentDays += actualPresent;
+    // Presenze per studente
+    const studentPresenceMap = new Map();
+    for (const a of attendances) {
+      if (a.is_present) {
+        studentPresenceMap.set(a.student_id, (studentPresenceMap.get(a.student_id) || 0) + 1);
       }
     }
 
-    // Calcolo Entrate Doposcuola
-    const doposcuolaExpectedRevenues = Number((totalExpectedStudentDays * doposcuolaFee + totalExpectedMeals * mealFee).toFixed(2));
-    const doposcuolaActualRevenues = Number((totalActualStudentDays * doposcuolaFee + actualMealsCount * mealFee).toFixed(2));
+    // Calcolo giorni extra per ciascuno studente (presenze > copertura)
+    let totalExtraDays = 0;
+    for (const s of students) {
+      const pres = studentPresenceMap.get(s.id) || 0;
+      const cov = coverageByStudent.get(s.id) || 0;
+      if (pres > cov) {
+        totalExtraDays += (pres - cov);
+      }
+    }
+    const totalExtraRevenue = Number((totalExtraDays * oneOffFee).toFixed(2));
+    const totalMealsRevenue = Number((actualMealsCount * mealFee).toFixed(2));
+    const expectedMealsRevenue = Number((totalExpectedMeals * mealFee).toFixed(2));
+
+    // Se ci sono pacchetti assegnati nel mese usiamo la nuova formula, altrimenti fallback trasparente su giorni*doposcuolaFee
+    let doposcuolaExpectedRevenues = 0;
+    let doposcuolaActualRevenues = 0;
+
+    if (assignedTariffsRes.rows.length > 0) {
+      doposcuolaExpectedRevenues = Number((totalPackagesRevenue + expectedMealsRevenue).toFixed(2));
+      doposcuolaActualRevenues = Number((totalPackagesRevenue + totalExtraRevenue + totalMealsRevenue).toFixed(2));
+    } else {
+      doposcuolaExpectedRevenues = Number((totalExpectedStudentDays * doposcuolaFee + totalExpectedMeals * mealFee).toFixed(2));
+      doposcuolaActualRevenues = Number((attendances.filter(a => a.is_present).length * doposcuolaFee + actualMealsCount * mealFee).toFixed(2));
+    }
 
     // 4. Turni docenti doposcuola nel mese
     const shiftsRes = await client.query(
@@ -732,11 +766,33 @@ exports.getFinancialMonthlyReport = async (req, res, next) => {
       afterschoolActualTeacherCost = afterschoolExpectedTeacherCost;
     }
 
-    const expectedMealCost = Number((totalExpectedMeals * mealCostProvider).toFixed(2));
-    const actualMealCost = Number((actualMealsCount * mealCostProvider).toFixed(2));
+    // 4b. Note spese doposcuola caricate nel mese (Mensa e Altro)
+    const expensesRes = await client.query(
+      `SELECT category, COALESCE(SUM(amount), 0) AS total_amount
+       FROM afterschool_expenses
+       WHERE expense_date BETWEEN $1 AND $2
+       GROUP BY category`,
+      [fromDate, toDate]
+    );
 
-    const doposcuolaExpectedExpenses = Number((afterschoolExpectedTeacherCost + expectedMealCost).toFixed(2));
-    const doposcuolaActualExpenses = Number((afterschoolActualTeacherCost + actualMealCost).toFixed(2));
+    let actualMensaExpenses = 0;
+    let actualOtherExpenses = 0;
+    for (const row of expensesRes.rows) {
+      if (row.category === 'MENSA') {
+        actualMensaExpenses += Number(row.total_amount || 0);
+      } else if (row.category === 'ALTRO') {
+        actualOtherExpenses += Number(row.total_amount || 0);
+      }
+    }
+    actualMensaExpenses = Number(actualMensaExpenses.toFixed(2));
+    actualOtherExpenses = Number(actualOtherExpenses.toFixed(2));
+
+    // Eliminata la tariffa fissa fornitore mensa: il costo mensa corrisponde al totale delle spese MENSA inserite
+    const expectedMealCost = actualMensaExpenses;
+    const actualMealCost = actualMensaExpenses;
+
+    const doposcuolaExpectedExpenses = Number((afterschoolExpectedTeacherCost + expectedMealCost + actualOtherExpenses).toFixed(2));
+    const doposcuolaActualExpenses = Number((afterschoolActualTeacherCost + actualMealCost + actualOtherExpenses).toFixed(2));
 
     // 5. Corsi (Projects != 'DOPOSCUOLA')
     const coursesRes = await client.query(
@@ -817,8 +873,7 @@ exports.getFinancialMonthlyReport = async (req, res, next) => {
       to: toDate,
       rates: {
         doposcuola_daily_fee: doposcuolaFee,
-        meal_fee_student: mealFee,
-        meal_cost_provider: mealCostProvider
+        meal_fee_student: mealFee
       },
       doposcuola: {
         revenues: {
@@ -835,7 +890,9 @@ exports.getFinancialMonthlyReport = async (req, res, next) => {
           expected_teacher_cost: Number(afterschoolExpectedTeacherCost.toFixed(2)),
           actual_teacher_cost: Number(afterschoolActualTeacherCost.toFixed(2)),
           expected_catering_cost: expectedMealCost,
-          actual_catering_cost: actualMealCost
+          actual_catering_cost: actualMealCost,
+          expected_other_expenses: actualOtherExpenses,
+          actual_other_expenses: actualOtherExpenses
         },
         margin: {
           expected: Number((doposcuolaExpectedRevenues - doposcuolaExpectedExpenses).toFixed(2)),
@@ -887,6 +944,7 @@ exports.getFinancialMonthlyReport = async (req, res, next) => {
  * 1. Pasti consumati per alunno
  * 2. Costo per teacher doposcuola
  * 3. Costo per teacher corsi terminati nel mese
+ * 4. Note spese doposcuola (Mensa / Altro)
  * GET /api/reports/operational-monthly?year=YYYY&month=MM
  */
 exports.getOperationalMonthlyReport = async (req, res, next) => {
@@ -1061,6 +1119,24 @@ exports.getOperationalMonthlyReport = async (req, res, next) => {
       total_cost: Number(c.total_cost.toFixed(2))
     }));
 
+    // 4. Note Spese Doposcuola (Mensa / Altro) nel Mese Selezionato
+    const afterschoolRepository = require('../repositories/afterschoolRepository');
+    const expensesList = await afterschoolRepository.findExpenses({
+      fromDate,
+      toDate
+    });
+
+    let totalMensaExpenses = 0;
+    let totalAltroExpenses = 0;
+    for (const exp of expensesList) {
+      if (exp.category === 'MENSA') {
+        totalMensaExpenses += Number(exp.amount || 0);
+      } else {
+        totalAltroExpenses += Number(exp.amount || 0);
+      }
+    }
+    const totalAfterschoolExpenses = totalMensaExpenses + totalAltroExpenses;
+
     return sendSuccess(res, 200, {
       year: y,
       month: m,
@@ -1074,6 +1150,16 @@ exports.getOperationalMonthlyReport = async (req, res, next) => {
           total_cost: Number(afterschoolGrandTotalCost.toFixed(2))
         },
         teachers: afterschoolTeachersList
+      },
+      afterschool_expenses: {
+        summary: {
+          total_mensa: Number(totalMensaExpenses.toFixed(2)),
+          total_altro: Number(totalAltroExpenses.toFixed(2)),
+          total_expenses: Number(totalAfterschoolExpenses.toFixed(2)),
+          total_afterschool_cost: Number((afterschoolGrandTotalCost + totalAfterschoolExpenses).toFixed(2)),
+          count: expensesList.length
+        },
+        expenses: expensesList
       },
       finished_courses_teachers: {
         summary: {

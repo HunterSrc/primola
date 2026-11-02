@@ -34,5 +34,11 @@ router.get('/closures', requireRole(['ADMIN', 'OFFICE', 'TEACHER', 'STAFF']), (r
 router.post('/closures', requireRole(['ADMIN']), (req, res) => afterschoolController.createClosure(req, res));
 router.delete('/closures/:id', requireRole(['ADMIN']), (req, res) => afterschoolController.deleteClosure(req, res));
 
+// Note spese doposcuola (Mensa / Altro) - SOLO ADMIN e OFFICE
+router.get('/expenses', requireAdminOrOffice, (req, res) => afterschoolController.listExpenses(req, res));
+router.post('/expenses', requireAdminOrOffice, (req, res) => afterschoolController.createExpense(req, res));
+router.put('/expenses/:id', requireAdminOrOffice, (req, res) => afterschoolController.updateExpense(req, res));
+router.delete('/expenses/:id', requireAdminOrOffice, (req, res) => afterschoolController.deleteExpense(req, res));
+
 module.exports = router;
 

@@ -1,4 +1,4 @@
-const { newDb } = require('pg-mem');
+const { newDb, DataType } = require('pg-mem');
 const crypto = require('crypto');
 
 let memPool = null;
@@ -25,6 +25,31 @@ function createMemoryPostgres() {
     impure: true,
     implementation: () => new Date()
   });
+
+  const buildJsonObject = (...args) => {
+    const obj = {};
+    for (let i = 0; i < args.length; i += 2) {
+      obj[args[i]] = args[i + 1];
+    }
+    return obj;
+  };
+
+  const jsonBuildObjectSignatures = [
+    [DataType.text, DataType.uuid, DataType.text, DataType.text],
+    [DataType.text, DataType.text, DataType.text, DataType.text],
+    [DataType.text, DataType.text, DataType.uuid, DataType.text],
+    [DataType.text, DataType.uuid, DataType.text, DataType.text, DataType.text, DataType.text],
+    [DataType.text, DataType.text, DataType.text, DataType.text, DataType.text, DataType.text]
+  ];
+
+  for (const sig of jsonBuildObjectSignatures) {
+    db.public.registerFunction({
+      name: 'json_build_object',
+      args: sig,
+      returns: DataType.json,
+      implementation: buildJsonObject
+    });
+  }
 
   // Schema DDL essenziale per Primola
   db.public.none(`
@@ -134,6 +159,82 @@ function createMemoryPostgres() {
       ('meal_fee_student', '5.50', 'Quota pasto addebitata allo studente (€)'),
       ('meal_cost_provider', '4.80', 'Costo unitario pasto pagato al fornitore catering (€)');
 
+    CREATE TABLE IF NOT EXISTS afterschool_packages (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      name VARCHAR(100) NOT NULL,
+      code VARCHAR(50) UNIQUE,
+      monthly_days INTEGER NOT NULL DEFAULT 4,
+      days_per_week INTEGER,
+      is_active BOOLEAN NOT NULL DEFAULT true,
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      created_at TIMESTAMP DEFAULT NOW(),
+      updated_at TIMESTAMP DEFAULT NOW()
+    );
+
+    CREATE TABLE IF NOT EXISTS afterschool_tariffs (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      package_id UUID NOT NULL,
+      price NUMERIC(10, 2) NOT NULL DEFAULT 0.00,
+      valid_from DATE NOT NULL,
+      valid_to DATE NOT NULL DEFAULT '9999-01-01',
+      notes TEXT,
+      created_at TIMESTAMP DEFAULT NOW(),
+      updated_at TIMESTAMP DEFAULT NOW()
+    );
+
+    INSERT INTO afterschool_packages (id, name, code, monthly_days, days_per_week, sort_order) VALUES
+      ('11111111-1111-1111-1111-111111111101', '1 giorno a settimana', '1_DAY_WEEK', 4, 1, 1),
+      ('11111111-1111-1111-1111-111111111102', '2 giorni a settimana', '2_DAYS_WEEK', 8, 2, 2),
+      ('11111111-1111-1111-1111-111111111103', '3 giorni a settimana', '3_DAYS_WEEK', 12, 3, 3),
+      ('11111111-1111-1111-1111-111111111104', '4 giorni a settimana', '4_DAYS_WEEK', 16, 4, 4),
+      ('11111111-1111-1111-1111-111111111105', '5 giorni a settimana', '5_DAYS_WEEK', 20, 5, 5),
+      ('11111111-1111-1111-1111-111111111106', 'Una tantum', 'ONE_OFF', 1, NULL, 6);
+
+    INSERT INTO afterschool_tariffs (id, package_id, price, valid_from, valid_to, notes) VALUES
+      ('22222222-2222-2222-2222-222222222201', '11111111-1111-1111-1111-111111111101', 48.00, '2026-09-01', '9999-01-01', 'Tariffa base'),
+      ('22222222-2222-2222-2222-222222222202', '11111111-1111-1111-1111-111111111102', 90.00, '2026-09-01', '9999-01-01', 'Tariffa base'),
+      ('22222222-2222-2222-2222-222222222203', '11111111-1111-1111-1111-111111111103', 130.00, '2026-09-01', '9999-01-01', 'Tariffa base'),
+      ('22222222-2222-2222-2222-222222222204', '11111111-1111-1111-1111-111111111104', 170.00, '2026-09-01', '9999-01-01', 'Tariffa base'),
+      ('22222222-2222-2222-2222-222222222205', '11111111-1111-1111-1111-111111111105', 200.00, '2026-09-01', '9999-01-01', 'Tariffa base'),
+      ('22222222-2222-2222-2222-222222222206', '11111111-1111-1111-1111-111111111106', 15.00, '2026-09-01', '9999-01-01', 'Tariffa base');
+
+    CREATE TABLE IF NOT EXISTS student_monthly_tariffs (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      student_id UUID NOT NULL,
+      year SMALLINT NOT NULL,
+      month SMALLINT NOT NULL,
+      package_id UUID NOT NULL,
+      tariff_id UUID NOT NULL,
+      amount_paid NUMERIC(10, 2) NOT NULL DEFAULT 0.00,
+      covered_days INTEGER NOT NULL DEFAULT 0,
+      assigned_at TIMESTAMP DEFAULT NOW(),
+      notes TEXT,
+      created_at TIMESTAMP DEFAULT NOW(),
+      updated_at TIMESTAMP DEFAULT NOW()
+    );
+
+    CREATE TABLE IF NOT EXISTS student_monthly_settlements (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      student_id UUID NOT NULL,
+      year SMALLINT NOT NULL,
+      month SMALLINT NOT NULL,
+      extra_days_count INTEGER NOT NULL DEFAULT 0,
+      extra_days_unit_fee NUMERIC(10, 2) NOT NULL DEFAULT 0.00,
+      extra_days_total NUMERIC(10, 2) NOT NULL DEFAULT 0.00,
+      extra_paid BOOLEAN NOT NULL DEFAULT false,
+      extra_paid_at TIMESTAMP,
+      meals_count INTEGER NOT NULL DEFAULT 0,
+      meal_unit_fee NUMERIC(10, 2) NOT NULL DEFAULT 0.00,
+      meals_total NUMERIC(10, 2) NOT NULL DEFAULT 0.00,
+      meals_paid BOOLEAN NOT NULL DEFAULT false,
+      meals_paid_at TIMESTAMP,
+      payment_method VARCHAR(50),
+      notes TEXT,
+      created_at TIMESTAMP DEFAULT NOW(),
+      updated_at TIMESTAMP DEFAULT NOW(),
+      UNIQUE(student_id, year, month)
+    );
+
     CREATE TABLE IF NOT EXISTS project_teachers (
       project_id UUID NOT NULL,
       user_id UUID NOT NULL,
@@ -169,6 +270,17 @@ function createMemoryPostgres() {
       date DATE UNIQUE NOT NULL,
       title VARCHAR(150) NOT NULL,
       notes TEXT,
+      created_at TIMESTAMP DEFAULT NOW(),
+      updated_at TIMESTAMP DEFAULT NOW()
+    );
+
+    CREATE TABLE IF NOT EXISTS afterschool_expenses (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      expense_date DATE NOT NULL,
+      category VARCHAR(20) NOT NULL,
+      amount NUMERIC(10, 2) NOT NULL DEFAULT 0.00,
+      description TEXT DEFAULT '',
+      created_by UUID,
       created_at TIMESTAMP DEFAULT NOW(),
       updated_at TIMESTAMP DEFAULT NOW()
     );

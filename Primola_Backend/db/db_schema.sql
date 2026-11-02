@@ -185,3 +185,25 @@ BEFORE UPDATE ON closure_days
 FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
 CREATE INDEX IF NOT EXISTS idx_closure_days_date ON closure_days(date);
+
+-- ==========================================
+-- TABELLA: afterschool_expenses
+-- ==========================================
+CREATE TABLE IF NOT EXISTS afterschool_expenses (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    expense_date DATE NOT NULL,
+    category VARCHAR(20) NOT NULL CHECK (category IN ('MENSA', 'ALTRO')),
+    amount NUMERIC(10, 2) NOT NULL CHECK (amount >= 0),
+    description TEXT DEFAULT '',
+    created_by UUID REFERENCES users(id) ON DELETE SET NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE TRIGGER tg_afterschool_expenses_updated_at
+BEFORE UPDATE ON afterschool_expenses
+FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+CREATE INDEX IF NOT EXISTS idx_afterschool_expenses_date ON afterschool_expenses(expense_date);
+CREATE INDEX IF NOT EXISTS idx_afterschool_expenses_category ON afterschool_expenses(category);
+

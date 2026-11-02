@@ -3,7 +3,10 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../core/services/api.service';
 import { AuthService } from '../../core/services/auth.service';
-import { ProjectReportData, OperationalMonthlyReport, OperationalAfterschoolTeacher } from '../../core/models';
+import {
+  ProjectReportData,
+  OperationalMonthlyReport
+} from '../../core/models';
 import { AppDatePipe } from '../../shared/pipes/app-date.pipe';
 
 @Component({
@@ -17,12 +20,12 @@ import { AppDatePipe } from '../../shared/pipes/app-date.pipe';
       <div class="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-slate-200/80 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div class="flex items-center space-x-2">
-            <h1 class="text-xl sm:text-2xl font-bold text-slate-800">Rendicontazione & Report</h1>
+            <h1 class="text-xl sm:text-2xl font-bold text-slate-800">Rendicontazione Ore & Corsi</h1>
             <span class="text-[10px] sm:text-xs bg-indigo-500/10 text-indigo-700 font-bold px-2.5 py-0.5 rounded-full border border-indigo-500/20">
               ADMIN & OFFICE
             </span>
           </div>
-          <p class="text-xs sm:text-sm text-slate-500">Pasti consumati per alunno, costi teacher doposcuola e corsi terminati nel mese</p>
+          <p class="text-xs sm:text-sm text-slate-500">Rendicontazione mensile ore e compensi docenti doposcuola e corsi terminati</p>
         </div>
 
         <div class="flex items-center space-x-1.5 sm:space-x-2 bg-slate-100 p-1 sm:p-1.5 rounded-xl border border-slate-200 overflow-x-auto w-full md:w-auto">
@@ -35,7 +38,7 @@ import { AppDatePipe } from '../../shared/pipes/app-date.pipe';
             [class.font-bold]="activeTab() === 'OPERATIONAL'"
             class="flex-1 md:flex-initial px-3.5 sm:px-4 py-2 text-xs md:text-sm rounded-lg text-slate-600 transition-all cursor-pointer whitespace-nowrap text-center"
           >
-            Rendicontazione Mensile
+            Rendicontazione Mensile Ore
           </button>
 
           <button
@@ -52,7 +55,7 @@ import { AppDatePipe } from '../../shared/pipes/app-date.pipe';
         </div>
       </div>
 
-      <!-- TAB 1: RENDICONTAZIONE MENSILE OPERATIVA (ADMIN + OFFICE) -->
+      <!-- TAB 1: RENDICONTAZIONE MENSILE ORE DOCENTI (ADMIN + OFFICE) -->
       @if (activeTab() === 'OPERATIONAL') {
         <div class="space-y-6">
 
@@ -60,7 +63,7 @@ import { AppDatePipe } from '../../shared/pipes/app-date.pipe';
           <div class="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
               <h2 class="text-sm sm:text-base font-bold text-slate-800">Seleziona Mese di Rendicontazione</h2>
-              <p class="text-xs text-slate-500">Visualizza pasti per studente e compensi docenti maturati</p>
+              <p class="text-xs text-slate-500">Visualizza ore svolte e compensi docenti maturati per doposcuola e corsi conclusi</p>
             </div>
 
             <div class="flex items-center space-x-2.5 w-full sm:w-auto">
@@ -96,22 +99,12 @@ import { AppDatePipe } from '../../shared/pipes/app-date.pipe';
 
           @if (loadingOperational()) {
             <div class="bg-white p-12 rounded-2xl text-center text-slate-400 border border-slate-200/80">
-              Caricamento rendicontazione operativa mensile...
+              Caricamento rendicontazione ore mensile...
             </div>
           } @else if (operationalData(); as op) {
 
-            <!-- KPI Cards Rendicontazione -->
+            <!-- KPI Cards Rendicontazione Ore -->
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div class="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-2xs border-l-4 border-l-amber-500">
-                <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider block">Pasti Erogati Mese</span>
-                <p class="text-2xl sm:text-3xl font-extrabold text-amber-600 mt-1">
-                  {{ totalMealsCount() }} pasti
-                </p>
-                <p class="text-[11px] text-slate-400 mt-0.5">
-                  Consumati da {{ op.students_meals.length }} alunni iscritti
-                </p>
-              </div>
-
               <div class="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-2xs border-l-4 border-l-indigo-500">
                 <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider block">Costo Teacher Doposcuola</span>
                 <p class="text-2xl sm:text-3xl font-extrabold text-indigo-700 mt-1">
@@ -131,69 +124,19 @@ import { AppDatePipe } from '../../shared/pipes/app-date.pipe';
                   {{ op.finished_courses_teachers.summary.total_courses }} corsi conclusi nel mese
                 </p>
               </div>
-            </div>
 
-            <!-- SEZIONE 1: PASTI CONSUMATI PER ALUNNO -->
-            <div class="bg-white rounded-2xl shadow-sm border border-slate-200/80 overflow-hidden space-y-3 p-4 sm:p-6">
-              <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
-                <div class="flex items-center space-x-2">
-                  <span class="w-3 h-3 rounded-full bg-amber-500"></span>
-                  <h3 class="font-bold text-base sm:text-lg text-slate-800">
-                    Pasti Consumati per Alunno ({{ filteredStudentMeals().length }})
-                  </h3>
-                </div>
-
-                <input
-                  type="text"
-                  [(ngModel)]="searchStudentQuery"
-                  placeholder="Cerca alunno o scuola..."
-                  class="px-3.5 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 w-full sm:w-64"
-                />
-              </div>
-
-              <div class="overflow-x-auto border border-slate-200 rounded-xl">
-                <table class="w-full text-left border-collapse text-xs sm:text-sm min-w-[500px]">
-                  <thead>
-                    <tr class="bg-slate-50 text-slate-600 font-semibold uppercase text-[11px] border-b border-slate-200">
-                      <th class="py-3 px-4">Alunno</th>
-                      <th class="py-3 px-4">Scuola</th>
-                      <th class="py-3 px-4 text-center">Presenze Svolte</th>
-                      <th class="py-3 px-4 text-center">Spettanza Sett.</th>
-                      <th class="py-3 px-4 text-center">Previsti Mese</th>
-                      <th class="py-3 px-4 text-center">Pasti Consumati</th>
-                    </tr>
-                  </thead>
-                  <tbody class="divide-y divide-slate-100">
-                    @for (s of filteredStudentMeals(); track s.student_id) {
-                      <tr class="hover:bg-slate-50/60 transition-colors">
-                        <td class="py-3 px-4 font-semibold text-slate-800">{{ s.last_name }} {{ s.first_name }}</td>
-                        <td class="py-3 px-4 text-slate-500 text-xs">{{ s.school || 'Non specificata' }}</td>
-                        <td class="py-3 px-4 text-center text-slate-700 font-medium">{{ s.days_present }} gg</td>
-                        <td class="py-3 px-4 text-center text-slate-500">{{ s.weekly_meals }} / sett.</td>
-                        <td class="py-3 px-4 text-center text-indigo-700 font-semibold">{{ s.expected_meals }}</td>
-                        <td class="py-3 px-4 text-center">
-                          <span
-                            class="inline-block px-3 py-1 rounded-full text-xs font-bold"
-                            [class.bg-amber-100]="s.meals_consumed > 0"
-                            [class.text-amber-800]="s.meals_consumed > 0"
-                            [class.bg-slate-100]="s.meals_consumed === 0"
-                            [class.text-slate-400]="s.meals_consumed === 0"
-                          >
-                            🍽️ {{ s.meals_consumed }} pasti
-                          </span>
-                        </td>
-                      </tr>
-                    } @empty {
-                      <tr>
-                        <td colspan="6" class="py-8 text-center text-slate-400">Nessun alunno trovato.</td>
-                      </tr>
-                    }
-                  </tbody>
-                </table>
+              <div class="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-2xs border-l-4 border-l-slate-700">
+                <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider block">Totale Compensi Docenti (Mese)</span>
+                <p class="text-2xl sm:text-3xl font-extrabold text-slate-800 mt-1">
+                  € {{ (op.afterschool_teachers.summary.total_cost + op.finished_courses_teachers.summary.total_cost) | number:'1.2-2' }}
+                </p>
+                <p class="text-[11px] text-slate-400 mt-0.5">
+                  Doposcuola + Corsi terminati
+                </p>
               </div>
             </div>
 
-            <!-- SEZIONE 2: COSTO PER TEACHER DOPO SCUOLA -->
+            <!-- SEZIONE 1: COSTO PER TEACHER DOPOSCUOLA -->
             <div class="bg-white rounded-2xl shadow-sm border border-slate-200/80 overflow-hidden p-4 sm:p-6 space-y-4">
               <div class="flex items-center justify-between border-b border-slate-100 pb-3">
                 <div class="flex items-center space-x-2">
@@ -277,7 +220,7 @@ import { AppDatePipe } from '../../shared/pipes/app-date.pipe';
               </div>
             </div>
 
-            <!-- SEZIONE 3: COSTO PER TEACHER CORSI TERMINATI -->
+            <!-- SEZIONE 2: COSTO PER TEACHER CORSI TERMINATI -->
             <div class="bg-white rounded-2xl shadow-sm border border-slate-200/80 overflow-hidden p-4 sm:p-6 space-y-4">
               <div class="flex items-center justify-between border-b border-slate-100 pb-3">
                 <div class="flex items-center space-x-2">
@@ -488,13 +431,12 @@ export class ReportsComponent implements OnInit {
 
   readonly activeTab = signal<'OPERATIONAL' | 'PROJECTS'>('OPERATIONAL');
 
-  // Operational Monthly Report
+  // Operational Monthly Report (Teacher hours & courses)
   operationalData = signal<OperationalMonthlyReport | null>(null);
   loadingOperational = signal<boolean>(true);
 
   selectedYear = new Date().getFullYear();
   selectedMonth = new Date().getMonth() + 1;
-  searchStudentQuery = '';
   expandedTeacherShifts = signal<Set<string>>(new Set<string>());
 
   // Projects Report
@@ -549,22 +491,6 @@ export class ReportsComponent implements OnInit {
         this.loadingProjects.set(false);
       }
     });
-  }
-
-  filteredStudentMeals() {
-    const list = this.operationalData()?.students_meals || [];
-    const q = this.searchStudentQuery.toLowerCase().trim();
-    if (!q) return list;
-    return list.filter(s =>
-      s.first_name.toLowerCase().includes(q) ||
-      s.last_name.toLowerCase().includes(q) ||
-      s.school.toLowerCase().includes(q)
-    );
-  }
-
-  totalMealsCount(): number {
-    const list = this.operationalData()?.students_meals || [];
-    return list.reduce((acc, s) => acc + (s.meals_consumed || 0), 0);
   }
 
   toggleTeacherShifts(userId: string): void {

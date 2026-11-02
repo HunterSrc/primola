@@ -11,7 +11,6 @@ Verificare che sulla macchina siano installati i seguenti strumenti:
 - **Node.js**: v18.x o v20.x+ (`node -v`) e **npm** (`npm -v`)
 - **PostgreSQL**: v15 o v16 (`psql -V`)
 - **Git**: (`git -v`)
-- *(Opzionale)* **Flutter SDK**: v3.x+ (`flutter --version`) per il client tablet/mobile
 - *(Per deployment su server/VPS)* **Docker & Docker Compose**: per il database PostgreSQL persistente e i backup. Vedere la guida dedicata [docs/setup_docker_debian.md](file:///d:/Projects/primola/docs/setup_docker_debian.md).
 
 ---
@@ -88,19 +87,7 @@ npm start
 
 ---
 
-## 5. Passo 4 (Opzionale): Avvio dell'App Mobile/Tablet (Flutter)
-
-Se si desidera eseguire anche il client tablet/mobile per gli operatori:
-
-```bash
-cd primola_app
-flutter pub get
-flutter run -d chrome  # oppure selezionare un dispositivo/emulatore collegato
-```
-
----
-
-## 6. Credenziali di Accesso Predefinite
+## 5. Credenziali di Accesso Predefinite
 
 I dati inseriti dallo script di seed (`db_seed.sql`) permettono l'accesso con due profili:
 
@@ -111,13 +98,13 @@ I dati inseriti dallo script di seed (`db_seed.sql`) permettono l'accesso con du
 
 ---
 
-## 7. Setup Tunnel per Accesso Remoto / Test da Dispositivi Mobili
+## 6. Setup Tunnel per Accesso Remoto / Test da Dispositivi Mobili (Browser)
 
-Per testare l'applicazione web (`porta 4200`) o consentire all'app tablet/mobile Flutter di raggiungere il backend locale (`porta 3000`) da dispositivi fisici esterni alla rete LAN locale, è possibile esporre le porte tramite un tunnel sicuro.
+Per testare l'applicazione web (`porta 4200`) e consentire l'accesso al backend (`porta 3000`) da dispositivi fisici esterni alla rete LAN locale (es. smartphone e tablet tramite browser), è possibile esporre le porte tramite un tunnel sicuro.
 
 ### Opzione A: Cloudflare Quick Tunnels (Consigliata - Gratuita e senza account)
 1. Scaricare l'eseguibile `cloudflared` (oppure installarlo con `winget install Cloudflare.cloudflared` su Windows, o `brew install cloudflared` su macOS).
-2. Per esporre il **Backend API** (necessario se l'app mobile punta da remoto):
+2. Per esporre il **Backend API** (necessario se il frontend accede da remoto):
    ```bash
    cloudflared tunnel --url http://localhost:3000
    ```
@@ -156,11 +143,11 @@ ngrok http 3000
 > cd primola_frontend
 > npm start -- --host 0.0.0.0 --disable-host-check
 > ```
-> Se l'app mobile o il frontend puntano all'URL del tunnel backend, ricordarsi di aggiornare l'endpoint base corrispondente (nel client Flutter o nell'ambiente Angular).
+> Se il frontend punta all'URL del tunnel backend, ricordarsi di aggiornare l'endpoint base corrispondente nell'ambiente Angular.
 
 ---
 
-## 8. Verifica Rapida del Corretto Funzionamento (Smoke Test)
+## 7. Verifica Rapida del Corretto Funzionamento (Smoke Test)
 
 1. Aprire `http://localhost:4200` nel browser.
 2. Eseguire il login con le credenziali **Admin** (`admin` / `admin123`).

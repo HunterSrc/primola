@@ -32,6 +32,5 @@ Questo documento riassume le attività di ingegnerizzazione e implementazione de
 - **Configurazione di Sicurezza Swagger**: Setup dello schema *Bearer Auth* (`http/bearer/JWT`) all'interno di `swagger.js` per permettere l'invocazione manuale delle rotte protette dall'interfaccia.
 - **JSDoc Annotation**: Marcatura esplicita delle rotte (`src/routes/reports.js`, `src/routes/students.js`) tramite tag `@swagger` per definire l'I/O schema e mappare gli status code.
 
-## 6. Prompt Engineering per Handoff (Frontend)
-- **Generazione Artefatto**: Creazione di `prompt_frontend_integration.md` contenente le istruzioni esplicite da sottoporre all'ambiente di sviluppo Flutter.
-- **Contenuti del Prompt**: Dettaglio del Base URL, del Response Contract, istruzioni sull'uso di Interceptors (es. package `dio`) per la serializzazione dell'Authorization header e specifiche di payload per l'ingestion dei modelli Dart.
+## 6. Specifiche e Contratti per Frontend Integration
+- **Contratti API**: Dettaglio del Base URL, del Response Contract standard (`{ success, data, error }`), autenticazione Bearer Token JWT e specifiche di payload per i modelli e servizi del frontend Angular (`primola_frontend`).

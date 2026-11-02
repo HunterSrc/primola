@@ -18,7 +18,18 @@ import {
   ClosureDay,
   FinancialMonthlyReport,
   OperationalMonthlyReport,
-  SystemSettings
+  SystemSettings,
+  AfterschoolPackage,
+  AfterschoolTariff,
+  CreateAfterschoolPackagePayload,
+  TransitionTariffPayload,
+  AfterschoolExpense,
+  AfterschoolExpenseCategory,
+  AfterschoolExpensesSummary,
+  MonthlyBillingSummary,
+  AssignPackagePayload,
+  SettlePayload,
+  AssignedTariff
 } from '../models';
 
 @Injectable({
@@ -687,6 +698,133 @@ export class ApiService {
   deleteAfterschoolClosure(id: string): Observable<boolean> {
     return this.http.delete<ApiResponse<{ message: string }>>(`${this.baseUrl}/afterschool/closures/${id}`).pipe(
       map(res => res.success)
+    );
+  }
+
+  // ================= PACCHETTI E TARIFFE DOPOSCUOLA (SOLO ADMIN) =================
+  getAfterschoolPackages(referenceDate?: string): Observable<AfterschoolPackage[]> {
+    let params = new HttpParams();
+    if (referenceDate) {
+      params = params.set('reference_date', referenceDate);
+    }
+    return this.http.get<ApiResponse<AfterschoolPackage[]>>(`${this.baseUrl}/afterschool-packages`, { params }).pipe(
+      map(res => res.data || [])
+    );
+  }
+
+  getPackageTariffs(packageId: string): Observable<AfterschoolTariff[]> {
+    return this.http.get<ApiResponse<AfterschoolTariff[]>>(`${this.baseUrl}/afterschool-packages/${packageId}/tariffs`).pipe(
+      map(res => res.data || [])
+    );
+  }
+
+  createAfterschoolPackage(payload: CreateAfterschoolPackagePayload): Observable<AfterschoolPackage> {
+    return this.http.post<ApiResponse<AfterschoolPackage>>(`${this.baseUrl}/afterschool-packages`, payload).pipe(
+      map(res => res.data)
+    );
+  }
+
+  updateAfterschoolPackage(id: string, payload: Partial<AfterschoolPackage>): Observable<AfterschoolPackage> {
+    return this.http.put<ApiResponse<AfterschoolPackage>>(`${this.baseUrl}/afterschool-packages/${id}`, payload).pipe(
+      map(res => res.data)
+    );
+  }
+
+  updateAfterschoolTariff(tariffId: string, payload: Partial<AfterschoolTariff>): Observable<AfterschoolTariff> {
+    return this.http.put<ApiResponse<AfterschoolTariff>>(`${this.baseUrl}/afterschool-packages/tariffs/${tariffId}`, payload).pipe(
+      map(res => res.data)
+    );
+  }
+
+  transitionAfterschoolTariff(packageId: string, payload: TransitionTariffPayload): Observable<{ oldTariff: AfterschoolTariff; newTariff: AfterschoolTariff }> {
+    return this.http.post<ApiResponse<{ oldTariff: AfterschoolTariff; newTariff: AfterschoolTariff }>>(
+      `${this.baseUrl}/afterschool-packages/${packageId}/transition-tariff`,
+      payload
+    ).pipe(
+      map(res => res.data)
+    );
+  }
+
+  // ================= NOTE SPESE DOPOSCUOLA (MENSA & ALTRO) =================
+  getAfterschoolExpenses(year: number, month: number, category?: AfterschoolExpenseCategory): Observable<{ summary: AfterschoolExpensesSummary; expenses: AfterschoolExpense[] }> {
+    let params = new HttpParams()
+      .set('year', year.toString())
+      .set('month', month.toString());
+    if (category) {
+      params = params.set('category', category);
+    }
+    return this.http.get<ApiResponse<{ summary: AfterschoolExpensesSummary; expenses: AfterschoolExpense[] }>>(
+      `${this.baseUrl}/afterschool/expenses`,
+      { params }
+    ).pipe(
+      map(res => res.data)
+    );
+  }
+
+  createAfterschoolExpense(payload: {
+    expense_date: string;
+    category: AfterschoolExpenseCategory;
+    amount: number;
+    description?: string;
+  }): Observable<AfterschoolExpense> {
+    return this.http.post<ApiResponse<AfterschoolExpense>>(
+      `${this.baseUrl}/afterschool/expenses`,
+      payload
+    ).pipe(
+      map(res => res.data)
+    );
+  }
+
+  updateAfterschoolExpense(
+    id: string,
+    payload: {
+      expense_date?: string;
+      category?: AfterschoolExpenseCategory;
+      amount?: number;
+      description?: string;
+    }
+  ): Observable<AfterschoolExpense> {
+    return this.http.put<ApiResponse<AfterschoolExpense>>(
+      `${this.baseUrl}/afterschool/expenses/${id}`,
+      payload
+    ).pipe(
+      map(res => res.data)
+    );
+  }
+
+  deleteAfterschoolExpense(id: string): Observable<boolean> {
+    return this.http.delete<ApiResponse<{ message: string }>>(
+      `${this.baseUrl}/afterschool/expenses/${id}`
+    ).pipe(
+      map(res => res.success)
+    );
+  }
+
+  // ================= GESTIONE PAGAMENTI STUDENTI =================
+  getMonthlyBilling(year: number, month: number): Observable<MonthlyBillingSummary> {
+    const params = new HttpParams()
+      .set('year', year.toString())
+      .set('month', month.toString());
+    return this.http.get<ApiResponse<MonthlyBillingSummary>>(`${this.baseUrl}/payments/monthly`, { params }).pipe(
+      map(res => res.data)
+    );
+  }
+
+  assignTariffToStudent(payload: AssignPackagePayload): Observable<AssignedTariff> {
+    return this.http.post<ApiResponse<AssignedTariff>>(`${this.baseUrl}/payments/assign-tariff`, payload).pipe(
+      map(res => res.data)
+    );
+  }
+
+  removeStudentTariff(assignmentId: string): Observable<boolean> {
+    return this.http.delete<ApiResponse<any>>(`${this.baseUrl}/payments/tariffs/${assignmentId}`).pipe(
+      map(res => res.success)
+    );
+  }
+
+  settleMonthlyPayments(payload: SettlePayload): Observable<any> {
+    return this.http.post<ApiResponse<any>>(`${this.baseUrl}/payments/settle`, payload).pipe(
+      map(res => res.data)
     );
   }
 }

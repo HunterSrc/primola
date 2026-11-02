@@ -481,7 +481,7 @@ export class AttendanceDashboardComponent implements OnInit {
       last_name: student.last_name,
       school: student.school || '',
       main_tutor_phone: student.main_tutor_phone,
-      is_present: true,
+      is_present: false,
       has_meal: (student.weekly_meals ?? 0) > 0
     };
     this.records.update(prev => [...prev, newRecord]);

@@ -145,4 +145,95 @@ describe('Financial & Operational Reports API Tests', () => {
       expect(res.status).toBe(403);
     });
   });
+
+  describe('Afterschool Expenses API (/api/afterschool/expenses)', () => {
+    let createdExpenseId = null;
+
+    it('TEACHER is forbidden from creating or reading afterschool expenses', async () => {
+      const getRes = await request(app)
+        .get('/api/afterschool/expenses?year=2026&month=10')
+        .set('Authorization', `Bearer ${teacherToken}`);
+      expect(getRes.status).toBe(403);
+
+      const postRes = await request(app)
+        .post('/api/afterschool/expenses')
+        .set('Authorization', `Bearer ${teacherToken}`)
+        .send({
+          expense_date: '2026-10-15',
+          category: 'MENSA',
+          amount: 120.50,
+          description: 'Fattura mensa'
+        });
+      expect(postRes.status).toBe(403);
+    });
+
+    it('ADMIN and OFFICE can create, list, update, and delete afterschool expenses (MENSA & ALTRO)', async () => {
+      // 1. Create MENSA expense
+      const createRes = await request(app)
+        .post('/api/afterschool/expenses')
+        .set('Authorization', `Bearer ${officeToken}`)
+        .send({
+          expense_date: '2026-10-14',
+          category: 'MENSA',
+          amount: 240.00,
+          description: 'Fattura catering ottobre'
+        });
+
+      expect(createRes.status).toBe(201);
+      expect(createRes.body.success).toBe(true);
+      expect(createRes.body.data.category).toBe('MENSA');
+      expect(createRes.body.data.amount).toBe(240);
+      expect(createRes.body.data.expense_date).toBe('2026-10-14');
+      createdExpenseId = createRes.body.data.id;
+
+      // 2. List expenses for 2026-10
+      const listRes = await request(app)
+        .get('/api/afterschool/expenses?year=2026&month=10')
+        .set('Authorization', `Bearer ${adminToken}`);
+
+      expect(listRes.status).toBe(200);
+      expect(listRes.body.data.summary.total_mensa).toBeGreaterThanOrEqual(240);
+      expect(listRes.body.data.expenses.some(e => e.id === createdExpenseId)).toBe(true);
+
+      // 3. Update expense to ALTRO and change amount
+      const updateRes = await request(app)
+        .put(`/api/afterschool/expenses/${createdExpenseId}`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({
+          category: 'ALTRO',
+          amount: 85.50,
+          description: 'Materiale didattico doposcuola'
+        });
+
+      expect(updateRes.status).toBe(200);
+      expect(updateRes.body.data.category).toBe('ALTRO');
+      expect(updateRes.body.data.amount).toBe(85.5);
+
+      // 4. Verify operational-monthly report includes afterschool_expenses
+      const opRes = await request(app)
+        .get('/api/reports/operational-monthly?year=2026&month=10')
+        .set('Authorization', `Bearer ${officeToken}`);
+
+      expect(opRes.status).toBe(200);
+      expect(opRes.body.data.afterschool_expenses).toBeDefined();
+      expect(opRes.body.data.afterschool_expenses.summary.total_altro).toBeGreaterThanOrEqual(85.5);
+
+      // 4b. Verify financial-monthly report uses total expenses and no meal_cost_provider
+      const finRes = await request(app)
+        .get('/api/reports/financial-monthly?year=2026&month=10')
+        .set('Authorization', `Bearer ${adminToken}`);
+
+      expect(finRes.status).toBe(200);
+      expect(finRes.body.data.rates.meal_cost_provider).toBeUndefined();
+      expect(finRes.body.data.doposcuola.expenses.actual_other_expenses).toBeGreaterThanOrEqual(85.5);
+
+      // 5. Delete expense
+      const delRes = await request(app)
+        .delete(`/api/afterschool/expenses/${createdExpenseId}`)
+        .set('Authorization', `Bearer ${officeToken}`);
+
+      expect(delRes.status).toBe(200);
+      expect(delRes.body.success).toBe(true);
+    });
+  });
 });

@@ -2,14 +2,11 @@
 
 Questo file viene letto da Antigravity per garantire continuità di standard e architettura nello sviluppo del gestionale Primola.
 
-> **IMPORTANTE**: Salvo diversa indicazione esplicita, ogni richiesta relativa al frontend/UI si riferisce SEMPRE al frontend Angular (`primola_frontend`), NON all'app Flutter (`primola_app`).
-
 ## Linee Guida Architetturali
 
 1. **Monorepo Structure**:
    - `Primola_Backend`: Node.js + Express + `pg` + Swagger.
    - `primola_frontend`: Angular 19 (Standalone components) + Tailwind CSS + Vitest.
-   - `primola_app`: Flutter (Dart) + Riverpod 2.6 + Dio + GoRouter.
    - `Primola_Backend/db`: Script DDL (`db_schema.sql`) e DML di seed (`db_seed.sql`).
    - `docs/`: Documentazione di business (`ANALISI_FUNZIONALE.md`), DB (`tech_summary_db.md`) e handover (`HANDOVER_ANTIGRAVITY.md`).
 
@@ -20,8 +17,8 @@ Questo file viene letto da Antigravity per garantire continuità di standard e a
    - Database: Utilizzare transazioni (`BEGIN`/`COMMIT`/`ROLLBACK`) per operazioni su più tabelle (es. studente + tutori).
    - Inserimenti di presenze: usare query di bulk upsert con `ON CONFLICT (student_id, date) DO UPDATE`.
 
-3. **Frontend & Mobile Patterns**:
-   - Mantenere la separazione tra presentazione e dati (Repository pattern sia in Angular che in Flutter Riverpod).
+3. **Frontend Patterns**:
+   - Mantenere la separazione tra presentazione e dati (Service/Repository pattern in Angular con Signals/RxJS).
    - Gestire sempre il fallback/gestione errori HTTP con feedback all'utente.
    - L'applicazione gestisce presenze attese in base al giorno della settimana (`1=Lunedì, ..., 5=Venerdì`), spunta mensa, assenza giustificata e studenti extra fuori abbonamento.
 

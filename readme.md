@@ -17,7 +17,6 @@ primola/
 ├── Primola_Backend/         # REST API Node.js (Express, PostgreSQL, Swagger)
 │   └── db/                  # Script SQL DDL e Seed (db_schema.sql, db_seed.sql)
 ├── primola_frontend/        # Web App moderna in Angular 19+ (Tailwind CSS, Vitest)
-├── primola_app/             # Client Mobile/Tablet in Flutter (Dart, Riverpod, Dio)
 ├── docs/                    # Documentazione di progetto e specifiche
 │   ├── HANDOVER_ANTIGRAVITY.md # Istruzioni per ripresa lavori da parte di Antigravity
 │   ├── ANALISI_FUNZIONALE.md   # Flussi di processo dettagliati
@@ -31,8 +30,7 @@ primola/
 |---|---|---|
 | **Database** | PostgreSQL 16 | Relazionale, DDL con trigger per `updated_at`, indici GIN per array giorni (`giorni_abbonamento`, `giorni_mensa`), vincolo `UNIQUE(student_id, date)`. |
 | **Backend** | Node.js, Express, `pg` | API REST, sicurezza JWT con Role-Based Access Control (`ADMIN`, `STAFF`), documentazione interattiva OpenAPI/Swagger UI (`/api-docs`). |
-| **Frontend Web** | Angular 19+, Tailwind CSS | Interfaccia desktop/web responsiva: segna presenze con filtri rapidi e bulk save, anagrafica completa con tutori dinamici, dashboard amministrativa con reportistica. |
-| **App Mobile/Tablet** | Flutter, Riverpod, Dio, GoRouter | Client cross-platform tablet/mobile per gli operatori in sede: layout responsive, gestione sessione JWT, repository disaccoppiati e dashboard presenze reattiva. |
+| **Frontend Web** | Angular 19+, Tailwind CSS | Interfaccia responsive (desktop, tablet e mobile web): segna presenze con filtri rapidi e bulk save, anagrafica completa con tutori dinamici, dashboard amministrativa con reportistica. |
 
 ---
 
@@ -77,12 +75,6 @@ primola/
   - Report mensa con selezione periodo (da/a), totali pasti ed esportazione/dettaglio per data.
 - [x] Test unitari con Vitest configurati e passanti.
 
-### Applicazione Flutter (`primola_app`)
-- [x] Configurazione architettura Riverpod e router GoRouter con redirect basati su ruoli.
-- [x] `ApiClient` (Dio) configurato con gestione automatica header auth e gestione errori `ApiResponse<T>`.
-- [x] Modelli DTO e Repository disaccoppiati (`StudentRepository`, `AttendanceRepository`, `ReportRepository`).
-- [x] Schermate principali predisposte (Dashboard Presenze, Anagrafica, Admin Screen).
-
 ---
 
 ## 3. Prerequisiti e Avvio Rapido
@@ -113,16 +105,8 @@ npm start
 - Applicazione attiva su: `http://localhost:4200`
 - Login rapido disponibile per i profili **Admin** e **Staff**.
 
-### 4. Client Flutter (Opzionale)
-```bash
-cd primola_app
-flutter pub get
-flutter run -d chrome  # oppure dispositivo tablet/emulatore
-```
-
 ---
 
 ## 4. Prossimi Passi Consigliati
-1. **Completamento integrazione Flutter**: Sostituire le strutture dati mockate residue nel provider Flutter collegandole direttamente alle API REST del backend.
-2. **Modulo Ricevute / Quote**: Integrazione della fatturazione o controllo pagamenti mensili basati su presenze effettive ed extra registrati.
-3. **Notifiche Push / WhatsApp**: Invio automatico di messaggi ai tutori per assenze ingiustificate o promemoria attività.
+1. **Modulo Ricevute / Quote**: Integrazione della fatturazione o controllo pagamenti mensili basati su presenze effettive ed extra registrati.
+2. **Notifiche Push / WhatsApp**: Invio automatico di messaggi ai tutori per assenze ingiustificate o promemoria attività.

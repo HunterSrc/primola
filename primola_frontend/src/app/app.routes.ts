@@ -11,7 +11,10 @@ import { UserFormComponent } from './features/users/user-form.component';
 import { ProjectsListComponent } from './features/projects/projects-list.component';
 import { ProjectDetailComponent } from './features/projects/project-detail.component';
 import { AfterschoolListComponent } from './features/afterschool/afterschool-list.component';
+import { AfterschoolExpensesComponent } from './features/afterschool/afterschool-expenses.component';
 import { ReportsComponent } from './features/reports/reports.component';
+import { AfterschoolPackagesPageComponent } from './features/admin/afterschool-packages-page.component';
+import { PaymentsDashboardComponent } from './features/payments/payments-dashboard.component';
 import { authGuard, adminGuard, guestGuard, adminOrOfficeGuard, reportsGuard } from './core/guards/auth.guard';
 
 export const routes: Routes = [
@@ -37,6 +40,11 @@ export const routes: Routes = [
       {
         path: 'afterschool-calendar',
         component: AfterschoolCalendarComponent
+      },
+      {
+        path: 'payments',
+        component: PaymentsDashboardComponent,
+        canActivate: [adminOrOfficeGuard]
       },
       {
         path: 'anagrafica',
@@ -82,9 +90,19 @@ export const routes: Routes = [
         canActivate: [adminOrOfficeGuard]
       },
       {
+        path: 'afterschool-expenses',
+        component: AfterschoolExpensesComponent,
+        canActivate: [adminOrOfficeGuard]
+      },
+      {
         path: 'reports',
         component: ReportsComponent,
         canActivate: [reportsGuard]
+      },
+      {
+        path: 'admin/afterschool-packages',
+        component: AfterschoolPackagesPageComponent,
+        canActivate: [adminGuard]
       },
       {
         path: 'admin/dashboard',

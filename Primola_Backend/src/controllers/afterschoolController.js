@@ -341,6 +341,163 @@ class AfterschoolController {
       return sendError(res, 500, 'Errore durante la rimozione della data di chiusura.');
     }
   }
+
+  /**
+   * GET /api/afterschool/expenses?year=YYYY&month=MM&category=MENSA|ALTRO
+   * (oppure ?from=YYYY-MM-DD&to=YYYY-MM-DD)
+   * Lista le note spese del doposcuola con riepilogo totali per Mensa e Altro
+   */
+  async listExpenses(req, res) {
+    try {
+      const { year, month, category } = req.query;
+      let { from, to } = req.query;
+
+      if (year !== undefined && month !== undefined) {
+        const y = parseInt(year, 10);
+        const m = parseInt(month, 10);
+        if (isNaN(y) || isNaN(m) || m < 1 || m > 12) {
+          return sendError(res, 400, "Valori 'year' o 'month' non validi (month: 1-12).");
+        }
+        from = `${y}-${String(m).padStart(2, '0')}-01`;
+        const lastDay = new Date(y, m, 0).getDate();
+        to = `${y}-${String(m).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+      }
+
+      const expenses = await afterschoolRepository.findExpenses({
+        fromDate: from,
+        toDate: to,
+        category: category ? String(category).toUpperCase() : undefined
+      });
+
+      let totalMensa = 0;
+      let totalAltro = 0;
+      for (const exp of expenses) {
+        if (exp.category === 'MENSA') {
+          totalMensa += Number(exp.amount || 0);
+        } else {
+          totalAltro += Number(exp.amount || 0);
+        }
+      }
+
+      return sendSuccess(res, 200, {
+        summary: {
+          total_mensa: Number(totalMensa.toFixed(2)),
+          total_altro: Number(totalAltro.toFixed(2)),
+          total_expenses: Number((totalMensa + totalAltro).toFixed(2)),
+          count: expenses.length
+        },
+        expenses
+      });
+    } catch (error) {
+      console.error('Errore in listExpenses doposcuola:', error);
+      return sendError(res, 500, 'Errore nel recupero delle note spese dopo scuola.');
+    }
+  }
+
+  /**
+   * POST /api/afterschool/expenses
+   * Crea una nuova nota spesa doposcuola (Mensa o Altro)
+   */
+  async createExpense(req, res) {
+    try {
+      const { expense_date, category, amount, description } = req.body;
+
+      if (!expense_date || !/^\d{4}-\d{2}-\d{2}$/.test(expense_date)) {
+        return sendError(res, 400, "Campo 'expense_date' obbligatorio nel formato YYYY-MM-DD.");
+      }
+
+      const normCategory = category ? String(category).toUpperCase().trim() : '';
+      if (normCategory !== 'MENSA' && normCategory !== 'ALTRO') {
+        return sendError(res, 400, "Campo 'category' obbligatorio ('MENSA' oppure 'ALTRO').");
+      }
+
+      const numAmount = Number(amount);
+      if (amount === undefined || amount === null || isNaN(numAmount) || numAmount <= 0) {
+        return sendError(res, 400, "Campo 'amount' (valore in euro) obbligatorio e maggiore di 0.");
+      }
+
+      const createdBy = req.user?.id || null;
+      const created = await afterschoolRepository.createExpense({
+        expense_date,
+        category: normCategory,
+        amount: Number(numAmount.toFixed(2)),
+        description: description ? String(description).trim() : '',
+        created_by: createdBy
+      });
+
+      return sendSuccess(res, 201, created);
+    } catch (error) {
+      console.error('Errore in createExpense doposcuola:', error);
+      return sendError(res, 500, 'Errore durante la creazione della nota spesa.');
+    }
+  }
+
+  /**
+   * PUT /api/afterschool/expenses/:id
+   * Aggiorna una nota spesa esistente
+   */
+  async updateExpense(req, res) {
+    try {
+      const { id } = req.params;
+      const { expense_date, category, amount, description } = req.body;
+
+      if (expense_date !== undefined && !/^\d{4}-\d{2}-\d{2}$/.test(expense_date)) {
+        return sendError(res, 400, "Formato 'expense_date' non valido (richiesto YYYY-MM-DD).");
+      }
+
+      let normCategory = undefined;
+      if (category !== undefined) {
+        normCategory = String(category).toUpperCase().trim();
+        if (normCategory !== 'MENSA' && normCategory !== 'ALTRO') {
+          return sendError(res, 400, "Valore 'category' non valido ('MENSA' oppure 'ALTRO').");
+        }
+      }
+
+      let parsedAmount = undefined;
+      if (amount !== undefined && amount !== null) {
+        const numAmount = Number(amount);
+        if (isNaN(numAmount) || numAmount <= 0) {
+          return sendError(res, 400, "Il valore in euro ('amount') deve essere maggiore di 0.");
+        }
+        parsedAmount = Number(numAmount.toFixed(2));
+      }
+
+      const updated = await afterschoolRepository.updateExpense(id, {
+        expense_date,
+        category: normCategory,
+        amount: parsedAmount,
+        description: description !== undefined ? String(description).trim() : undefined
+      });
+
+      if (!updated) {
+        return sendError(res, 404, 'Nota spesa non trovata.');
+      }
+
+      return sendSuccess(res, 200, updated);
+    } catch (error) {
+      console.error('Errore in updateExpense doposcuola:', error);
+      return sendError(res, 500, "Errore durante l'aggiornamento della nota spesa.");
+    }
+  }
+
+  /**
+   * DELETE /api/afterschool/expenses/:id
+   * Elimina una nota spesa
+   */
+  async deleteExpense(req, res) {
+    try {
+      const { id } = req.params;
+      const deleted = await afterschoolRepository.deleteExpense(id);
+      if (!deleted) {
+        return sendError(res, 404, 'Nota spesa non trovata.');
+      }
+
+      return sendSuccess(res, 200, { message: 'Nota spesa eliminata con successo.' });
+    } catch (error) {
+      console.error('Errore in deleteExpense doposcuola:', error);
+      return sendError(res, 500, "Errore durante l'eliminazione della nota spesa.");
+    }
+  }
 }
 
 module.exports = new AfterschoolController();

@@ -16,19 +16,7 @@ describe('ReportsComponent', () => {
     month: 10,
     from: '2026-10-01',
     to: '2026-10-31',
-    students_meals: [
-      {
-        student_id: 1,
-        first_name: 'Giulia',
-        last_name: 'Verdi',
-        student_name: 'Giulia Verdi',
-        school: 'Scuola Rodari',
-        days_present: 12,
-        meals_consumed: 10,
-        expected_meals: 10,
-        weekly_meals: 3
-      }
-    ],
+    students_meals: [],
     afterschool_teachers: {
       summary: {
         total_teachers: 1,
@@ -135,15 +123,6 @@ describe('ReportsComponent', () => {
     expect(component.reportData()).toEqual(mockProjectReport);
   });
 
-  it('should filter student meals by search query', () => {
-    component.ngOnInit();
-    component.searchStudentQuery = 'giulia';
-    expect(component.filteredStudentMeals().length).toBe(1);
-
-    component.searchStudentQuery = 'sconosciuto';
-    expect(component.filteredStudentMeals().length).toBe(0);
-  });
-
   it('should toggle teacher shifts expansion', () => {
     component.ngOnInit();
     expect(component.isShiftsExpanded('t-1')).toBe(false);
@@ -153,10 +132,5 @@ describe('ReportsComponent', () => {
 
     component.toggleTeacherShifts('t-1');
     expect(component.isShiftsExpanded('t-1')).toBe(false);
-  });
-
-  it('should calculate total meals count', () => {
-    component.ngOnInit();
-    expect(component.totalMealsCount()).toBe(10);
   });
 });

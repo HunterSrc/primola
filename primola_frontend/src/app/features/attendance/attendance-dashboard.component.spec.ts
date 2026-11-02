@@ -132,6 +132,7 @@ describe('AttendanceDashboardComponent', () => {
     component.addStudentToAttendance(newStudent);
     expect(component.records().length).toBe(1);
     expect(component.records()[0].student_id).toBe(99);
+    expect(component.records()[0].is_present).toBe(false);
     expect(component.records()[0].has_meal).toBe(true);
     expect(component.showStudentModal()).toBe(false);
   });

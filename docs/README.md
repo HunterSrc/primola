@@ -14,7 +14,6 @@ Benvenuto nella directory di documentazione di **Primola**.
    - Script SQL attivi posizionati in: `Primola_Backend/db/` (`db_schema.sql`, `db_seed.sql`).
 4. [**Specifiche Modulari**]:
    - [Backend Technical Summary](../Primola_Backend/TECHNICAL_SUMMARY.md) (API Express, RBAC, Swagger, Layering).
-   - [App Flutter Technical Summary](../primola_app/technical_summary.md) (Client Tablet/Mobile, Riverpod, Dio, GoRouter).
    - [Frontend Angular](../primola_frontend/README.md) (Web App Angular 19+, Tailwind CSS, Vitest).
 5. [**Archivio Prompt Iniziali (`docs/legacy_prompts/`)**](./legacy_prompts/)
    - Conserva per storico i prompt originali di bootstrap utilizzati per generare le prime versioni dei microservizi.

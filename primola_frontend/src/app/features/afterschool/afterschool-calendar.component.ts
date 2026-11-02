@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../core/services/api.service';
 import { AuthService } from '../../core/services/auth.service';
-import { AfterschoolWeekSchedule, AfterschoolWeekDay, TeacherShift, User, ClosureDay } from '../../core/models';
+import { AfterschoolWeekSchedule, AfterschoolWeekDay, TeacherShift, User, ClosureDay, Student, AfterschoolStudentScheduleItem } from '../../core/models';
 import { getItalianHoliday, ItalianHoliday } from '../../core/utils/holidays.util';
 
 @Component({
@@ -371,6 +371,16 @@ import { getItalianHoliday, ItalianHoliday } from '../../core/utils/holidays.uti
                     </svg>
                     Elenco Bambini Doposcuola
                   </h4>
+                  @if (canManageStudents()) {
+                    <button
+                      type="button"
+                      (click)="openAddStudentModal(day)"
+                      class="px-2 py-0.5 text-[11px] font-bold text-teal-700 bg-teal-50 hover:bg-teal-100 border border-teal-200/80 rounded-lg transition-colors flex items-center gap-1 shadow-2xs"
+                      title="Aggiungi studente per questo giorno con presenza e diritto mensa"
+                    >
+                      <span class="font-extrabold">+</span> Alunno
+                    </button>
+                  }
                 </div>
 
                 @if (day.students.length === 0) {
@@ -381,39 +391,59 @@ import { getItalianHoliday, ItalianHoliday } from '../../core/utils/holidays.uti
                   <div class="space-y-1.5 max-h-80 overflow-y-auto pr-1">
                     @for (st of day.students; track st.student_id) {
                       <div 
-                        class="p-2 rounded-xl border text-xs flex items-center justify-between transition-colors"
+                        class="p-2 rounded-xl border text-xs flex items-center justify-between transition-colors gap-2"
                         [ngClass]="{
-                          'bg-emerald-50/30 border-emerald-200/80': st.is_present,
+                          'bg-emerald-50/40 border-emerald-300': st.is_present,
                           'bg-slate-50/50 border-slate-100 hover:bg-slate-100/60': !st.is_present
                         }"
                       >
-                        <div class="min-w-0 pr-1">
-                          <div class="font-bold text-slate-800 truncate flex items-center gap-1">
-                            @if (st.is_present) {
-                              <span class="w-2 h-2 rounded-full bg-emerald-500 inline-block shrink-0" title="Segnato presente"></span>
-                            }
-                            <span class="truncate">{{ st.last_name }} {{ st.first_name }}</span>
+                        <!-- Clickable student name/presence for Teacher and Office/Admin -->
+                        <div 
+                          class="min-w-0 pr-1 flex-1 select-none"
+                          [class.cursor-pointer]="canTogglePresence()"
+                          (click)="canTogglePresence() ? toggleStudentPresence(day, st) : null"
+                          [title]="canTogglePresence() ? (st.is_present ? 'Clicca per segnare Assente' : 'Clicca per segnare Presente') : ''"
+                        >
+                          <div class="font-bold text-slate-800 truncate flex items-center gap-1.5 hover:text-teal-700 transition-colors">
+                            <span 
+                              class="w-2.5 h-2.5 rounded-full inline-block shrink-0 transition-colors"
+                              [ngClass]="st.is_present ? 'bg-emerald-500 shadow-xs' : 'bg-slate-300'"
+                              [title]="st.is_present ? 'Presente' : 'Non presente'"
+                            ></span>
+                            <span class="truncate" [class.text-emerald-950]="st.is_present">{{ st.last_name }} {{ st.first_name }}</span>
                           </div>
                           @if (st.school) {
-                            <div class="text-[10px] text-slate-400 truncate">
+                            <div class="text-[10px] text-slate-400 truncate pl-4">
                               {{ st.school }}
                             </div>
                           }
                         </div>
 
-                        <!-- Badge Mensa -->
+                        <!-- Badge Mensa: Cliccabile per Office/Admin, sola lettura per Teacher -->
                         <div class="shrink-0 flex items-center gap-1">
-                          @if (st.has_meal) {
-                            <span 
-                              class="inline-flex items-center gap-0.5 text-[10px] font-extrabold px-1.5 py-0.5 rounded-md bg-amber-100 text-amber-800 border border-amber-300"
-                              title="Diritto a pasto / Mensa registrata"
+                          @if (canManageMeals()) {
+                            <button
+                              type="button"
+                              (click)="toggleStudentMeal(day, st)"
+                              [title]="st.has_meal ? 'Mensa attiva - Clicca per rimuovere' : 'Nessuna mensa - Clicca per attivare'"
+                              class="inline-flex items-center gap-0.5 text-[10px] font-extrabold px-1.5 py-0.5 rounded-md border transition-all cursor-pointer"
+                              [ngClass]="st.has_meal ? 'bg-amber-100 text-amber-800 border-amber-300 hover:bg-amber-200 shadow-2xs' : 'bg-slate-100 text-slate-400 border-slate-200 hover:bg-slate-200'"
                             >
-                              🍽️ Mensa
-                            </span>
+                              🍽️ {{ st.has_meal ? 'Mensa' : 'No Mensa' }}
+                            </button>
                           } @else {
-                            <span class="text-[10px] text-slate-300" title="Nessuna mensa">
-                              —
-                            </span>
+                            @if (st.has_meal) {
+                              <span 
+                                class="inline-flex items-center gap-0.5 text-[10px] font-extrabold px-1.5 py-0.5 rounded-md bg-amber-100 text-amber-800 border border-amber-300"
+                                title="Diritto a pasto / Mensa registrata"
+                              >
+                                🍽️ Mensa
+                              </span>
+                            } @else {
+                              <span class="text-[10px] text-slate-300" title="Nessuna mensa">
+                                —
+                              </span>
+                            }
                           }
                         </div>
                       </div>
@@ -646,6 +676,147 @@ import { getItalianHoliday, ItalianHoliday } from '../../core/utils/holidays.uti
         </div>
       }
 
+      <!-- Modal Aggiungi Alunno a Giorno Calendario (Solo Office/Admin) -->
+      @if (showAddStudentModal() && canManageStudents()) {
+        <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4">
+          <div class="bg-white rounded-2xl sm:rounded-3xl max-w-lg w-full p-5 sm:p-7 shadow-2xl border border-slate-100 space-y-4 animate-fade-in">
+            <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div class="flex items-center space-x-2">
+                <span class="p-2 rounded-xl bg-teal-50 text-teal-600 font-bold">🎒</span>
+                <div>
+                  <h3 class="text-lg font-extrabold text-slate-900">Aggiungi Alunno al Giorno</h3>
+                  <p class="text-xs text-slate-500">
+                    {{ selectedDayForAddStudent()?.day_name }} {{ selectedDayForAddStudent()?.date }}
+                  </p>
+                </div>
+              </div>
+              <button (click)="closeAddStudentModal()" class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold">&times;</button>
+            </div>
+
+            @if (addStudentError()) {
+              <div class="p-3 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl text-xs font-semibold">
+                {{ addStudentError() }}
+              </div>
+            }
+
+            <!-- Ricerca Alunno -->
+            <div class="space-y-1.5">
+              <label class="block text-xs font-bold text-slate-700">Cerca Alunno</label>
+              <div class="relative">
+                <input
+                  type="text"
+                  [ngModel]="studentSearchQuery()"
+                  (ngModelChange)="studentSearchQuery.set($event)"
+                  placeholder="Nome, cognome, scuola..."
+                  class="w-full px-3 py-2 pl-9 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-teal-500"
+                />
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-slate-400 absolute left-3 top-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+              </div>
+            </div>
+
+            <!-- Lista Alunni Selezionabili -->
+            <div class="space-y-1">
+              <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                Seleziona Alunno
+              </label>
+
+              @if (studentsLoading()) {
+                <div class="p-4 text-center text-xs text-slate-400">Caricamento alunni...</div>
+              } @else {
+                <div class="max-h-48 overflow-y-auto space-y-1 border border-slate-100 rounded-xl p-1 bg-slate-50/50">
+                  @for (st of availableStudentsForModal(); track st.id) {
+                    <button
+                      type="button"
+                      (click)="selectStudentToAdd(st)"
+                      class="w-full text-left p-2 rounded-lg text-xs flex items-center justify-between transition-colors"
+                      [ngClass]="{
+                        'bg-teal-50 text-teal-900 border border-teal-300 font-bold': selectedStudentToAdd()?.id === st.id,
+                        'hover:bg-slate-100 text-slate-700 border border-transparent': selectedStudentToAdd()?.id !== st.id
+                      }"
+                    >
+                      <div class="truncate">
+                        <span>{{ st.last_name }} {{ st.first_name }}</span>
+                        @if (st.school) {
+                          <span class="text-[10px] text-slate-400 ml-1.5 font-normal">({{ st.school }})</span>
+                        }
+                      </div>
+                      <div class="shrink-0 text-[10px]">
+                        @if ((st.weekly_meals ?? 0) > 0) {
+                          <span class="px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 font-semibold">Pasti previsti</span>
+                        }
+                      </div>
+                    </button>
+                  } @empty {
+                    <div class="p-3 text-center text-xs text-slate-400">
+                      Nessun alunno trovato o già tutti presenti in questo giorno.
+                    </div>
+                  }
+                </div>
+              }
+            </div>
+
+            <!-- Opzioni di Presenza e Mensa per lo Studente Selezionato -->
+            @if (selectedStudentToAdd()) {
+              <div class="p-3.5 bg-teal-50/60 rounded-2xl border border-teal-100 space-y-3">
+                <div class="text-xs font-bold text-teal-900 flex items-center justify-between">
+                  <span>Alunno selezionato:</span>
+                  <span class="font-extrabold">{{ selectedStudentToAdd()?.last_name }} {{ selectedStudentToAdd()?.first_name }}</span>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+                  <!-- Checkbox Presenza -->
+                  <label class="flex items-center gap-2 p-2 bg-white rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50 transition-colors">
+                    <input
+                      type="checkbox"
+                      [(ngModel)]="addStudentForm.is_present"
+                      class="w-4 h-4 text-emerald-600 rounded border-slate-300 focus:ring-emerald-500"
+                    />
+                    <div class="text-xs">
+                      <span class="font-bold text-slate-800">Segna Presente</span>
+                      <p class="text-[10px] text-slate-400">Registra presenza oggi</p>
+                    </div>
+                  </label>
+
+                  <!-- Checkbox Mensa -->
+                  <label class="flex items-center gap-2 p-2 bg-white rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50 transition-colors">
+                    <input
+                      type="checkbox"
+                      [(ngModel)]="addStudentForm.has_meal"
+                      class="w-4 h-4 text-amber-600 rounded border-slate-300 focus:ring-amber-500"
+                    />
+                    <div class="text-xs">
+                      <span class="font-bold text-slate-800">Diritto a Pasto / Mensa</span>
+                      <p class="text-[10px] text-slate-400">Consuma pasto oggi</p>
+                    </div>
+                  </label>
+                </div>
+              </div>
+            }
+
+            <!-- Modal Actions -->
+            <div class="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+              <button
+                type="button"
+                (click)="closeAddStudentModal()"
+                class="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors"
+              >
+                Annulla
+              </button>
+              <button
+                type="button"
+                (click)="confirmAddStudent()"
+                [disabled]="!selectedStudentToAdd() || addStudentSaving()"
+                class="px-5 py-2 text-xs font-bold text-white bg-teal-600 hover:bg-teal-700 rounded-xl shadow-xs transition-all disabled:opacity-40"
+              >
+                {{ addStudentSaving() ? 'Salvataggio...' : 'Aggiungi e Salva' }}
+              </button>
+            </div>
+          </div>
+        </div>
+      }
+
     </div>
   `
 })
@@ -662,9 +833,41 @@ export class AfterschoolCalendarComponent implements OnInit {
   // Permessi RBAC
   readonly canEdit = computed(() => this.authService.canManageAttendanceStudents());
   readonly isAdmin = computed(() => this.authService.isAdmin());
+  readonly canManageStudents = computed(() => this.authService.canManageAttendanceStudents());
+  readonly canManageMeals = computed(() => this.authService.canManageAttendanceMeals());
+  readonly canTogglePresence = computed(() => this.authService.isTeacher() || this.authService.isOffice() || this.authService.isAdmin());
   readonly currentUserId = computed(() => {
     const u = this.authService.currentUser();
     return u?.id ? String(u.id) : null;
+  });
+
+  // Modal Aggiungi Alunno a Giorno Calendario (Solo Office/Admin)
+  readonly showAddStudentModal = signal<boolean>(false);
+  readonly selectedDayForAddStudent = signal<AfterschoolWeekDay | null>(null);
+  readonly allStudentsList = signal<Student[]>([]);
+  readonly studentsLoading = signal<boolean>(false);
+  readonly studentSearchQuery = signal<string>('');
+  readonly selectedStudentToAdd = signal<Student | null>(null);
+  readonly addStudentSaving = signal<boolean>(false);
+  readonly addStudentError = signal<string | null>(null);
+
+  addStudentForm = {
+    is_present: true,
+    has_meal: true
+  };
+
+  readonly availableStudentsForModal = computed(() => {
+    const day = this.selectedDayForAddStudent();
+    const all = this.allStudentsList();
+    const query = this.studentSearchQuery().trim().toLowerCase();
+    const existingIds = new Set((day?.students || []).map(s => String(s.student_id)));
+
+    return all.filter(s => {
+      if (existingIds.has(String(s.id))) return false;
+      if (!query) return true;
+      const full = `${s.first_name || ''} ${s.last_name || ''} ${s.school || ''} ${s.fiscal_code || ''}`.toLowerCase();
+      return full.includes(query);
+    });
   });
 
   isMyShift(shift: TeacherShift): boolean {
@@ -948,6 +1151,157 @@ export class AfterschoolCalendarComponent implements OnInit {
       },
       error: (err) => {
         this.errorMessage.set(err?.error?.error || 'Errore nella cancellazione della chiusura.');
+      }
+    });
+  }
+
+  // --- Gestione Alunni & Presenze / Mensa dal Calendario ---
+
+  openAddStudentModal(day: AfterschoolWeekDay): void {
+    if (!this.canManageStudents()) return;
+    this.selectedDayForAddStudent.set(day);
+    this.selectedStudentToAdd.set(null);
+    this.studentSearchQuery.set('');
+    this.addStudentError.set(null);
+    this.addStudentForm = {
+      is_present: true,
+      has_meal: true
+    };
+    this.showAddStudentModal.set(true);
+
+    if (this.allStudentsList().length === 0) {
+      this.studentsLoading.set(true);
+      this.api.getStudents().subscribe({
+        next: (students) => {
+          this.allStudentsList.set(students);
+          this.studentsLoading.set(false);
+        },
+        error: (err) => {
+          console.error('Errore caricamento studenti per calendario:', err);
+          this.studentsLoading.set(false);
+        }
+      });
+    }
+  }
+
+  selectStudentToAdd(student: Student): void {
+    this.selectedStudentToAdd.set(student);
+    this.addStudentForm.is_present = true;
+    this.addStudentForm.has_meal = (student.weekly_meals ?? 0) > 0;
+  }
+
+  closeAddStudentModal(): void {
+    this.showAddStudentModal.set(false);
+    this.selectedDayForAddStudent.set(null);
+    this.selectedStudentToAdd.set(null);
+    this.addStudentError.set(null);
+  }
+
+  confirmAddStudent(): void {
+    const day = this.selectedDayForAddStudent();
+    const student = this.selectedStudentToAdd();
+    if (!day || !student) {
+      this.addStudentError.set('Seleziona uno studente');
+      return;
+    }
+
+    this.addStudentSaving.set(true);
+    this.addStudentError.set(null);
+
+    const record = {
+      student_id: student.id,
+      first_name: student.first_name,
+      last_name: student.last_name,
+      school: student.school || '',
+      is_present: this.addStudentForm.is_present,
+      has_meal: this.addStudentForm.has_meal
+    };
+
+    this.api.saveAttendancesBulk(day.date, [record]).subscribe({
+      next: () => {
+        this.addStudentSaving.set(false);
+
+        // Aggiorna localmente il calendario
+        const currentSched = this.schedule();
+        if (currentSched) {
+          const targetDay = currentSched.days.find(d => d.date === day.date);
+          if (targetDay) {
+            const newItem: AfterschoolStudentScheduleItem = {
+              student_id: student.id,
+              first_name: student.first_name,
+              last_name: student.last_name,
+              school: student.school || '',
+              is_present: this.addStudentForm.is_present,
+              has_meal: this.addStudentForm.has_meal,
+              canteen_used: this.addStudentForm.has_meal,
+              already_registered: true
+            };
+            targetDay.students = [...targetDay.students, newItem].sort((a, b) =>
+              a.last_name.localeCompare(b.last_name)
+            );
+            targetDay.expected_students_count = targetDay.students.length;
+            targetDay.meals_count = targetDay.students.filter(s => s.has_meal).length;
+            this.schedule.set({ ...currentSched });
+          }
+        }
+
+        this.closeAddStudentModal();
+      },
+      error: (err) => {
+        this.addStudentSaving.set(false);
+        this.addStudentError.set(err?.error?.error || err.message || 'Errore nel salvataggio');
+      }
+    });
+  }
+
+  toggleStudentPresence(day: AfterschoolWeekDay, st: AfterschoolStudentScheduleItem): void {
+    if (!this.canTogglePresence()) return;
+    const previousState = !!st.is_present;
+    const newState = !previousState;
+    st.is_present = newState;
+
+    this.api.saveAttendancesBulk(day.date, [{
+      student_id: st.student_id,
+      first_name: st.first_name,
+      last_name: st.last_name,
+      is_present: newState,
+      has_meal: !!st.has_meal
+    }]).subscribe({
+      next: () => {
+        // Aggiornamento ottimistico confermato
+      },
+      error: (err) => {
+        console.error('Errore toggle presenza dal calendario:', err);
+        st.is_present = previousState;
+        alert('Impossibile aggiornare la presenza: ' + (err?.error?.error || err.message || 'Errore di rete'));
+      }
+    });
+  }
+
+  toggleStudentMeal(day: AfterschoolWeekDay, st: AfterschoolStudentScheduleItem): void {
+    if (!this.canManageMeals()) return;
+    const previousState = !!st.has_meal;
+    const newState = !previousState;
+    st.has_meal = newState;
+    st.canteen_used = newState;
+    day.meals_count = day.students.filter(s => s.has_meal).length;
+
+    this.api.saveAttendancesBulk(day.date, [{
+      student_id: st.student_id,
+      first_name: st.first_name,
+      last_name: st.last_name,
+      is_present: !!st.is_present,
+      has_meal: newState
+    }]).subscribe({
+      next: () => {
+        // Aggiornamento ottimistico confermato
+      },
+      error: (err) => {
+        console.error('Errore toggle mensa dal calendario:', err);
+        st.has_meal = previousState;
+        st.canteen_used = previousState;
+        day.meals_count = day.students.filter(s => s.has_meal).length;
+        alert('Impossibile aggiornare la mensa: ' + (err?.error?.error || err.message || 'Errore di rete'));
       }
     });
   }

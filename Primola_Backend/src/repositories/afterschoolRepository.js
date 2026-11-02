@@ -234,6 +234,141 @@ class AfterschoolRepository {
     const result = await db.query(query, [id]);
     return result.rowCount > 0;
   }
+
+  /**
+   * Recupera le note spese del doposcuola con filtro opzionale su range date e categoria
+   */
+  async findExpenses({ fromDate, toDate, category } = {}) {
+    const params = [];
+    const conditions = [];
+
+    if (fromDate) {
+      params.push(fromDate);
+      conditions.push(`e.expense_date >= $${params.length}`);
+    }
+    if (toDate) {
+      params.push(toDate);
+      conditions.push(`e.expense_date <= $${params.length}`);
+    }
+    if (category && (category === 'MENSA' || category === 'ALTRO')) {
+      params.push(category);
+      conditions.push(`e.category = $${params.length}`);
+    }
+
+    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+    const query = `
+      SELECT e.id, e.expense_date, e.category, e.amount, e.description,
+             e.created_by, e.created_at, e.updated_at,
+             COALESCE(u.first_name, u.nome) AS creator_first_name,
+             COALESCE(u.last_name, u.cognome) AS creator_last_name
+      FROM afterschool_expenses e
+      LEFT JOIN users u ON e.created_by = u.id
+      ${whereClause}
+      ORDER BY e.expense_date DESC, e.created_at DESC
+    `;
+    const result = await db.query(query, params);
+    return result.rows.map(row => ({
+      id: row.id,
+      expense_date: typeof row.expense_date === 'string'
+        ? row.expense_date.slice(0, 10)
+        : new Date(row.expense_date).toISOString().slice(0, 10),
+      category: row.category,
+      amount: Number(row.amount || 0),
+      description: row.description || '',
+      created_by: row.created_by || null,
+      created_by_name: row.creator_first_name
+        ? `${row.creator_first_name} ${row.creator_last_name || ''}`.trim()
+        : null,
+      created_at: row.created_at,
+      updated_at: row.updated_at
+    }));
+  }
+
+  /**
+   * Recupera una singola nota spesa per id
+   */
+  async findExpenseById(id) {
+    const query = `
+      SELECT e.id, e.expense_date, e.category, e.amount, e.description,
+             e.created_by, e.created_at, e.updated_at,
+             COALESCE(u.first_name, u.nome) AS creator_first_name,
+             COALESCE(u.last_name, u.cognome) AS creator_last_name
+      FROM afterschool_expenses e
+      LEFT JOIN users u ON e.created_by = u.id
+      WHERE e.id = $1
+    `;
+    const result = await db.query(query, [id]);
+    if (result.rows.length === 0) return null;
+    const row = result.rows[0];
+    return {
+      id: row.id,
+      expense_date: typeof row.expense_date === 'string'
+        ? row.expense_date.slice(0, 10)
+        : new Date(row.expense_date).toISOString().slice(0, 10),
+      category: row.category,
+      amount: Number(row.amount || 0),
+      description: row.description || '',
+      created_by: row.created_by || null,
+      created_by_name: row.creator_first_name
+        ? `${row.creator_first_name} ${row.creator_last_name || ''}`.trim()
+        : null,
+      created_at: row.created_at,
+      updated_at: row.updated_at
+    };
+  }
+
+  /**
+   * Crea una nuova nota spesa per il doposcuola
+   */
+  async createExpense({ expense_date, category, amount, description = '', created_by = null }) {
+    const query = `
+      INSERT INTO afterschool_expenses (expense_date, category, amount, description, created_by)
+      VALUES ($1, $2, $3, $4, $5)
+      RETURNING id
+    `;
+    const result = await db.query(query, [
+      expense_date,
+      category,
+      Number(amount),
+      description || '',
+      created_by || null
+    ]);
+    return this.findExpenseById(result.rows[0].id);
+  }
+
+  /**
+   * Aggiorna una nota spesa esistente
+   */
+  async updateExpense(id, { expense_date, category, amount, description }) {
+    const query = `
+      UPDATE afterschool_expenses
+      SET expense_date = COALESCE($2, expense_date),
+          category = COALESCE($3, category),
+          amount = COALESCE($4, amount),
+          description = COALESCE($5, description),
+          updated_at = NOW()
+      WHERE id = $1
+      RETURNING id
+    `;
+    const result = await db.query(query, [
+      id,
+      expense_date || null,
+      category || null,
+      amount !== undefined && amount !== null ? Number(amount) : null,
+      description !== undefined ? description : null
+    ]);
+    if (result.rows.length === 0) return null;
+    return this.findExpenseById(id);
+  }
+
+  /**
+   * Elimina una nota spesa per id
+   */
+  async deleteExpense(id) {
+    const query = `DELETE FROM afterschool_expenses WHERE id = $1 RETURNING id`;
+    const result = await db.query(query, [id]);
+    return result.rowCount > 0;
+  }
 }
 
 module.exports = new AfterschoolRepository();

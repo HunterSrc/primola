@@ -345,7 +345,7 @@ export interface AfterschoolWeekSchedule {
 export interface SystemSettings {
   doposcuola_daily_fee: number;
   meal_fee_student: number;
-  meal_cost_provider: number;
+  meal_cost_provider?: number;
 }
 
 export interface FinancialAfterschoolTeacher {
@@ -390,6 +390,9 @@ export interface FinancialMonthlyReport {
       actual_teacher_cost: number;
       expected_catering_cost: number;
       actual_catering_cost: number;
+      estimated_catering_from_meals?: number;
+      expected_other_expenses?: number;
+      actual_other_expenses?: number;
     };
     margin: {
       expected: number;
@@ -422,6 +425,28 @@ export interface FinancialMonthlyReport {
     total_actual_margin: number;
     total_meals_issued: number;
   };
+}
+
+export type AfterschoolExpenseCategory = 'MENSA' | 'ALTRO';
+
+export interface AfterschoolExpense {
+  id: string;
+  expense_date: string;
+  category: AfterschoolExpenseCategory;
+  amount: number;
+  description?: string;
+  created_by?: string | null;
+  created_by_name?: string | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface AfterschoolExpensesSummary {
+  total_mensa: number;
+  total_altro: number;
+  total_expenses: number;
+  total_afterschool_cost?: number;
+  count: number;
 }
 
 export interface OperationalStudentMeal {
@@ -499,6 +524,10 @@ export interface OperationalMonthlyReport {
     };
     teachers: OperationalAfterschoolTeacher[];
   };
+  afterschool_expenses?: {
+    summary: AfterschoolExpensesSummary;
+    expenses: AfterschoolExpense[];
+  };
   finished_courses_teachers: {
     summary: {
       total_courses: number;
@@ -508,5 +537,57 @@ export interface OperationalMonthlyReport {
     courses: OperationalFinishedCourse[];
   };
 }
+
+export interface AfterschoolPackage {
+  id: string;
+  name: string;
+  code?: string | null;
+  monthly_days: number;
+  days_per_week?: number | null;
+  is_active: boolean;
+  sort_order: number;
+  created_at?: string;
+  updated_at?: string;
+  current_tariff_id?: string | null;
+  current_price?: number | string | null;
+  current_valid_from?: string | null;
+  current_valid_to?: string | null;
+  current_notes?: string | null;
+}
+
+export interface AfterschoolTariff {
+  id: string;
+  package_id: string;
+  price: number | string;
+  valid_from: string;
+  valid_to: string;
+  notes?: string | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface CreateAfterschoolPackagePayload {
+  name: string;
+  code?: string | null;
+  monthly_days: number;
+  days_per_week?: number | null;
+  price: number;
+  valid_from: string;
+  valid_to?: string;
+  notes?: string | null;
+  sort_order?: number;
+}
+
+export interface TransitionTariffPayload {
+  oldTariffId?: string | null;
+  oldTariffValidTo?: string;
+  newPrice: number;
+  newTariffValidFrom: string;
+  newTariffValidTo?: string;
+  notes?: string | null;
+}
+
+export * from './payment.model';
+
 
 

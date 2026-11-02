@@ -7,6 +7,8 @@ const attendancesRoutes = require('./attendances');
 const usersRoutes = require('./users');
 const projectsRoutes = require('./projects');
 const afterschoolRoutes = require('./afterschool');
+const afterschoolPackagesRoutes = require('./afterschoolPackages');
+const paymentsRoutes = require('./payments');
 const settingsRoutes = require('./settings');
 
 // Endpoint di test
@@ -20,6 +22,8 @@ router.use('/attendances', attendancesRoutes);
 router.use('/users', usersRoutes);
 router.use('/projects', projectsRoutes);
 router.use('/afterschool', afterschoolRoutes);
+router.use('/afterschool-packages', afterschoolPackagesRoutes);
+router.use('/payments', paymentsRoutes);
 router.use('/settings', settingsRoutes);
 
 module.exports = router;

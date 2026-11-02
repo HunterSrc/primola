@@ -21,8 +21,7 @@ class SettingsRepository {
     const rows = await this.getAll();
     const map = {
       doposcuola_daily_fee: 12.00,
-      meal_fee_student: 5.50,
-      meal_cost_provider: 4.80
+      meal_fee_student: 5.50
     };
     for (const row of rows) {
       const numVal = Number(row.value);
