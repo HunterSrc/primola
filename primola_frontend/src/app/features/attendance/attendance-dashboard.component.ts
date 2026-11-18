@@ -333,10 +333,10 @@ import { AppDatePipe } from '../../shared/pipes/app-date.pipe';
       <!-- Modale Aggiungi Studente (Visibile solo per utenti Office/Admin) -->
       @if (showStudentModal() && canManageStudents()) {
         <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4">
-          <div class="bg-white rounded-2xl sm:rounded-3xl max-w-md w-full p-5 sm:p-8 shadow-2xl border border-slate-100 space-y-4 sm:space-y-5 animate-fade-in">
+          <div class="bg-white rounded-2xl sm:rounded-3xl max-w-md w-full max-h-[90dvh] overflow-y-auto p-5 sm:p-8 shadow-2xl border border-slate-100 space-y-4 sm:space-y-5 animate-fade-in">
             <div class="flex items-center justify-between pb-3 sm:pb-4 border-b border-slate-100">
               <h3 class="text-lg sm:text-xl font-extrabold text-slate-900">Aggiungi Studente alla Giornata</h3>
-              <button (click)="showStudentModal.set(false)" class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold">&times;</button>
+              <button (click)="showStudentModal.set(false)" class="min-w-[44px] min-h-[44px] rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold flex items-center justify-center">&times;</button>
             </div>
 
             <p class="text-xs text-slate-500">
@@ -361,7 +361,7 @@ import { AppDatePipe } from '../../shared/pipes/app-date.pipe';
                   </div>
                   <button
                     (click)="addStudentToAttendance(student)"
-                    class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-sm transition-all"
+                    class="min-h-[44px] px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-sm transition-all"
                   >
                     + Aggiungi
                   </button>
@@ -374,7 +374,7 @@ import { AppDatePipe } from '../../shared/pipes/app-date.pipe';
             <div class="pt-2 flex justify-end">
               <button
                 (click)="showStudentModal.set(false)"
-                class="w-full sm:w-auto px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-bold rounded-xl transition-colors"
+                class="min-h-[44px] w-full sm:w-auto px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-bold rounded-xl transition-colors"
               >
                 Chiudi
               </button>

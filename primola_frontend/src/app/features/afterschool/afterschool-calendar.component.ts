@@ -96,6 +96,35 @@ import { getItalianHoliday, ItalianHoliday } from '../../core/utils/holidays.uti
         </div>
       </div>
 
+      <!-- Dedicated Copy Action Bar (Solo Office / Admin) -->
+      @if (canEdit()) {
+        <div class="bg-white rounded-2xl p-3 sm:p-4 shadow-sm border border-slate-200/80 flex flex-wrap items-center justify-between gap-2.5">
+          <div class="text-xs font-bold text-slate-600 uppercase tracking-wider px-1">
+            Azioni Rapide Settimana
+          </div>
+          <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+            <button
+              type="button"
+              (click)="copyPreviousWeekStudents()"
+              [disabled]="copyingStudents() || loading()"
+              class="flex-1 sm:flex-initial min-h-[44px] px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white text-xs sm:text-sm font-bold rounded-xl shadow-xs transition-all flex items-center justify-center gap-1.5 disabled:opacity-50 cursor-pointer"
+            >
+              <span>📋</span>
+              <span>{{ copyingStudents() ? 'Copia in corso...' : 'Copia Alunni Sett. Prec.' }}</span>
+            </button>
+            <button
+              type="button"
+              (click)="copyPreviousWeekTeachers()"
+              [disabled]="copyingTeachers() || loading()"
+              class="flex-1 sm:flex-initial min-h-[44px] px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs sm:text-sm font-bold rounded-xl shadow-xs transition-all flex items-center justify-center gap-1.5 disabled:opacity-50 cursor-pointer"
+            >
+              <span>👩‍🏫</span>
+              <span>{{ copyingTeachers() ? 'Copia in corso...' : 'Copia Docenti Sett. Prec.' }}</span>
+            </button>
+          </div>
+        </div>
+      }
+
       <!-- Date Range Label & Status Info + Legenda -->
       <div class="flex flex-wrap items-center justify-between gap-2 px-1 text-xs text-slate-600">
         <div class="flex items-center gap-2">
@@ -151,13 +180,91 @@ import { getItalianHoliday, ItalianHoliday } from '../../core/utils/holidays.uti
       @if (errorMessage()) {
         <div class="p-3.5 bg-rose-50 border border-rose-200 text-rose-700 rounded-2xl text-xs sm:text-sm font-semibold flex items-center justify-between">
           <span>{{ errorMessage() }}</span>
-          <button (click)="errorMessage.set(null)" class="text-rose-500 hover:text-rose-700 font-bold">&times;</button>
+          <button (click)="errorMessage.set(null)" class="text-rose-500 hover:text-rose-700 font-bold min-w-[32px] min-h-[32px]">&times;</button>
         </div>
       }
 
-      <!-- 5-Day Weekly Grid (Lunedì - Venerdì) -->
-      <div class="grid grid-cols-1 md:grid-cols-5 gap-3.5 sm:gap-4 items-start">
+      <!-- Copy Success Toast -->
+      @if (copySuccessMessage()) {
+        <div class="p-3.5 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-2xl text-xs sm:text-sm font-semibold flex items-center justify-between">
+          <span>{{ copySuccessMessage() }}</span>
+          <button (click)="copySuccessMessage.set(null)" class="text-emerald-600 hover:text-emerald-800 font-bold min-w-[32px] min-h-[32px]">&times;</button>
+        </div>
+      }
+
+      <!-- Mobile Daily Carousel (< md) -->
+      @if ((schedule()?.days || []).length > 0) {
+        <div class="block md:hidden space-y-3">
+          <div class="flex items-center gap-1.5 bg-white p-1.5 rounded-2xl border border-slate-200/80 shadow-xs">
+            <button
+              type="button"
+              (click)="previousMobileDay()"
+              aria-label="Giorno precedente"
+              class="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold shrink-0 cursor-pointer"
+            >
+              &lsaquo;
+            </button>
+
+            <div class="grid grid-cols-5 gap-1 flex-1">
+              @for (day of schedule()?.days || []; track day.date; let idx = $index) {
+                @let pillHoliday = getHolidayInfo(day.date);
+                @let pillClosure = !!day.closure;
+                @let pillToday = isDayToday(day.date);
+                @let isActive = selectedDayIndex() === idx;
+
+                <button
+                  type="button"
+                  (click)="selectMobileDay(idx)"
+                  class="min-h-[44px] py-1 px-1 rounded-xl flex flex-col items-center justify-center text-[11px] font-bold transition-all relative cursor-pointer"
+                  [ngClass]="{
+                    'bg-amber-500 text-white shadow-sm': isActive && pillToday,
+                    'bg-slate-900 text-white shadow-sm': isActive && !pillToday,
+                    'bg-amber-50 text-amber-900 border border-amber-300': !isActive && pillToday,
+                    'bg-rose-50 text-rose-700 border border-rose-200': !isActive && !pillToday && (pillHoliday || pillClosure),
+                    'bg-slate-50 text-slate-700 hover:bg-slate-100': !isActive && !pillToday && !pillHoliday && !pillClosure
+                  }"
+                >
+                  <span class="uppercase text-[10px] leading-tight">{{ getDayShortLabel(day.day_name, idx) }}</span>
+                  <span class="text-xs font-black leading-tight">{{ getDayNumber(day.date) }}</span>
+                  @if (pillToday) {
+                    <span class="w-1.5 h-1.5 rounded-full mt-0.5" [ngClass]="isActive ? 'bg-white' : 'bg-amber-500'"></span>
+                  } @else if (pillHoliday || pillClosure) {
+                    <span class="w-1.5 h-1.5 rounded-full mt-0.5" [ngClass]="isActive ? 'bg-rose-300' : 'bg-rose-500'"></span>
+                  }
+                </button>
+              }
+            </div>
+
+            <button
+              type="button"
+              (click)="nextMobileDay()"
+              aria-label="Giorno successivo"
+              class="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold shrink-0 cursor-pointer"
+            >
+              &rsaquo;
+            </button>
+          </div>
+
+          @if (activeMobileDay(); as activeDay) {
+            <div
+              (touchstart)="onTouchStart($event)"
+              (touchend)="onTouchEnd($event)"
+              class="touch-pan-y"
+            >
+              <ng-container *ngTemplateOutlet="dayCardTemplate; context: { $implicit: activeDay }" />
+            </div>
+          }
+        </div>
+      }
+
+      <!-- 5-Day Weekly Grid (Desktop: Lunedì - Venerdì) -->
+      <div class="hidden md:grid md:grid-cols-5 gap-3.5 sm:gap-4 items-start">
         @for (day of schedule()?.days || []; track day.date) {
+          <ng-container *ngTemplateOutlet="dayCardTemplate; context: { $implicit: day }" />
+        }
+      </div>
+
+      <ng-template #dayCardTemplate let-day>
           @let holiday = getHolidayInfo(day.date);
           @let isClosure = !!day.closure;
           @let isToday = isDayToday(day.date);
@@ -454,8 +561,7 @@ import { getItalianHoliday, ItalianHoliday } from '../../core/utils/holidays.uti
 
             </div>
           </div>
-        }
-      </div>
+      </ng-template>
 
       <!-- Modal Aggiungi / Modifica Turno (Solo Office/Admin) -->
       @if (showShiftModal()) {
@@ -824,6 +930,21 @@ export class AfterschoolCalendarComponent implements OnInit {
   readonly teachersList = signal<User[]>([]);
   readonly loading = signal<boolean>(false);
   readonly errorMessage = signal<string | null>(null);
+  readonly copySuccessMessage = signal<string | null>(null);
+  readonly copyingStudents = signal<boolean>(false);
+  readonly copyingTeachers = signal<boolean>(false);
+
+  // Mobile Daily Carousel
+  readonly selectedDayIndex = signal<number>(0);
+  readonly activeMobileDay = computed(() => {
+    const days = this.schedule()?.days || [];
+    if (days.length === 0) return null;
+    const idx = Math.max(0, Math.min(this.selectedDayIndex(), days.length - 1));
+    return days[idx];
+  });
+  private touchStartX = 0;
+  private touchStartY = 0;
+  private hasInitializedMobileDay = false;
 
   // Permessi RBAC
   readonly canEdit = computed(() => this.authService.canManageAttendanceStudents());
@@ -903,10 +1024,137 @@ export class AfterschoolCalendarComponent implements OnInit {
   };
 
   ngOnInit(): void {
+    this.initMobileDayToToday();
     this.loadWeekSchedule();
     if (this.canEdit()) {
       this.loadTeachers();
     }
+  }
+
+  private initMobileDayToToday(): void {
+    if (this.hasInitializedMobileDay) return;
+    const day = new Date().getDay(); // 0=Sun, 1=Mon..5=Fri, 6=Sat
+    if (day >= 1 && day <= 5) {
+      this.selectedDayIndex.set(day - 1);
+    } else {
+      this.selectedDayIndex.set(0);
+    }
+    this.hasInitializedMobileDay = true;
+  }
+
+  selectMobileDay(index: number): void {
+    const days = this.schedule()?.days || [];
+    if (days.length === 0) return;
+    this.selectedDayIndex.set(Math.max(0, Math.min(index, days.length - 1)));
+  }
+
+  previousMobileDay(): void {
+    const idx = this.selectedDayIndex();
+    if (idx > 0) {
+      this.selectedDayIndex.set(idx - 1);
+    } else {
+      this.selectedDayIndex.set(4);
+      this.previousWeek();
+    }
+  }
+
+  nextMobileDay(): void {
+    const days = this.schedule()?.days || [];
+    const maxIdx = days.length > 0 ? days.length - 1 : 4;
+    const idx = this.selectedDayIndex();
+    if (idx < maxIdx) {
+      this.selectedDayIndex.set(idx + 1);
+    } else {
+      this.selectedDayIndex.set(0);
+      this.nextWeek();
+    }
+  }
+
+  onTouchStart(event: TouchEvent): void {
+    if (!event.changedTouches || event.changedTouches.length === 0) return;
+    this.touchStartX = event.changedTouches[0].clientX;
+    this.touchStartY = event.changedTouches[0].clientY;
+  }
+
+  onTouchEnd(event: TouchEvent): void {
+    if (!event.changedTouches || event.changedTouches.length === 0) return;
+    const deltaX = event.changedTouches[0].clientX - this.touchStartX;
+    const deltaY = event.changedTouches[0].clientY - this.touchStartY;
+    if (Math.abs(deltaX) >= 50 && Math.abs(deltaX) > Math.abs(deltaY)) {
+      if (deltaX < 0) {
+        this.nextMobileDay();
+      } else {
+        this.previousMobileDay();
+      }
+    }
+  }
+
+  getDayShortLabel(dayName: string, index: number): string {
+    const fallback = ['Lun', 'Mar', 'Mer', 'Gio', 'Ven'][index] || '';
+    if (!dayName) return fallback;
+    return dayName.slice(0, 3);
+  }
+
+  getDayNumber(dateStr: string): string {
+    if (!dateStr) return '';
+    const parts = String(dateStr).slice(0, 10).split('-');
+    return parts.length === 3 ? String(Number(parts[2])) : '';
+  }
+
+  copyPreviousWeekStudents(): void {
+    if (!this.canEdit() || this.copyingStudents()) return;
+    if (!confirm('Vuoi copiare gli alunni pianificati dalla settimana precedente in questa settimana? (Esclude festività/chiusure e non sovrascrive record esistenti)')) {
+      return;
+    }
+    const weekStart = this.getMondayIso(this.currentDate());
+    this.copyingStudents.set(true);
+    this.errorMessage.set(null);
+    this.copySuccessMessage.set(null);
+
+    this.api.copyPreviousWeekStudents(weekStart).subscribe({
+      next: (res) => {
+        this.copyingStudents.set(false);
+        const copied = res?.copied_count ?? res?.copied ?? res?.inserted ?? null;
+        this.copySuccessMessage.set(
+          copied !== null
+            ? `Copia alunni completata (${copied} inserimenti effettuati).`
+            : 'Alunni copiati dalla settimana precedente con successo.'
+        );
+        this.loadWeekSchedule();
+      },
+      error: (err) => {
+        this.copyingStudents.set(false);
+        this.errorMessage.set(err?.error?.error || 'Errore durante la copia degli alunni dalla settimana precedente.');
+      }
+    });
+  }
+
+  copyPreviousWeekTeachers(): void {
+    if (!this.canEdit() || this.copyingTeachers()) return;
+    if (!confirm('Vuoi copiare i turni docenti dalla settimana precedente in questa settimana? (Esclude festività/chiusure e non duplica turni esistenti)')) {
+      return;
+    }
+    const weekStart = this.getMondayIso(this.currentDate());
+    this.copyingTeachers.set(true);
+    this.errorMessage.set(null);
+    this.copySuccessMessage.set(null);
+
+    this.api.copyPreviousWeekTeachers(weekStart).subscribe({
+      next: (res) => {
+        this.copyingTeachers.set(false);
+        const copied = res?.copied_count ?? res?.copied ?? res?.inserted ?? null;
+        this.copySuccessMessage.set(
+          copied !== null
+            ? `Copia docenti completata (${copied} turni inseriti).`
+            : 'Turni docenti copiati dalla settimana precedente con successo.'
+        );
+        this.loadWeekSchedule();
+      },
+      error: (err) => {
+        this.copyingTeachers.set(false);
+        this.errorMessage.set(err?.error?.error || 'Errore durante la copia dei turni docenti dalla settimana precedente.');
+      }
+    });
   }
 
   getMondayIso(d: Date): string {
@@ -960,6 +1208,8 @@ export class AfterschoolCalendarComponent implements OnInit {
 
   currentWeek(): void {
     this.currentDate.set(new Date());
+    const day = new Date().getDay();
+    this.selectedDayIndex.set(day >= 1 && day <= 5 ? day - 1 : 0);
     this.loadWeekSchedule();
   }
 

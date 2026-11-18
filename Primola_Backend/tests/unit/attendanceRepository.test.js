@@ -22,40 +22,15 @@ describe('attendanceRepository unit tests', () => {
   });
 
   describe('getExpectedStudents', () => {
-    it('should query expected students with LEFT JOIN for normal weekday when no closure exists', async () => {
-      const mockRows = [{ student_id: 1, first_name: 'Leo', canteen_used: false }];
-      db.query = jest.fn()
-        .mockResolvedValueOnce({ rows: [] }) // closure_days check
-        .mockResolvedValueOnce({ rows: mockRows }); // main query
+    it('should query students registered in attendances (INNER JOIN) for the given date', async () => {
+      const mockRows = [{ student_id: 1, first_name: 'Leo', canteen_used: false, already_registered: true }];
+      db.query = jest.fn().mockResolvedValueOnce({ rows: mockRows });
 
       const result = await attendanceRepository.getExpectedStudents('2026-10-22');
 
       expect(result).toEqual(mockRows);
-      expect(db.query).toHaveBeenNthCalledWith(1, expect.stringContaining('closure_days'), ['2026-10-22']);
-      expect(db.query).toHaveBeenNthCalledWith(2, expect.stringContaining('LEFT JOIN attendances a'), ['2026-10-22']);
-    });
-
-    it('should query ONLY explicitly registered students (INNER JOIN) on closure day', async () => {
-      const mockRows = [{ student_id: 2, first_name: 'Extra', already_registered: true }];
-      db.query = jest.fn()
-        .mockResolvedValueOnce({ rows: [{ '?column?': 1 }] }) // closure_days hit
-        .mockResolvedValueOnce({ rows: mockRows });
-
-      const result = await attendanceRepository.getExpectedStudents('2026-10-28');
-
-      expect(result).toEqual(mockRows);
-      expect(db.query).toHaveBeenNthCalledWith(2, expect.stringContaining('INNER JOIN attendances a'), ['2026-10-28']);
-    });
-
-    it('should query ONLY explicitly registered students (INNER JOIN) on Italian national holiday', async () => {
-      const mockRows = [];
-      db.query = jest.fn().mockResolvedValueOnce({ rows: mockRows });
-
-      const result = await attendanceRepository.getExpectedStudents('2026-12-25');
-
-      expect(result).toEqual(mockRows);
       expect(db.query).toHaveBeenCalledTimes(1);
-      expect(db.query).toHaveBeenCalledWith(expect.stringContaining('INNER JOIN attendances a'), ['2026-12-25']);
+      expect(db.query).toHaveBeenCalledWith(expect.stringContaining('INNER JOIN attendances a'), ['2026-10-22']);
     });
 
     it('should throw if query fails', async () => {

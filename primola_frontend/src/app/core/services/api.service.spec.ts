@@ -454,4 +454,26 @@ describe('ApiService', () => {
       expect(result.students_breakdown[0].weekly_meals).toBe(2);
     });
   });
+
+  describe('copyPreviousWeekStudents & copyPreviousWeekTeachers', () => {
+    it('should POST to /api/afterschool/copy-previous-students with weekStartDate', () => {
+      mockHttp.post.mockReturnValue(of({ success: true, data: { copied_count: 12 } }));
+
+      let result: any;
+      service.copyPreviousWeekStudents('2026-10-19').subscribe(res => { result = res; });
+
+      expect(mockHttp.post).toHaveBeenCalledWith('/api/afterschool/copy-previous-students', { weekStartDate: '2026-10-19' });
+      expect(result).toEqual({ copied_count: 12 });
+    });
+
+    it('should POST to /api/afterschool/copy-previous-teachers with weekStartDate', () => {
+      mockHttp.post.mockReturnValue(of({ success: true, data: { copied_count: 4 } }));
+
+      let result: any;
+      service.copyPreviousWeekTeachers('2026-10-19').subscribe(res => { result = res; });
+
+      expect(mockHttp.post).toHaveBeenCalledWith('/api/afterschool/copy-previous-teachers', { weekStartDate: '2026-10-19' });
+      expect(result).toEqual({ copied_count: 4 });
+    });
+  });
 });

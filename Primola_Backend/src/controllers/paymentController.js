@@ -32,7 +32,7 @@ class PaymentController {
    */
   async assignTariff(req, res, next) {
     try {
-      const { student_id, year, month, package_id, scheduled_weekdays, start_date, notes } = req.body;
+      const { student_id, year, month, package_id, notes } = req.body;
 
       if (!student_id || !year || !month || !package_id) {
         return sendError(res, 400, 'Parametri obbligatori mancanti (student_id, year, month, package_id)');
@@ -43,8 +43,6 @@ class PaymentController {
         year,
         month,
         package_id,
-        scheduled_weekdays,
-        start_date,
         notes
       });
 
@@ -56,7 +54,7 @@ class PaymentController {
 
   /**
    * PUT /api/payments/tariffs/:assignmentId
-   * Aggiorna i giorni settimanali, la data di decorrenza e le note di un pacchetto assegnato
+   * Aggiorna le note di un pacchetto assegnato
    */
   async updateTariff(req, res, next) {
     try {

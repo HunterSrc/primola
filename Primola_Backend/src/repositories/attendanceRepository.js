@@ -1,34 +1,11 @@
 const db = require('../config/database');
-const { isItalianHoliday } = require('../utils/holidays');
 
 /**
- * Recupera gli studenti attesi o già registrati per una data.
- * - Nei giorni festivi nazionali o di chiusura straordinaria, restituisce SOLO gli studenti
- *   già esplicitamente registrati in attendances per quella data.
- * - Nei giorni normali, restituisce gli studenti con abbonamento attivo per quel giorno della settimana
- *   oppure già presenti in attendances per quella data.
+ * Recupera gli studenti registrati in attendances per una specifica data.
  */
 const getExpectedStudents = async (dateStr) => {
   try {
-    let isClosedOrHoliday = isItalianHoliday(dateStr);
-
-    if (!isClosedOrHoliday) {
-      const closureRes = await db.query(
-        'SELECT 1 FROM closure_days WHERE date = $1',
-        [dateStr]
-      );
-      isClosedOrHoliday = !!(closureRes && closureRes.rows && closureRes.rows.length > 0);
-    }
-
-    const tutorJoin = `
-      LEFT JOIN (
-        SELECT DISTINCT ON (student_id) student_id, telefono
-        FROM tutors
-        ORDER BY student_id, is_main_contact DESC, created_at ASC
-      ) t ON t.student_id = s.id
-    `;
-
-    const selectFields = `
+    const query = `
       SELECT 
         s.id AS student_id,
         s.nome AS first_name,
@@ -41,32 +18,15 @@ const getExpectedStudents = async (dateStr) => {
         (a.id IS NOT NULL)                      AS already_registered,
         t.telefono                              AS main_tutor_phone
       FROM students s
+      INNER JOIN attendances a
+        ON s.id = a.student_id AND a.date = $1
+      LEFT JOIN (
+        SELECT DISTINCT ON (student_id) student_id, telefono
+        FROM tutors
+        ORDER BY student_id, is_main_contact DESC, created_at ASC
+      ) t ON t.student_id = s.id
+      ORDER BY s.cognome ASC, s.nome ASC;
     `;
-
-    const query = isClosedOrHoliday
-      ? `
-        ${selectFields}
-        INNER JOIN attendances a
-          ON s.id = a.student_id AND a.date = $1
-        ${tutorJoin}
-        ORDER BY s.cognome ASC, s.nome ASC;
-      `
-      : `
-        ${selectFields}
-        LEFT JOIN attendances a
-          ON s.id = a.student_id AND a.date = $1
-        ${tutorJoin}
-        WHERE s.id IN (
-          SELECT smt.student_id
-          FROM student_monthly_tariffs smt
-          WHERE smt.year = EXTRACT(YEAR FROM $1::date)
-            AND smt.month = EXTRACT(MONTH FROM $1::date)
-            AND $1::date >= smt.start_date
-            AND EXTRACT(ISODOW FROM $1::date) = ANY(smt.scheduled_weekdays)
-        )
-        OR a.id IS NOT NULL
-        ORDER BY s.cognome ASC, s.nome ASC;
-      `;
 
     const result = await db.query(query, [dateStr]);
     return result.rows;

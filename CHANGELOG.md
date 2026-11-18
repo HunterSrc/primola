@@ -1,3 +1,10 @@
+## Release v2.2.0 - 2026-11-18
+
+- **feat(payments)**: rimozione previsione settimanale dai pagamenti mantenendo pendenze mese precedente (D13)
+- **feat(afterschool)**: CTA copia alunni e docenti dalla settimana precedente nel calendario (solo Office/Admin)
+- **feat(mobile)**: vista giornaliera mobile del calendario con carosello continuo, swipe left/right e card responsive su Pagamenti, Appello e Anagrafica
+- **chore(release)**: incremento versione v2.2.0
+
 ## Release v2.1.0 - 2026-11-18
 
 - **feat(nav)**: sidebar accordion con box interna elevata, animazione fluida e chiusura automatica (D12)

@@ -22,14 +22,7 @@ exports.getDailyReport = async (req, res, next) => {
   try {
     const statsQuery = `
       SELECT 
-        (SELECT COUNT(*) FROM students s WHERE NOT EXISTS (SELECT 1 FROM closure_days WHERE date = $1) AND s.id IN (
-          SELECT smt.student_id
-          FROM student_monthly_tariffs smt
-          WHERE smt.year = EXTRACT(YEAR FROM $1::date)
-            AND smt.month = EXTRACT(MONTH FROM $1::date)
-            AND $1::date >= smt.start_date
-            AND EXTRACT(ISODOW FROM $1::date) = ANY(smt.scheduled_weekdays)
-        )) AS total_expected,
+        (SELECT COUNT(*) FROM attendances WHERE date = $1 AND NOT EXISTS (SELECT 1 FROM closure_days WHERE date = $1)) AS total_expected,
         COUNT(CASE WHEN is_present = true THEN 1 END) AS total_present,
         COUNT(CASE WHEN is_present = false THEN 1 END) AS total_absent
       FROM attendances
@@ -664,9 +657,9 @@ exports.getFinancialMonthlyReport = async (req, res, next) => {
     }
     const oneOffFee = packagePriceByCode.has('ONE_OFF') ? packagePriceByCode.get('ONE_OFF') : 15.00;
 
-    // Pacchetti assegnati agli studenti nel mese (con scheduled_weekdays e start_date)
+    // Pacchetti assegnati agli studenti nel mese
     const assignedTariffsRes = await client.query(
-      `SELECT student_id, amount_paid, covered_days, scheduled_weekdays, start_date
+      `SELECT student_id, amount_paid, covered_days
        FROM student_monthly_tariffs
        WHERE year = $1 AND month = $2`,
       [y, m]
@@ -674,7 +667,6 @@ exports.getFinancialMonthlyReport = async (req, res, next) => {
 
     const assignedRevenueByStudent = new Map();
     const assignedCoverageByStudent = new Map();
-    const tariffsByStudent = new Map();
     const studentsWithAssignedPackage = new Set();
 
     for (const row of assignedTariffsRes.rows) {
@@ -687,40 +679,13 @@ exports.getFinancialMonthlyReport = async (req, res, next) => {
         row.student_id,
         (assignedCoverageByStudent.get(row.student_id) || 0) + Number(row.covered_days || 0)
       );
-      if (!tariffsByStudent.has(row.student_id)) {
-        tariffsByStudent.set(row.student_id, []);
-      }
-      tariffsByStudent.get(row.student_id).push({
-        scheduled_weekdays: Array.isArray(row.scheduled_weekdays) ? row.scheduled_weekdays.map(Number) : [],
-        start_date: formatDateStr(row.start_date) || fromDate
-      });
     }
 
     const expectedDaysByStudent = new Map();
     let totalExpectedStudentDays = 0;
 
     for (const s of students) {
-      const studentTariffs = tariffsByStudent.get(s.id) || [];
-      if (studentTariffs.length === 0) {
-        expectedDaysByStudent.set(s.id, 0);
-        continue;
-      }
-
-      let sDays = 0;
-      for (let day = 1; day <= lastDay; day++) {
-        const dStr = `${y}-${String(m).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-        const utcDate = new Date(Date.UTC(y, m - 1, day));
-        const jsDow = utcDate.getUTCDay();
-        const dow = jsDow === 0 ? 7 : jsDow;
-        if (dow <= 5 && !closureDates.has(dStr) && !isItalianHoliday(dStr)) {
-          const isScheduledOnDay = studentTariffs.some(
-            t => dStr >= t.start_date && t.scheduled_weekdays.includes(dow)
-          );
-          if (isScheduledOnDay) {
-            sDays++;
-          }
-        }
-      }
+      const sDays = assignedCoverageByStudent.get(s.id) || 0;
       expectedDaysByStudent.set(s.id, sDays);
       totalExpectedStudentDays += sDays;
     }

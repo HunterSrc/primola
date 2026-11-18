@@ -5,14 +5,14 @@
 
 ---
 
-## Indice Riepilogativo (D1–D11)
+## Indice Riepilogativo (D1–D13)
 
 | ID | Titolo | Ambito Principale | Stato |
 |---|---|---|---|
-| **D1** | Appello Giornaliero & Pre-caricamento Attesi | Backend Attendances + Frontend `/dashboard` | Approvata (agg. D11) |
+| **D1** | Appello Giornaliero & Pre-caricamento Attesi | Backend Attendances + Frontend `/dashboard` | Approvata (agg. D13) |
 | **D2** | Fonte Unica Copertura Giorni Mensili | Pagamenti `/payments` + Report Mensile Admin | Approvata |
 | **D3** | Unificazione Listino Tariffe Doposcuola | `afterschool_packages` + `system_settings` | Approvata |
-| **D4** | Bilancio Economico Mensile — Previsto vs Incassato vs Pending | Report Finanziario `/admin/dashboard` | Approvata (agg. D11) |
+| **D4** | Bilancio Economico Mensile — Previsto vs Incassato vs Pending | Report Finanziario `/admin/dashboard` | Approvata (agg. D13) |
 | **D5** | Chiusure Straordinarie & Festività Nazionali | Calendario, Appello, Reportistica | Approvata |
 | **D6a** | Permessi `TEACHER` su Appello | RBAC Backend & Frontend `/dashboard` | Approvata |
 | **D6b** | Permessi `OFFICE` su Chiusure Straordinarie | RBAC Backend & Frontend `/afterschool-calendar` | Approvata |
@@ -20,17 +20,17 @@
 | **D8** | Menu Reportistica | Sidebar Navigation & Access Guards | Approvata |
 | **D9** | Turni Doposcuola solo per gruppo `TEACHER` | Calendario Doposcuola & Assegnazioni | Approvata |
 | **D10** | Backup Preventivo Automatico e Tutela Utenti | Database, Deploy & Script di Migrazione | Approvata |
-| **D11** | Pianificazione Giorni Settimanali Mensili nei Pagamenti Doposcuola & Decorrenza da Data Pagamento | Pagamenti `/payments`, Anagrafica, Calendario, Appello, Report | Approvata |
+| **D11** | Pianificazione Giorni Settimanali Mensili nei Pagamenti Doposcuola & Decorrenza da Data Pagamento | Pagamenti `/payments`, Anagrafica, Calendario, Appello, Report | Superata parz. da D13 |
+| **D13** | Semplificazione Pagamenti (Solo Pacchetto), Copia Settimanale Calendario & Mobile Experience | Pagamenti `/payments`, Calendario `/afterschool-calendar`, Appello `/dashboard`, Report | Approvata |
 
 ---
 
 ## D1 — Appello Giornaliero & Pre-caricamento Attesi
 
 ### Decisione
-1. L'endpoint `GET /api/attendances/expected?date=YYYY-MM-DD` e la pagina frontend `/dashboard` (**"Segna Presenze"**) devono **pre-caricare automaticamente** gli studenti attesi per la data selezionata in base alla pianificazione mensile dei pacchetti doposcuola assegnati (**aggiornato da D11**):
-   - Condizione di attesa su `student_monthly_tariffs`: lo studente ha un pacchetto assegnato per `(EXTRACT(YEAR FROM $1::date), EXTRACT(MONTH FROM $1::date))` con data di decorrenza rispettata (`$1::date >= smt.start_date`) e giorno della settimana incluso in `smt.scheduled_weekdays` (`EXTRACT(ISODOW FROM $1::date) = ANY(smt.scheduled_weekdays)`, `1 = Lunedì ... 5 = Venerdì`).
-   - Inclusione tramite `LEFT JOIN attendances a ON s.id = a.student_id AND a.date = $1` di eventuali **studenti extra** già registrati in `attendances` per quella data (`OR a.id IS NOT NULL`), garantendo piena coerenza con il Calendario Settimanale (`/afterschool-calendar`).
-   - Nei giorni di chiusura straordinaria o festività nazionale italiana si applica la priorità definita in **D5** (pre-caricamento automatico azzerato; restano visibili solo gli studenti già registrati in `attendances` per quella data).
+1. L'endpoint `GET /api/attendances/expected?date=YYYY-MM-DD` e la pagina frontend `/dashboard` (**"Segna Presenze"**) caricano gli studenti attesi per la data selezionata direttamente dai record presenti nella tabella `attendances` per quella data (**aggiornato da D13**):
+   - Gli studenti presenti in lista per la data `D` sono quelli già registrati in `attendances` (inseriti manualmente dall'appello/calendario o popolati tramite la copia settimanale *"Copia Alunni (Settimana Precedente)"* definita in **D13**), senza più pre-caricamento automatico da `student_monthly_tariffs` (`scheduled_weekdays` / `start_date`).
+   - Nei giorni di chiusura straordinaria o festività nazionale italiana si applica la priorità definita in **D5** (nessuna copia automatica e pre-caricamento azzerato; restano visibili solo eventuali record già registrati manualmente in `attendances` per quella data).
 2. Gli utenti `OFFICE` e `ADMIN` possono **rimuovere permanentemente** uno studente dall'appello di una specifica data tramite l'endpoint:
    - `DELETE /api/attendances/:date/:studentId` (protetto da `verifyToken`, `requireRole(['ADMIN', 'OFFICE'])`).
    - Lato frontend: `ApiService.deleteAttendance(date, studentId)` invocato da `AttendanceDashboardComponent.removeStudent(studentId)`.
@@ -78,10 +78,10 @@
 ## D4 — Bilancio Economico Mensile — Previsto vs Incassato vs Pending
 
 ### Decisione
-Nel Report Finanziario Mensile (`GET /api/reports/financial-monthly?year=YYYY&month=MM`) e nella scheda *"Bilancio Economico"* di `/admin/dashboard` (oggetto `doposcuola.revenues`), le tre componenti economiche sono calcolate come segue (**aggiornato da D11**):
+Nel Report Finanziario Mensile (`GET /api/reports/financial-monthly?year=YYYY&month=MM`) e nella scheda *"Bilancio Economico"* di `/admin/dashboard` (oggetto `doposcuola.revenues`), le tre componenti economiche sono calcolate come segue (**aggiornato da D11 e D13**):
 
 1. **`expected` (Maturato / Previsto)**:
-   - Somma dei pacchetti assegnati agli studenti nel mese (`student_monthly_tariffs.amount_paid`); gli studenti privi di pacchetto assegnato nel mese contribuiscono con `0` alla quota pacchetti attesa (poiché la frequenza e l'abbonamento sono determinati mensilmente in `/payments` secondo **D11**). I giorni attesi nel mese (`expected_days`) sono calcolati sui giorni feriali `1..5` (escluse festività nazionali italiane e `closure_days`) in cui lo studente ha un pacchetto attivo con `date >= start_date` e `dow` incluso in `scheduled_weekdays`.
+   - Somma dei pacchetti assegnati agli studenti nel mese (`student_monthly_tariffs.amount_paid`); gli studenti privi di pacchetto assegnato nel mese contribuiscono con `0` alla quota pacchetti attesa. I giorni attesi nel mese (`expected_days`) sono calcolati dalla somma dei `covered_days` dei pacchetti assegnati allo studente nel mese (`assignedCoverageByStudent`, rif. **D13**), senza più dipendere da `scheduled_weekdays`/`start_date`.
    - `+` giorni extra maturati: `extra_days * ONE_OFF` (dove `extra_days = Math.max(0, days_present - covered_days)`).
    - `+` pasti consumati maturati: `actual_meals * meal_fee_student`.
 2. **`actual` (Incassato)**:
@@ -181,6 +181,8 @@ Il menu a tendina per la selezione dell'insegnante nei turni doposcuola in `/aft
 
 ## D11 — Pianificazione Giorni Settimanali Mensili nei Pagamenti Doposcuola & Decorrenza da Data Pagamento
 
+> **Nota di Aggiornamento (D13)**: I punti **2, 3 e 4** di questa decisione (pianificazione `scheduled_weekdays`, `start_date`, pre-caricamento automatico da `student_monthly_tariffs` e alert di incongruenza calendario) sono **superati da D13**. Restano invece pienamente validi il punto **1** (rimozione `giorni_abbonamento` dall'Anagrafica) e il punto **5** (`previous_month_pending` e pulsante rapido *"Salda [Mese Precedente]"*).
+
 ### Decisione
 1. **Spostamento dei Giorni di Frequenza dall'Anagrafica ai Pagamenti Mensili**:
    - I giorni di frequenza del doposcuola **non** sono più una proprietà statica dell'anagrafica dello studente, poiché possono variare di mese in mese e dipendono dall'effettiva sottoscrizione/pagamento del pacchetto mensile.
@@ -210,4 +212,30 @@ Il menu a tendina per la selezione dell'insegnante nei turni doposcuola in `/aft
 - Database: `Primola_Backend/db/migrations/012_tariff_scheduled_weekdays_and_start_date.sql`, `010_student_monthly_tariffs_and_payments.sql`, `db_schema.sql`, `src/config/memoryDb.js`.
 - Backend: `Primola_Backend/src/repositories/paymentRepository.js`, `attendanceRepository.js`, `afterschoolRepository.js`, `controllers/paymentController.js`, `controllers/reportController.js`, `routes/payments.js`.
 - Frontend: `primola_frontend/src/app/core/models/payment.model.ts`, `core/services/api.service.ts`, `features/payments/payments-dashboard.component.ts`, `features/anagrafica/anagrafica.component.ts`, `features/anagrafica/student-edit.component.ts`.
+
+---
+
+## D13 — Semplificazione Pagamenti (Solo Pacchetto), Copia Settimanale Calendario & Mobile Experience
+
+### Decisione
+1. **Semplificazione Pagamenti (`/payments`, `student_monthly_tariffs`)**:
+   - Vengono **rimossi** dalla UI di `/payments` e dai flussi di assegnazione/lettura (`POST /api/payments/assign-tariff`, `GET /api/payments/monthly`) i campi di previsione settimanale (`scheduled_weekdays`, `start_date`) e l'avviso non bloccante di incongruenza calendario.
+   - L'assegnazione del pacchetto mensile torna alla **sola selezione del pacchetto (`package_id`) e note (`notes`)**, mantenendo la compatibilità con le colonne DB esistenti tramite i relativi valori di default.
+   - Viene **mantenuto** integralmente il meccanismo di promemoria e saldo rapido delle pendenze del mese precedente (`previous_month_pending`, pulsante *"Salda [Mese Precedente]"*) introdotto in **D11**.
+2. **Calendario & Appello guidati direttamente da `attendances` (`/afterschool-calendar`, `/dashboard`, Report)**:
+   - Gli studenti attesi per una determinata data provengono **direttamente** dai record presenti nella tabella `attendances` per quella data (popolati manualmente oppure tramite la nuova funzionalità di copia settimanale).
+   - Viene rimosso il filtro basato su `student_monthly_tariffs` (`scheduled_weekdays`, `start_date`) da `afterschoolRepository.getStudentsForDate`, `attendanceRepository.getExpectedStudents` e `reportController.getDailyReport`.
+   - Nel Bilancio Economico Mensile (`reportController.getFinancialMonthlyReport`), i giorni attesi per studente (`expectedDaysByStudent`) vengono calcolati dalla somma dei `covered_days` dei pacchetti assegnati nel mese (`assignedCoverageByStudent`).
+3. **Copia Settimanale Calendario (`ADMIN` e `OFFICE`)**:
+   - Nella schermata `/afterschool-calendar`, vengono introdotte due nuove azioni CTA visibili **esclusivamente** ai ruoli **`OFFICE`** e **`ADMIN`** (nascoste per `TEACHER`, che riceve `403 Forbidden` lato API):
+     - **"Copia Alunni (Settimana Precedente)"** (`POST /api/afterschool/copy-previous-students`): copia gli alunni presenti in `attendances` nei giorni Lunedì–Venerdì della settimana precedente (`-7 giorni`) nella settimana target, impostando sempre `is_present = false`, preservando `canteen_used` e impostando `notes = ''`.
+     - **"Copia Docenti (Settimana Precedente)"** (`POST /api/afterschool/copy-previous-teachers`): copia i turni `teacher_shifts` dai giorni Lunedì–Venerdì della settimana precedente (`-7 giorni`) nella settimana target.
+   - Entrambe le operazioni **saltano** automaticamente le date target che ricadono in Festività Nazionali Italiane (`isItalianHoliday`) o in Chiusure Straordinarie (`closure_days`) e **non sovrascrivono né duplicano** record già esistenti (`ON CONFLICT (student_id, date) DO NOTHING` per `attendances`; controllo su `(user_id, shift_date, start_time, end_time)` per `teacher_shifts`).
+4. **Esperienza Mobile & Vista Giornaliera a Carosello (`< 768px`)**:
+   - Su viewport mobile (`< 768px`), `/afterschool-calendar` presenta una vista giornaliera dedicata con **carosello continuo a scorrimento orizzontale (swipe left/right)** tra i giorni della settimana.
+   - Le viste operative principali adottano card responsive ottimizzate per l'utilizzo su dispositivi mobili.
+
+### Riferimenti Tecnici
+- Backend: `Primola_Backend/src/controllers/paymentController.js`, `repositories/paymentRepository.js`, `repositories/afterschoolRepository.js`, `controllers/afterschoolController.js`, `routes/afterschool.js`, `repositories/attendanceRepository.js`, `controllers/reportController.js`.
+- Frontend: `primola_frontend/src/app/features/payments/payments-dashboard.component.ts`, `features/afterschool/afterschool-calendar.component.ts`, `core/services/api.service.ts`, `core/models/payment.model.ts`.
 

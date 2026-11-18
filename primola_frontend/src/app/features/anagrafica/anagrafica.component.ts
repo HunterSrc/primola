@@ -26,7 +26,7 @@ import { Student, Tutor } from '../../core/models';
             [class.shadow-sm]="activeTab() === 'NEW'"
             [class.text-emerald-700]="activeTab() === 'NEW'"
             [class.font-bold]="activeTab() === 'NEW'"
-            class="flex-1 sm:flex-initial px-3 sm:px-4 py-2 text-xs md:text-sm rounded-lg text-slate-600 transition-all flex items-center justify-center space-x-1.5 sm:space-x-2 cursor-pointer"
+            class="min-h-[44px] flex-1 sm:flex-initial px-3 sm:px-4 py-2 text-xs md:text-sm rounded-lg text-slate-600 transition-all flex items-center justify-center space-x-1.5 sm:space-x-2 cursor-pointer"
           >
             <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
@@ -40,7 +40,7 @@ import { Student, Tutor } from '../../core/models';
             [class.shadow-sm]="activeTab() === 'LIST'"
             [class.text-emerald-700]="activeTab() === 'LIST'"
             [class.font-bold]="activeTab() === 'LIST'"
-            class="flex-1 sm:flex-initial px-3 sm:px-4 py-2 text-xs md:text-sm rounded-lg text-slate-600 transition-all flex items-center justify-center space-x-1.5 sm:space-x-2 cursor-pointer"
+            class="min-h-[44px] flex-1 sm:flex-initial px-3 sm:px-4 py-2 text-xs md:text-sm rounded-lg text-slate-600 transition-all flex items-center justify-center space-x-1.5 sm:space-x-2 cursor-pointer"
           >
             <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
@@ -225,7 +225,7 @@ import { Student, Tutor } from '../../core/models';
                     <p class="text-xs text-slate-500">{{ student.school || 'Scuola non indicata' }}</p>
                   </div>
 
-                  <span class="inline-flex items-center space-x-1 px-2.5 py-1 rounded-lg border border-slate-200 bg-slate-50 text-slate-600 text-xs font-semibold">
+                  <span class="min-h-[44px] inline-flex items-center space-x-1 px-3 py-1.5 rounded-lg border border-slate-200 bg-slate-50 text-slate-600 text-xs font-semibold">
                     <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                     </svg>
@@ -244,7 +244,7 @@ import { Student, Tutor } from '../../core/models';
                       <a
                         [href]="'tel:' + (student.main_tutor_phone || student.tutors?.[0]?.phone)"
                         (click)="$event.stopPropagation()"
-                        class="text-emerald-700 font-mono font-medium hover:underline"
+                        class="min-h-[44px] inline-flex items-center px-2 text-emerald-700 font-mono font-medium hover:underline"
                       >
                         📞 {{ student.main_tutor_phone || student.tutors?.[0]?.phone }}
                       </a>

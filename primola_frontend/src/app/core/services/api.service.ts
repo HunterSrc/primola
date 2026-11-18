@@ -699,6 +699,24 @@ export class ApiService {
     );
   }
 
+  copyPreviousWeekStudents(weekStartDate: string): Observable<any> {
+    return this.http.post<ApiResponse<any>>(
+      `${this.baseUrl}/afterschool/copy-previous-students`,
+      { weekStartDate }
+    ).pipe(
+      map(res => res.data)
+    );
+  }
+
+  copyPreviousWeekTeachers(weekStartDate: string): Observable<any> {
+    return this.http.post<ApiResponse<any>>(
+      `${this.baseUrl}/afterschool/copy-previous-teachers`,
+      { weekStartDate }
+    ).pipe(
+      map(res => res.data)
+    );
+  }
+
   // ================= CHIUSURE STRAORDINARIE (SOLO ADMIN) =================
   getAfterschoolClosures(): Observable<ClosureDay[]> {
     return this.http.get<ApiResponse<ClosureDay[]>>(`${this.baseUrl}/afterschool/closures`).pipe(

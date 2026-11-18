@@ -34,6 +34,10 @@ router.get('/closures', requireRole(['ADMIN', 'OFFICE', 'TEACHER', 'STAFF']), (r
 router.post('/closures', requireAdminOrOffice, (req, res) => afterschoolController.createClosure(req, res));
 router.delete('/closures/:id', requireAdminOrOffice, (req, res) => afterschoolController.deleteClosure(req, res));
 
+// Copia settimanale dalla settimana precedente - SOLO ADMIN e OFFICE
+router.post('/copy-previous-students', requireAdminOrOffice, (req, res) => afterschoolController.copyPreviousStudents(req, res));
+router.post('/copy-previous-teachers', requireAdminOrOffice, (req, res) => afterschoolController.copyPreviousTeachers(req, res));
+
 // Note spese doposcuola (Mensa / Altro) - SOLO ADMIN e OFFICE
 router.get('/expenses', requireAdminOrOffice, (req, res) => afterschoolController.listExpenses(req, res));
 router.post('/expenses', requireAdminOrOffice, (req, res) => afterschoolController.createExpense(req, res));

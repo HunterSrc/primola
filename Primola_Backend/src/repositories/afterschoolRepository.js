@@ -1,4 +1,5 @@
 const db = require('../config/database');
+const { isItalianHoliday } = require('../utils/holidays');
 
 class AfterschoolRepository {
   /**
@@ -149,8 +150,7 @@ class AfterschoolRepository {
 
   /**
    * Recupera i bambini del doposcuola per una specifica data:
-   * include tutti gli studenti che hanno quella giornata pianificata in student_monthly_tariffs
-   * (con start_date <= dateStr) OPPURE che hanno una presenza già registrata in quella data.
+   * restituisce tutti gli studenti che hanno una riga in attendances per quella data.
    */
   async getStudentsForDate(dateStr) {
     const query = `
@@ -166,20 +166,144 @@ class AfterschoolRepository {
         (a.id IS NOT NULL) AS already_registered,
         COALESCE(a.canteen_used, false) AS has_meal_plan
       FROM students s
-      LEFT JOIN attendances a ON s.id = a.student_id AND a.date = $1
-      WHERE s.id IN (
-        SELECT smt.student_id
-        FROM student_monthly_tariffs smt
-        WHERE smt.year = EXTRACT(YEAR FROM $1::date)
-          AND smt.month = EXTRACT(MONTH FROM $1::date)
-          AND $1::date >= smt.start_date
-          AND EXTRACT(ISODOW FROM $1::date) = ANY(smt.scheduled_weekdays)
-      )
-      OR a.id IS NOT NULL
+      INNER JOIN attendances a ON s.id = a.student_id AND a.date = $1
       ORDER BY s.cognome ASC, s.nome ASC
     `;
     const result = await db.query(query, [dateStr]);
     return result.rows;
+  }
+
+  /**
+   * Calcola le coppie (prevDate, targetDate) Lun-Ven per la settimana di weekStartDate e la precedente (-7 giorni)
+   */
+  _getWeekDatePairs(weekStartDate) {
+    const d = new Date(weekStartDate + 'T00:00:00Z');
+    const dayOfWeek = d.getUTCDay(); // 0=Dom, 1=Lun, ..., 6=Sab
+    const diffToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+    const targetMonday = new Date(d);
+    targetMonday.setUTCDate(d.getUTCDate() + diffToMonday);
+
+    const pairs = [];
+    for (let i = 0; i < 5; i++) {
+      const target = new Date(targetMonday);
+      target.setUTCDate(targetMonday.getUTCDate() + i);
+      const prev = new Date(target);
+      prev.setUTCDate(target.getUTCDate() - 7);
+      pairs.push({
+        prevDate: prev.toISOString().split('T')[0],
+        targetDate: target.toISOString().split('T')[0]
+      });
+    }
+    return pairs;
+  }
+
+  /**
+   * Copia gli studenti previsti (attendances) dalla settimana precedente (Lun-Ven),
+   * saltando festività italiane e closure_days, senza sovrascrivere record esistenti.
+   * Imposta is_present = false, copia canteen_used, notes = ''.
+   */
+  async copyStudentsFromPreviousWeek(weekStartDate) {
+    const pairs = this._getWeekDatePairs(weekStartDate);
+    const targetStart = pairs[0].targetDate;
+    const targetEnd = pairs[4].targetDate;
+
+    const closures = await this.findClosuresBetween(targetStart, targetEnd);
+    const closureSet = new Set(
+      closures.map(c => (typeof c.date === 'string' ? c.date.slice(0, 10) : new Date(c.date).toISOString().slice(0, 10)))
+    );
+
+    let copiedCount = 0;
+    const skippedDates = [];
+
+    for (const { prevDate, targetDate } of pairs) {
+      if (isItalianHoliday(targetDate) || closureSet.has(targetDate)) {
+        skippedDates.push(targetDate);
+        continue;
+      }
+
+      const prevRes = await db.query(
+        `SELECT student_id, canteen_used FROM attendances WHERE date = $1`,
+        [prevDate]
+      );
+
+      for (const row of prevRes.rows) {
+        const existingRes = await db.query(
+          `SELECT id FROM attendances WHERE student_id = $1 AND date = $2 LIMIT 1`,
+          [row.student_id, targetDate]
+        );
+        if (existingRes.rows.length === 0) {
+          await db.query(
+            `INSERT INTO attendances (student_id, date, is_present, canteen_used, notes)
+             VALUES ($1, $2, false, $3, '')
+             ON CONFLICT (student_id, date) DO NOTHING`,
+            [row.student_id, targetDate, !!row.canteen_used]
+          );
+          copiedCount++;
+        }
+      }
+    }
+
+    return {
+      week_start: targetStart,
+      previous_week_start: pairs[0].prevDate,
+      copied_count: copiedCount,
+      skipped_dates: skippedDates
+    };
+  }
+
+  /**
+   * Copia i turni dei docenti (teacher_shifts) dalla settimana precedente (Lun-Ven),
+   * saltando festività italiane e closure_days, senza duplicare (user_id, shift_date, start_time, end_time).
+   */
+  async copyTeachersFromPreviousWeek(weekStartDate) {
+    const pairs = this._getWeekDatePairs(weekStartDate);
+    const targetStart = pairs[0].targetDate;
+    const targetEnd = pairs[4].targetDate;
+
+    const closures = await this.findClosuresBetween(targetStart, targetEnd);
+    const closureSet = new Set(
+      closures.map(c => (typeof c.date === 'string' ? c.date.slice(0, 10) : new Date(c.date).toISOString().slice(0, 10)))
+    );
+
+    let copiedCount = 0;
+    const skippedDates = [];
+
+    for (const { prevDate, targetDate } of pairs) {
+      if (isItalianHoliday(targetDate) || closureSet.has(targetDate)) {
+        skippedDates.push(targetDate);
+        continue;
+      }
+
+      const prevShiftsRes = await db.query(
+        `SELECT user_id, start_time, end_time, notes FROM teacher_shifts WHERE shift_date = $1`,
+        [prevDate]
+      );
+
+      for (const shift of prevShiftsRes.rows) {
+        const existingRes = await db.query(
+          `SELECT id FROM teacher_shifts
+           WHERE user_id = $1 AND shift_date = $2 AND start_time = $3 AND end_time = $4
+           LIMIT 1`,
+          [shift.user_id, targetDate, shift.start_time, shift.end_time]
+        );
+
+        if (existingRes.rows.length === 0) {
+          await db.query(
+            `INSERT INTO teacher_shifts (user_id, shift_date, start_time, end_time, notes)
+             VALUES ($1, $2, $3, $4, $5)`,
+            [shift.user_id, targetDate, shift.start_time, shift.end_time, shift.notes || null]
+          );
+          copiedCount++;
+        }
+      }
+    }
+
+    return {
+      week_start: targetStart,
+      previous_week_start: pairs[0].prevDate,
+      copied_count: copiedCount,
+      skipped_dates: skippedDates
+    };
   }
 
   /**

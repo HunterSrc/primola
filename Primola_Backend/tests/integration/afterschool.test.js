@@ -339,8 +339,7 @@ describe('Afterschool Assignments API Tests', () => {
 
       const normalDay = weekRes.body.data.days.find(d => d.date === '2026-12-22');
       expect(normalDay.holiday).toBeNull();
-      expect(normalDay.expected_students_count).toBeGreaterThan(0);
-      expect(normalDay.students.every(st => st.has_meal === false)).toBe(true);
+      expect(normalDay.expected_students_count).toBe(0);
     });
 
     it('ADMIN can list and delete a closure day', async () => {
@@ -364,18 +363,17 @@ describe('Afterschool Assignments API Tests', () => {
     const testStudentId = '33333333-3333-3333-3333-333333333333'; // Mario Rossi {1,2,3,4,5}
     const holidayDate = '2026-12-25';
 
-    it('GET /api/attendances/expected pre-populates subscribed students on normal weekday without pre-activating meals', async () => {
+    it('GET /api/attendances/expected returns students registered in attendances for that date', async () => {
       const res = await request(app)
-        .get('/api/attendances/expected?date=2026-10-28') // Mercoledì
+        .get('/api/attendances/expected?date=2026-11-16') // Lunedì con seed in attendances
         .set('Authorization', `Bearer ${officeToken}`);
 
       expect(res.status).toBe(200);
       expect(res.body.success).toBe(true);
       const ids = res.body.data.map(s => s.student_id);
       expect(ids).toContain(testStudentId);
-      // Sofia Ferrari ha solo {2,4} (Mar, Gio), non mercoledì
+      // Sofia Ferrari non è presente in attendances il 2026-11-16
       expect(ids).not.toContain('55555555-5555-5555-5555-555555555555');
-      expect(res.body.data.every(s => s.canteen_used === false)).toBe(true);
     });
 
     it('GET /api/attendances/expected returns 0 students on closure_days and Italian holidays unless manually registered', async () => {
@@ -423,6 +421,142 @@ describe('Afterschool Assignments API Tests', () => {
         .get(`/api/attendances/expected?date=${holidayDate}`)
         .set('Authorization', `Bearer ${officeToken}`);
       expect(afterDelete.body.data).toEqual([]);
+    });
+  });
+
+  describe('Weekly Copy Endpoints (copy-previous-students & copy-previous-teachers)', () => {
+    const marioId = '33333333-3333-3333-3333-333333333333';
+    const luigiId = '44444444-4444-4444-4444-444444444444';
+
+    afterAll(async () => {
+      await db.query(
+        `DELETE FROM attendances WHERE date BETWEEN '2026-11-30' AND '2026-12-11'`
+      );
+      await db.query(
+        `DELETE FROM teacher_shifts WHERE shift_date BETWEEN '2026-11-30' AND '2026-12-11'`
+      );
+    });
+
+    it('TEACHER gets 403 on copy-previous-students and copy-previous-teachers', async () => {
+      const resStudents = await request(app)
+        .post('/api/afterschool/copy-previous-students')
+        .set('Authorization', `Bearer ${teacherToken}`)
+        .send({ weekStartDate: '2026-12-07' });
+      expect(resStudents.status).toBe(403);
+
+      const resTeachers = await request(app)
+        .post('/api/afterschool/copy-previous-teachers')
+        .set('Authorization', `Bearer ${teacherToken}`)
+        .send({ weekStartDate: '2026-12-07' });
+      expect(resTeachers.status).toBe(403);
+    });
+
+    it('OFFICE/ADMIN can copy students from previous week preserving canteen_used, setting is_present=false, skipping holidays/closures, and not duplicating', async () => {
+      // Popola settimana precedente: 2026-11-30 (Lun), 2026-12-01 (Mar), 2026-12-02 (Mer)
+      await db.query(
+        `INSERT INTO attendances (student_id, date, is_present, canteen_used, notes)
+         VALUES
+           ($1, '2026-11-30', true, true, 'Nota vecchia'),
+           ($1, '2026-12-01', true, false, 'Nota mar'),
+           ($1, '2026-12-02', true, true, 'Nota mer'),
+           ($2, '2026-12-02', true, false, '')`,
+        [marioId, luigiId]
+      );
+
+      // Pre-inserisci Luigi su 2026-12-09 (Mer) con is_present=true per verificare no overwrite
+      await db.query(
+        `INSERT INTO attendances (student_id, date, is_present, canteen_used, notes)
+         VALUES ($1, '2026-12-09', true, true, 'Gia presente')`,
+        [luigiId]
+      );
+
+      // Copia su settimana 2026-12-07:
+      // - 2026-12-07 (Lun) è closure_days -> saltato
+      // - 2026-12-08 (Mar) è Immacolata Concezione (holiday) -> saltato
+      // - 2026-12-09 (Mer) normale -> Mario copiato, Luigi non sovrascritto
+      const copyRes = await request(app)
+        .post('/api/afterschool/copy-previous-students')
+        .set('Authorization', `Bearer ${officeToken}`)
+        .send({ weekStartDate: '2026-12-07' });
+
+      expect(copyRes.status).toBe(200);
+      expect(copyRes.body.success).toBe(true);
+      expect(copyRes.body.data.copied_count).toBe(1);
+      expect(copyRes.body.data.skipped_dates).toEqual(['2026-12-07', '2026-12-08']);
+
+      // Verifica 2026-12-09
+      const dec09Res = await request(app)
+        .get('/api/attendances/expected?date=2026-12-09')
+        .set('Authorization', `Bearer ${officeToken}`);
+      expect(dec09Res.status).toBe(200);
+      const mario = dec09Res.body.data.find(s => s.student_id === marioId);
+      const luigi = dec09Res.body.data.find(s => s.student_id === luigiId);
+      expect(mario).toBeDefined();
+      expect(mario.is_present).toBe(false);
+      expect(mario.canteen_used).toBe(true);
+      expect(mario.notes).toBe('');
+      expect(luigi.is_present).toBe(true);
+      expect(luigi.notes).toBe('Gia presente');
+
+      // Verifica 2026-12-07 e 2026-12-08 vuoti
+      const dec07Res = await request(app)
+        .get('/api/attendances/expected?date=2026-12-07')
+        .set('Authorization', `Bearer ${officeToken}`);
+      expect(dec07Res.body.data).toEqual([]);
+
+      const dec08Res = await request(app)
+        .get('/api/attendances/expected?date=2026-12-08')
+        .set('Authorization', `Bearer ${officeToken}`);
+      expect(dec08Res.body.data).toEqual([]);
+
+      // Seconda chiamata idempotente: 0 copiati
+      const secondCopy = await request(app)
+        .post('/api/afterschool/copy-previous-students')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ weekStartDate: '2026-12-07' });
+      expect(secondCopy.status).toBe(200);
+      expect(secondCopy.body.data.copied_count).toBe(0);
+    });
+
+    it('OFFICE/ADMIN can copy teacher shifts from previous week skipping holidays/closures and not duplicating', async () => {
+      // Turni settimana precedente: 2026-11-30 (Lun), 2026-12-01 (Mar), 2026-12-03 (Gio)
+      await db.query(
+        `INSERT INTO teacher_shifts (user_id, shift_date, start_time, end_time, notes)
+         VALUES
+           ($1, '2026-11-30', '14:00', '17:00', 'Lun'),
+           ($1, '2026-12-01', '14:00', '17:00', 'Mar'),
+           ($1, '2026-12-03', '14:30', '18:00', 'Gio')`,
+        [teacherUser.id]
+      );
+
+      // Copia su settimana 2026-12-07 (Lun 07 closure, Mar 08 holiday, Gio 10 copiato)
+      const copyRes = await request(app)
+        .post('/api/afterschool/copy-previous-teachers')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ weekStartDate: '2026-12-07' });
+
+      expect(copyRes.status).toBe(200);
+      expect(copyRes.body.success).toBe(true);
+      expect(copyRes.body.data.copied_count).toBe(1);
+      expect(copyRes.body.data.skipped_dates).toEqual(['2026-12-07', '2026-12-08']);
+
+      // Seconda chiamata: nessun duplicato
+      const secondCopy = await request(app)
+        .post('/api/afterschool/copy-previous-teachers')
+        .set('Authorization', `Bearer ${officeToken}`)
+        .send({ weekStartDate: '2026-12-07' });
+      expect(secondCopy.status).toBe(200);
+      expect(secondCopy.body.data.copied_count).toBe(0);
+
+      // Verifica week-summary
+      const summaryRes = await request(app)
+        .get('/api/afterschool/week-summary?startDate=2026-12-07')
+        .set('Authorization', `Bearer ${officeToken}`);
+      expect(summaryRes.status).toBe(200);
+      const thu = summaryRes.body.data.days.find(d => d.date === '2026-12-10');
+      expect(thu.shifts.length).toBe(1);
+      expect(thu.shifts[0].start_time).toBe('14:30');
+      expect(thu.shifts[0].end_time).toBe('18:00');
     });
   });
 });

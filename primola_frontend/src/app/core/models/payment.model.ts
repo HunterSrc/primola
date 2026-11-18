@@ -9,8 +9,6 @@ export interface AssignedTariff {
   tariff_id: string;
   amount_paid: number;
   covered_days: number;
-  scheduled_weekdays?: number[];
-  start_date?: string | null;
   assigned_at?: string;
   notes?: string | null;
 }
@@ -78,14 +76,10 @@ export interface AssignPackagePayload {
   year: number;
   month: number;
   package_id: string;
-  scheduled_weekdays?: number[];
-  start_date?: string | null;
   notes?: string | null;
 }
 
 export interface UpdateAssignedTariffPayload {
-  scheduled_weekdays: number[];
-  start_date: string;
   notes?: string | null;
 }
 

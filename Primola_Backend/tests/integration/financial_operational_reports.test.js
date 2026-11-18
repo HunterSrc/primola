@@ -131,13 +131,12 @@ describe('Financial & Operational Reports API Tests', () => {
       expect(novData.doposcuola.revenues.expected_meals).toBe(4);
       expect(novData.doposcuola.revenues.actual_meals).toBe(4);
 
-      // Dicembre 2026: Mon=4-1(closure 07)=3, Tue=5-1(08)=4, Wed=5, Thu=5, Fri=4-1(25)=3
-      // Totale atteso = Mario(20) + Luigi(11) + Sofia(9) + Emma(17) + Leonardo(20) = 77
+      // Dicembre 2026: covered_days da student_monthly_tariffs = Mario(20) + Luigi(12) + Sofia(8) + Emma(16) + Leonardo(20) = 76
       const decRes = await request(app)
         .get('/api/reports/financial-monthly?year=2026&month=12')
         .set('Authorization', `Bearer ${adminToken}`);
       expect(decRes.status).toBe(200);
-      expect(decRes.body.data.doposcuola.revenues.expected_days).toBe(77);
+      expect(decRes.body.data.doposcuola.revenues.expected_days).toBe(76);
     });
 
     it('Daily & Monthly Reports exclude holidays/closures and read covered_days from student_monthly_tariffs (D2, D5)', async () => {
@@ -145,8 +144,8 @@ describe('Financial & Operational Reports API Tests', () => {
         .get('/api/reports/attendances?date=2026-11-16')
         .set('Authorization', `Bearer ${adminToken}`);
       expect(dailyNormal.status).toBe(200);
-      // Lunedì: Mario {1..5}, Luigi {1,3,5}, Emma {1..4}, Leonardo {1..5} = 4 attesi (Sofia ha solo {2,4})
-      expect(dailyNormal.body.data.statistics.totalExpected).toBe(4);
+      // 2026-11-16 ha 3 righe in attendances (Mario, Luigi, Emma)
+      expect(dailyNormal.body.data.statistics.totalExpected).toBe(3);
 
       const dailyHoliday = await request(app)
         .get('/api/reports/attendances?date=2026-12-25')

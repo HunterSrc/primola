@@ -2,24 +2,11 @@ import { Component, inject, signal, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../core/services/api.service';
-import { getItalianHoliday } from '../../core/utils/holidays.util';
 import {
   MonthlyBillingSummary,
   StudentMonthlyBilling,
-  AfterschoolPackage,
-  AssignedTariff
+  AfterschoolPackage
 } from '../../core/models';
-
-export interface SchedulePreviewResult {
-  expectedCoveredDays: number;
-  daysPerWeek: number | null;
-  effectiveDates: { date: string; label: string }[];
-  excludedDates: { date: string; label: string; reason: string }[];
-  beforeStartDates: { date: string; label: string }[];
-  weekdaysMismatch: boolean;
-  daysCountMismatch: boolean;
-  hasIncongruence: boolean;
-}
 
 @Component({
   selector: 'app-payments-dashboard',
@@ -139,8 +126,116 @@ export interface SchedulePreviewResult {
         </div>
       </div>
 
-      <!-- Tabella Pagamenti Studenti -->
-      <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
+      <!-- VISTA MOBILE: Card Responsive (md:hidden) -->
+      <div class="block md:hidden space-y-3">
+        <div *ngIf="isLoading()" class="bg-white rounded-2xl border border-slate-200/80 p-8 text-center text-slate-400">
+          <div class="inline-block animate-spin rounded-full h-6 w-6 border-2 border-emerald-600 border-t-transparent mr-2 align-middle"></div>
+          Caricamento prospetto pagamenti...
+        </div>
+
+        <div *ngIf="!isLoading() && filteredStudents().length === 0" class="bg-white rounded-2xl border border-slate-200/80 p-8 text-center text-slate-400">
+          Nessuno studente trovato per i criteri selezionati.
+        </div>
+
+        <div *ngFor="let stu of filteredStudents()" class="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4 space-y-3">
+          <div class="flex items-start justify-between gap-2">
+            <div>
+              <div class="font-bold text-slate-900 text-base">{{ stu.last_name }} {{ stu.first_name }}</div>
+              <div class="text-xs text-slate-400">{{ stu.school || 'Scuola non specificata' }}</div>
+            </div>
+            <div class="text-right">
+              <div class="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Totale Mese</div>
+              <div class="font-black text-slate-900 text-base">{{ stu.total_due_month | currency:'EUR':'symbol':'1.2-2' }}</div>
+            </div>
+          </div>
+
+          <!-- Alert Mese Precedente Da Saldare -->
+          <div *ngIf="stu.previous_month_pending?.has_pending" class="p-3 rounded-xl bg-amber-50 border border-amber-300 text-amber-900 text-xs space-y-2">
+            <div class="font-bold flex items-center justify-between gap-2">
+              <span>⚠️ Da saldare {{ getMonthName(stu.previous_month_pending!.month) }}:</span>
+              <span class="text-rose-700">{{ stu.previous_month_pending!.total_pending | currency:'EUR':'symbol':'1.2-2' }}</span>
+            </div>
+            <div class="text-[11px] text-amber-800">
+              <span *ngIf="!stu.previous_month_pending!.meals_paid && stu.previous_month_pending!.meals_count > 0">
+                {{ stu.previous_month_pending!.meals_count }} pasti ({{ stu.previous_month_pending!.meals_total | currency:'EUR':'symbol':'1.2-2' }})
+              </span>
+              <span *ngIf="!stu.previous_month_pending!.meals_paid && stu.previous_month_pending!.meals_count > 0 && !stu.previous_month_pending!.extra_paid && stu.previous_month_pending!.extra_days_count > 0"> + </span>
+              <span *ngIf="!stu.previous_month_pending!.extra_paid && stu.previous_month_pending!.extra_days_count > 0">
+                {{ stu.previous_month_pending!.extra_days_count }} extra ({{ stu.previous_month_pending!.extra_days_total | currency:'EUR':'symbol':'1.2-2' }})
+              </span>
+            </div>
+            <button
+              (click)="openSettleModal(stu, stu.previous_month_pending!.year, stu.previous_month_pending!.month)"
+              class="w-full min-h-[44px] inline-flex items-center justify-center px-3 py-2 text-xs font-bold text-white bg-amber-600 hover:bg-amber-700 rounded-xl transition-colors cursor-pointer"
+            >
+              💳 Salda {{ getMonthName(stu.previous_month_pending!.month) }}
+            </button>
+          </div>
+
+          <!-- Pacchetti Assegnati -->
+          <div class="space-y-2">
+            <div class="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Pacchetti Assegnati</div>
+            <div class="flex flex-wrap items-center gap-2">
+              <div
+                *ngFor="let pkg of stu.assigned_packages"
+                class="inline-flex items-center gap-2 px-3 py-2 text-xs rounded-xl bg-emerald-50 text-emerald-900 border border-emerald-200"
+              >
+                <span class="font-semibold">{{ pkg.package_name }}</span>
+                <span class="text-[11px] font-bold text-emerald-700">({{ pkg.amount_paid | currency:'EUR':'symbol':'1.2-2' }})</span>
+                <button
+                  (click)="removePackage(pkg.id)"
+                  class="min-w-[32px] min-h-[32px] inline-flex items-center justify-center text-rose-500 hover:text-rose-700 font-bold text-sm cursor-pointer"
+                  title="Rimuovi pacchetto"
+                >
+                  ✕
+                </button>
+              </div>
+              <button
+                (click)="openAssignModal(stu)"
+                class="min-h-[44px] inline-flex items-center px-3.5 py-2 text-xs font-semibold text-emerald-700 bg-white hover:bg-emerald-50 border border-dashed border-emerald-400 rounded-xl transition-colors cursor-pointer"
+              >
+                + Pacchetto
+              </button>
+            </div>
+          </div>
+
+          <!-- Riepilogo Presenze / Extra / Pasti -->
+          <div class="grid grid-cols-3 gap-2 pt-2 border-t border-slate-100 text-center text-xs">
+            <div class="p-2 rounded-xl bg-slate-50">
+              <div class="text-[10px] text-slate-400 font-semibold">Presenze</div>
+              <div class="font-bold text-slate-800">{{ stu.days_present }} / {{ stu.total_covered_days }} gg</div>
+              <div *ngIf="stu.days_present > stu.total_covered_days" class="text-[10px] text-rose-600 font-bold">
+                +{{ stu.days_present - stu.total_covered_days }} ecc.
+              </div>
+            </div>
+            <div class="p-2 rounded-xl bg-slate-50">
+              <div class="text-[10px] text-slate-400 font-semibold">Extra</div>
+              <div class="font-bold text-amber-700">{{ stu.extra_days_total | currency:'EUR':'symbol':'1.2-2' }}</div>
+              <div *ngIf="stu.extra_days_count > 0" class="text-[10px] font-semibold" [ngClass]="stu.extra_paid ? 'text-emerald-700' : 'text-amber-700'">
+                {{ stu.extra_paid ? 'Saldato' : 'Da saldare' }}
+              </div>
+            </div>
+            <div class="p-2 rounded-xl bg-slate-50">
+              <div class="text-[10px] text-slate-400 font-semibold">Pasti ({{ stu.meals_count }})</div>
+              <div class="font-bold text-blue-700">{{ stu.meals_total | currency:'EUR':'symbol':'1.2-2' }}</div>
+              <div *ngIf="stu.meals_count > 0" class="text-[10px] font-semibold" [ngClass]="stu.meals_paid ? 'text-emerald-700' : 'text-blue-700'">
+                {{ stu.meals_paid ? 'Saldato' : 'Da saldare' }}
+              </div>
+            </div>
+          </div>
+
+          <button
+            (click)="openSettleModal(stu)"
+            [disabled]="(!stu.extra_days_count && !stu.meals_count) || (stu.extra_paid && stu.meals_paid)"
+            class="w-full min-h-[44px] px-4 py-2.5 text-xs font-semibold text-white bg-slate-900 hover:bg-slate-800 rounded-xl transition-all cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+          >
+            💳 Salda Fine Mese
+          </button>
+        </div>
+      </div>
+
+      <!-- Tabella Pagamenti Studenti (Desktop) -->
+      <div class="hidden md:block bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
         <div class="overflow-x-auto">
           <table class="w-full text-left text-sm text-slate-600 min-w-[900px]">
             <thead class="bg-slate-50/75 border-b border-slate-200 text-xs font-semibold uppercase text-slate-500 tracking-wider">
@@ -203,34 +298,17 @@ export interface SchedulePreviewResult {
                   <div class="flex flex-wrap items-center gap-1.5">
                     <div
                       *ngFor="let pkg of stu.assigned_packages"
-                      class="inline-flex flex-col gap-0.5 px-2.5 py-1.5 text-xs rounded-xl bg-emerald-50 text-emerald-900 border border-emerald-200"
+                      class="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs rounded-xl bg-emerald-50 text-emerald-900 border border-emerald-200"
                     >
-                      <div class="flex items-center gap-1.5">
-                        <span class="font-semibold">{{ pkg.package_name }}</span>
-                        <span class="text-[10px] font-bold text-emerald-700">({{ pkg.amount_paid | currency:'EUR':'symbol':'1.2-2' }})</span>
-                        <button
-                          (click)="openEditTariffModal(stu, pkg)"
-                          class="text-slate-500 hover:text-emerald-700 font-bold text-xs ml-1 cursor-pointer"
-                          title="Modifica giorni fissi e decorrenza"
-                        >
-                          ✎
-                        </button>
-                        <button
-                          (click)="removePackage(pkg.id)"
-                          class="text-rose-500 hover:text-rose-700 font-bold text-xs cursor-pointer"
-                          title="Rimuovi pacchetto"
-                        >
-                          ✕
-                        </button>
-                      </div>
-                      <div class="flex items-center gap-1.5 text-[10px] text-emerald-700">
-                        <span class="px-1.5 py-0.2 bg-white/80 border border-emerald-200 rounded font-semibold">
-                          📅 {{ formatWeekdaysLabel(pkg.scheduled_weekdays) }}
-                        </span>
-                        <span *ngIf="pkg.start_date" class="text-slate-500">
-                          dal {{ formatShortDate(pkg.start_date) }}
-                        </span>
-                      </div>
+                      <span class="font-semibold">{{ pkg.package_name }}</span>
+                      <span class="text-[10px] font-bold text-emerald-700">({{ pkg.amount_paid | currency:'EUR':'symbol':'1.2-2' }})</span>
+                      <button
+                        (click)="removePackage(pkg.id)"
+                        class="text-rose-500 hover:text-rose-700 font-bold text-xs cursor-pointer ml-1"
+                        title="Rimuovi pacchetto"
+                      >
+                        ✕
+                      </button>
                     </div>
 
                     <button
@@ -328,15 +406,15 @@ export interface SchedulePreviewResult {
         </div>
       </div>
 
-      <!-- MODALE ASSEGNAZIONE / MODIFICA PACCHETTO -->
+      <!-- MODALE ASSEGNAZIONE PACCHETTO -->
       <div *ngIf="showAssignModal()" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-fade-in overflow-y-auto">
-        <div class="bg-white rounded-2xl shadow-xl border border-slate-200 w-full max-w-lg p-6 space-y-5 my-8">
+        <div class="bg-white rounded-2xl shadow-xl border border-slate-200 w-full max-w-lg max-h-[90dvh] overflow-y-auto p-6 space-y-5 my-4">
           <div class="flex items-center justify-between pb-3 border-b border-slate-100">
             <h3 class="text-base font-bold text-slate-800">
-              {{ editingTariff() ? '✎ Modifica Pianificazione Pacchetto:' : '➕ Assegna Pacchetto a:' }}
+              ➕ Assegna Pacchetto a:
               <span class="text-emerald-700">{{ selectedStudent()?.last_name }} {{ selectedStudent()?.first_name }}</span>
             </h3>
-            <button (click)="closeAssignModal()" class="text-slate-400 hover:text-slate-600 font-bold text-lg">✕</button>
+            <button (click)="closeAssignModal()" class="min-w-[44px] min-h-[44px] inline-flex items-center justify-center text-slate-400 hover:text-slate-600 font-bold text-lg">✕</button>
           </div>
 
           <!-- Avviso Pendenze Mese Precedente nel Modale -->
@@ -349,7 +427,7 @@ export interface SchedulePreviewResult {
               <button
                 type="button"
                 (click)="openSettleModal(selectedStudent()!, selectedStudent()!.previous_month_pending!.year, selectedStudent()!.previous_month_pending!.month)"
-                class="px-2.5 py-1 text-[11px] font-bold text-white bg-amber-600 hover:bg-amber-700 rounded-lg transition-colors cursor-pointer shrink-0"
+                class="min-h-[44px] px-3 py-2 text-[11px] font-bold text-white bg-amber-600 hover:bg-amber-700 rounded-lg transition-colors cursor-pointer shrink-0"
               >
                 💳 Salda {{ getMonthName(selectedStudent()!.previous_month_pending!.month) }}
               </button>
@@ -367,15 +445,14 @@ export interface SchedulePreviewResult {
           </div>
 
           <div class="space-y-4">
-            <!-- Selezione Pacchetto (solo in creazione) o Info Pacchetto (in modifica) -->
-            <div *ngIf="!editingTariff()">
+            <!-- Selezione Pacchetto -->
+            <div>
               <label class="block text-xs font-semibold text-slate-700 mb-1">
                 Seleziona Pacchetto Doposcuola *
               </label>
               <select
                 [(ngModel)]="selectedPackageId"
-                (ngModelChange)="onPackageSelected($event)"
-                class="w-full px-3 py-2 text-sm rounded-xl border border-slate-300 focus:ring-2 focus:ring-emerald-500"
+                class="w-full min-h-[44px] px-3 py-2 text-sm rounded-xl border border-slate-300 focus:ring-2 focus:ring-emerald-500"
               >
                 <option value="" disabled>-- Seleziona un pacchetto --</option>
                 <option *ngFor="let p of availablePackages()" [value]="p.id">
@@ -384,104 +461,6 @@ export interface SchedulePreviewResult {
               </select>
             </div>
 
-            <div *ngIf="editingTariff()" class="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs flex items-center justify-between">
-              <div>
-                <span class="text-slate-500">Pacchetto:</span>
-                <strong class="ml-1 text-slate-800">{{ editingTariff()!.package_name }}</strong>
-                <span class="ml-1 text-emerald-700 font-bold">({{ editingTariff()!.covered_days }} gg coperti)</span>
-              </div>
-              <span class="font-bold text-slate-700">{{ editingTariff()!.amount_paid | currency:'EUR':'symbol':'1.2-2' }}</span>
-            </div>
-
-            <!-- Data Pagamento / Decorrenza -->
-            <div>
-              <label class="block text-xs font-semibold text-slate-700 mb-1">
-                Data Pagamento / Inizio Copertura Calendario *
-              </label>
-              <input
-                type="date"
-                [(ngModel)]="assignStartDate"
-                [min]="getMonthMinDate()"
-                [max]="getMonthMaxDate()"
-                class="w-full px-3 py-2 text-sm rounded-xl border border-slate-300 focus:ring-2 focus:ring-emerald-500"
-              />
-              <p class="text-[11px] text-slate-500 mt-1">
-                Lo studente sarà pianificato nel calendario Doposcuola a partire da questa data fino a fine mese.
-              </p>
-            </div>
-
-            <!-- Giorni Fissi Settimanali -->
-            <div>
-              <div class="flex items-center justify-between mb-1.5">
-                <label class="block text-xs font-semibold text-slate-700">
-                  Giorni Settimanali Pianificati ({{ getMonthName(selectedMonth) }} {{ selectedYear }})
-                </label>
-                <span class="text-[11px] text-slate-500 font-medium">
-                  Selezionati: {{ assignWeekdays.length }} / 5
-                </span>
-              </div>
-              <div class="grid grid-cols-5 gap-2">
-                <button
-                  *ngFor="let wd of weekdaysOptions"
-                  type="button"
-                  (click)="toggleAssignWeekday(wd.value)"
-                  class="py-2 px-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer flex flex-col items-center justify-center"
-                  [ngClass]="isWeekdaySelected(wd.value)
-                    ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
-                    : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'"
-                >
-                  <span>{{ wd.short }}</span>
-                  <span class="text-[10px] font-normal opacity-80">{{ wd.label }}</span>
-                </button>
-              </div>
-            </div>
-
-            <!-- Preview Calendario & Alert Incongruenza Giorni / Festività -->
-            <ng-container *ngIf="editingTariff() || selectedPackageId">
-              <ng-container *ngIf="computeSchedulePreview() as preview">
-                <!-- Box Alert Ambra non bloccante in caso di incongruenza -->
-                <div *ngIf="preview.hasIncongruence" class="p-3.5 rounded-xl bg-amber-50 border border-amber-300 text-amber-900 text-xs space-y-2">
-                  <div class="font-bold flex items-center gap-1.5">
-                    <span>⚠️ Attenzione: Incongruenza giorni pianificati nel mese</span>
-                  </div>
-                  <p class="text-[11px] leading-relaxed">
-                    Il pacchetto prevede <strong>{{ preview.expectedCoveredDays }} giorni coperti</strong>
-                    <span *ngIf="preview.daysPerWeek"> ({{ preview.daysPerWeek }} gg/settimana)</span>,
-                    ma dal <strong>{{ formatShortDate(assignStartDate) }}</strong> a fine mese risultano
-                    <strong>{{ preview.effectiveDates.length }} giorni effettivi</strong> a calendario
-                    ({{ assignWeekdays.length }} giorni settimanali selezionati).
-                  </p>
-                  <div *ngIf="preview.beforeStartDates.length > 0" class="text-[11px] text-amber-800">
-                    <strong>Giorni antecedenti alla data pagamento ({{ preview.beforeStartDates.length }}):</strong>
-                    {{ formatPreviewDatesList(preview.beforeStartDates) }}
-                  </div>
-                  <div *ngIf="preview.excludedDates.length > 0" class="text-[11px] text-rose-800">
-                    <strong>Festività / Chiusure escluse ({{ preview.excludedDates.length }}):</strong>
-                    <span *ngFor="let ex of preview.excludedDates; let last = last">
-                      {{ ex.label }} escluso per {{ ex.reason }}{{ !last ? '; ' : '' }}
-                    </span>
-                  </div>
-                  <div class="text-[11px] text-amber-900">
-                    <strong>Giorni effettivi a calendario ({{ preview.effectiveDates.length }}):</strong>
-                    {{ preview.effectiveDates.length > 0 ? formatPreviewDatesList(preview.effectiveDates) : 'Nessun giorno' }}
-                  </div>
-                  <div class="text-[11px] bg-white/70 p-2 rounded-lg border border-amber-200 text-amber-950">
-                    💡 <strong>Nota copertura:</strong> La copertura tariffaria resta di <strong>{{ preview.expectedCoveredDays }} presenze</strong> nel mese; eventuali recuperi in altri giorni non saranno conteggiati come extra finché non si superano i {{ preview.expectedCoveredDays }} ingressi.
-                  </div>
-                </div>
-
-                <!-- Box Verde se congruente -->
-                <div *ngIf="!preview.hasIncongruence && assignWeekdays.length > 0" class="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs space-y-1">
-                  <div class="font-bold">
-                    ✅ Pianificazione congruente ({{ preview.effectiveDates.length }} / {{ preview.expectedCoveredDays }} giorni a calendario)
-                  </div>
-                  <div class="text-[11px] text-emerald-800">
-                    <strong>Date programmate:</strong> {{ formatPreviewDatesList(preview.effectiveDates) }}
-                  </div>
-                </div>
-              </ng-container>
-            </ng-container>
-
             <div>
               <label class="block text-xs font-semibold text-slate-700 mb-1">
                 Note Opzionali
@@ -489,8 +468,8 @@ export interface SchedulePreviewResult {
               <input
                 type="text"
                 [(ngModel)]="assignNotes"
-                placeholder="es. Assegnazione concordata con genitore / recupero festività"
-                class="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 focus:ring-2 focus:ring-emerald-500"
+                placeholder="es. Assegnazione concordata con genitore"
+                class="w-full min-h-[44px] px-3 py-2 text-xs rounded-xl border border-slate-300 focus:ring-2 focus:ring-emerald-500"
               />
             </div>
           </div>
@@ -498,16 +477,16 @@ export interface SchedulePreviewResult {
           <div class="flex items-center justify-end space-x-2 pt-3 border-t border-slate-100">
             <button
               (click)="closeAssignModal()"
-              class="px-4 py-2 text-xs font-medium text-slate-600 hover:text-slate-800 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors cursor-pointer"
+              class="min-h-[44px] px-4 py-2 text-xs font-medium text-slate-600 hover:text-slate-800 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors cursor-pointer"
             >
               Annulla
             </button>
             <button
               (click)="submitAssignPackage()"
-              [disabled]="(!editingTariff() && !selectedPackageId) || !assignStartDate || isSubmitting()"
-              class="px-4 py-2 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl shadow-sm transition-colors cursor-pointer disabled:opacity-50"
+              [disabled]="!selectedPackageId || isSubmitting()"
+              class="min-h-[44px] px-4 py-2 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl shadow-sm transition-colors cursor-pointer disabled:opacity-50"
             >
-              {{ isSubmitting() ? 'Salvataggio...' : (editingTariff() ? 'Salva Modifiche' : 'Conferma & Registra') }}
+              {{ isSubmitting() ? 'Salvataggio...' : 'Conferma & Registra' }}
             </button>
           </div>
         </div>
@@ -515,7 +494,7 @@ export interface SchedulePreviewResult {
 
       <!-- MODALE SALDO FINE MESE EXTRA / PASTI -->
       <div *ngIf="showSettleModal()" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-fade-in">
-        <div class="bg-white rounded-2xl shadow-xl border border-slate-200 w-full max-w-md p-6 space-y-5">
+        <div class="bg-white rounded-2xl shadow-xl border border-slate-200 w-full max-w-md max-h-[90dvh] overflow-y-auto p-6 space-y-5">
           <div class="flex items-center justify-between pb-3 border-b border-slate-100">
             <div>
               <h3 class="text-base font-bold text-slate-800">
@@ -523,7 +502,7 @@ export interface SchedulePreviewResult {
                 <span class="text-emerald-700">{{ selectedStudent()?.last_name }} {{ selectedStudent()?.first_name }}</span>
               </h3>
             </div>
-            <button (click)="closeSettleModal()" class="text-slate-400 hover:text-slate-600 font-bold text-lg">✕</button>
+            <button (click)="closeSettleModal()" class="min-w-[44px] min-h-[44px] inline-flex items-center justify-center text-slate-400 hover:text-slate-600 font-bold text-lg">✕</button>
           </div>
 
           <div class="space-y-4">
@@ -589,14 +568,14 @@ export interface SchedulePreviewResult {
           <div class="flex items-center justify-end space-x-2 pt-3 border-t border-slate-100">
             <button
               (click)="closeSettleModal()"
-              class="px-4 py-2 text-xs font-medium text-slate-600 hover:text-slate-800 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors cursor-pointer"
+              class="min-h-[44px] px-4 py-2 text-xs font-medium text-slate-600 hover:text-slate-800 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors cursor-pointer"
             >
               Annulla
             </button>
             <button
               (click)="submitSettlePayments()"
               [disabled]="(!settleExtraCheck && !settleMealsCheck) || isSubmitting()"
-              class="px-4 py-2 text-xs font-semibold text-white bg-slate-900 hover:bg-slate-800 rounded-xl shadow-sm transition-colors cursor-pointer disabled:opacity-50"
+              class="min-h-[44px] px-4 py-2 text-xs font-semibold text-white bg-slate-900 hover:bg-slate-800 rounded-xl shadow-sm transition-colors cursor-pointer disabled:opacity-50"
             >
               {{ isSubmitting() ? 'Registrazione...' : 'Registra Saldo' }}
             </button>
@@ -638,22 +617,11 @@ export class PaymentsDashboardComponent implements OnInit {
   alertMessage = signal<string | null>(null);
   alertType = signal<'success' | 'error'>('success');
 
-  // Modale Assegnazione / Modifica
+  // Modale Assegnazione
   showAssignModal = signal<boolean>(false);
   selectedStudent = signal<StudentMonthlyBilling | null>(null);
-  editingTariff = signal<AssignedTariff | null>(null);
   selectedPackageId = '';
-  assignStartDate = '';
-  assignWeekdays: number[] = [];
   assignNotes = '';
-
-  readonly weekdaysOptions = [
-    { value: 1, short: 'Lun', label: 'Lunedì' },
-    { value: 2, short: 'Mar', label: 'Martedì' },
-    { value: 3, short: 'Mer', label: 'Mercoledì' },
-    { value: 4, short: 'Gio', label: 'Giovedì' },
-    { value: 5, short: 'Ven', label: 'Venerdì' }
-  ];
 
   // Modale Saldo
   showSettleModal = signal<boolean>(false);
@@ -677,135 +645,6 @@ export class PaymentsDashboardComponent implements OnInit {
 
   getMonthName(month: number): string {
     return this.monthsList.find(m => m.value === Number(month))?.name || '';
-  }
-
-  getMonthMinDate(): string {
-    return `${this.selectedYear}-${String(this.selectedMonth).padStart(2, '0')}-01`;
-  }
-
-  getMonthMaxDate(): string {
-    const lastDay = new Date(Number(this.selectedYear), Number(this.selectedMonth), 0).getDate();
-    return `${this.selectedYear}-${String(this.selectedMonth).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
-  }
-
-  getDefaultStartDate(): string {
-    const now = new Date();
-    const y = Number(this.selectedYear);
-    const m = Number(this.selectedMonth);
-    if (now.getFullYear() === y && (now.getMonth() + 1) === m) {
-      return `${y}-${String(m).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-    }
-    return `${y}-${String(m).padStart(2, '0')}-01`;
-  }
-
-  formatWeekdaysLabel(weekdays?: number[]): string {
-    if (!Array.isArray(weekdays) || weekdays.length === 0) {
-      return 'Nessun giorno fisso';
-    }
-    const mapShort: Record<number, string> = { 1: 'Lun', 2: 'Mar', 3: 'Mer', 4: 'Gio', 5: 'Ven' };
-    return [...weekdays]
-      .sort((a, b) => a - b)
-      .map(d => mapShort[d])
-      .filter(Boolean)
-      .join(', ');
-  }
-
-  formatShortDate(dateStr?: string | null): string {
-    if (!dateStr) return '';
-    const clean = String(dateStr).slice(0, 10);
-    const parts = clean.split('-');
-    if (parts.length !== 3) return clean;
-    return `${parts[2]}/${parts[1]}`;
-  }
-
-  formatPreviewDatesList(items: { date: string; label: string }[]): string {
-    return items.map(i => i.label).join(', ');
-  }
-
-  isWeekdaySelected(day: number): boolean {
-    return this.assignWeekdays.includes(day);
-  }
-
-  toggleAssignWeekday(day: number): void {
-    if (this.assignWeekdays.includes(day)) {
-      this.assignWeekdays = this.assignWeekdays.filter(d => d !== day);
-    } else {
-      this.assignWeekdays = [...this.assignWeekdays, day].sort((a, b) => a - b);
-    }
-  }
-
-  onPackageSelected(packageId: string): void {
-    const pkg = this.availablePackages().find(p => p.id === packageId);
-    if (pkg && pkg.days_per_week === 5 && this.assignWeekdays.length === 0) {
-      this.assignWeekdays = [1, 2, 3, 4, 5];
-    }
-  }
-
-  computeSchedulePreview(): SchedulePreviewResult {
-    const y = Number(this.selectedYear);
-    const m = Number(this.selectedMonth);
-    const edit = this.editingTariff();
-    const pkg = edit
-      ? this.availablePackages().find(p => p.id === edit.package_id)
-      : this.availablePackages().find(p => p.id === this.selectedPackageId);
-
-    const expectedCoveredDays = edit ? Number(edit.covered_days) : Number(pkg?.monthly_days ?? 0);
-    const daysPerWeek = pkg?.days_per_week !== undefined && pkg?.days_per_week !== null
-      ? Number(pkg.days_per_week)
-      : null;
-
-    const startDate = (this.assignStartDate || this.getMonthMinDate()).slice(0, 10);
-    const lastDay = new Date(y, m, 0).getDate();
-    const mapShort: Record<number, string> = { 1: 'Lun', 2: 'Mar', 3: 'Mer', 4: 'Gio', 5: 'Ven' };
-    const closures = this.billingData()?.closures || [];
-
-    const effectiveDates: { date: string; label: string }[] = [];
-    const excludedDates: { date: string; label: string; reason: string }[] = [];
-    const beforeStartDates: { date: string; label: string }[] = [];
-
-    for (let d = 1; d <= lastDay; d++) {
-      const dateStr = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-      const dt = new Date(Date.UTC(y, m - 1, d));
-      const utcDay = dt.getUTCDay();
-      const isoWeekday = utcDay === 0 ? 7 : utcDay;
-
-      if (!this.assignWeekdays.includes(isoWeekday)) continue;
-
-      const label = `${mapShort[isoWeekday]} ${String(d).padStart(2, '0')}/${String(m).padStart(2, '0')}`;
-
-      if (dateStr < startDate) {
-        beforeStartDates.push({ date: dateStr, label });
-        continue;
-      }
-
-      const holiday = getItalianHoliday(dateStr);
-      const closure = closures.find(c => String(c.date).slice(0, 10) === dateStr);
-
-      if (holiday || closure) {
-        excludedDates.push({
-          date: dateStr,
-          label,
-          reason: holiday ? holiday.name : (closure?.title || 'Chiusura straordinaria')
-        });
-      } else {
-        effectiveDates.push({ date: dateStr, label });
-      }
-    }
-
-    const weekdaysMismatch = daysPerWeek !== null && this.assignWeekdays.length !== daysPerWeek;
-    const daysCountMismatch = expectedCoveredDays > 0 && effectiveDates.length !== expectedCoveredDays;
-    const hasIncongruence = weekdaysMismatch || daysCountMismatch;
-
-    return {
-      expectedCoveredDays,
-      daysPerWeek,
-      effectiveDates,
-      excludedDates,
-      beforeStartDates,
-      weekdaysMismatch,
-      daysCountMismatch,
-      hasIncongruence
-    };
   }
 
   loadPackagesCatalog(): void {
@@ -875,30 +714,16 @@ export class PaymentsDashboardComponent implements OnInit {
     }, 4000);
   }
 
-  // Assegnazione & Modifica
+  // Assegnazione Pacchetto
   openAssignModal(stu: StudentMonthlyBilling): void {
     this.selectedStudent.set(stu);
-    this.editingTariff.set(null);
     this.selectedPackageId = '';
-    this.assignStartDate = this.getDefaultStartDate();
-    this.assignWeekdays = [];
     this.assignNotes = '';
-    this.showAssignModal.set(true);
-  }
-
-  openEditTariffModal(stu: StudentMonthlyBilling, pkg: AssignedTariff): void {
-    this.selectedStudent.set(stu);
-    this.editingTariff.set(pkg);
-    this.selectedPackageId = pkg.package_id;
-    this.assignStartDate = pkg.start_date ? String(pkg.start_date).slice(0, 10) : this.getMonthMinDate();
-    this.assignWeekdays = Array.isArray(pkg.scheduled_weekdays) ? [...pkg.scheduled_weekdays] : [];
-    this.assignNotes = pkg.notes || '';
     this.showAssignModal.set(true);
   }
 
   closeAssignModal(): void {
     this.showAssignModal.set(false);
-    this.editingTariff.set(null);
     if (!this.showSettleModal()) {
       this.selectedStudent.set(null);
     }
@@ -906,31 +731,7 @@ export class PaymentsDashboardComponent implements OnInit {
 
   submitAssignPackage(): void {
     const stu = this.selectedStudent();
-    const edit = this.editingTariff();
-    if (!stu) return;
-
-    if (edit) {
-      this.isSubmitting.set(true);
-      this.api.updateStudentTariff(edit.id, {
-        scheduled_weekdays: this.assignWeekdays,
-        start_date: this.assignStartDate,
-        notes: this.assignNotes.trim() || null
-      }).subscribe({
-        next: () => {
-          this.isSubmitting.set(false);
-          this.closeAssignModal();
-          this.showAlert('Pianificazione pacchetto aggiornata con successo', 'success');
-          this.loadBilling();
-        },
-        error: (err) => {
-          this.isSubmitting.set(false);
-          this.showAlert(err.error?.error || 'Errore durante l\'aggiornamento del pacchetto', 'error');
-        }
-      });
-      return;
-    }
-
-    if (!this.selectedPackageId) return;
+    if (!stu || !this.selectedPackageId) return;
 
     this.isSubmitting.set(true);
     this.api.assignTariffToStudent({
@@ -938,8 +739,6 @@ export class PaymentsDashboardComponent implements OnInit {
       year: Number(this.selectedYear),
       month: Number(this.selectedMonth),
       package_id: this.selectedPackageId,
-      scheduled_weekdays: this.assignWeekdays,
-      start_date: this.assignStartDate,
       notes: this.assignNotes.trim() || null
     }).subscribe({
       next: () => {

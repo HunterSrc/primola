@@ -7,16 +7,6 @@ const formatDateOnly = (val) => {
   return String(val).slice(0, 10);
 };
 
-const normalizeWeekdays = (arr) => {
-  if (!Array.isArray(arr)) return [];
-  const unique = new Set(
-    arr
-      .map(v => parseInt(v, 10))
-      .filter(n => !isNaN(n) && n >= 1 && n <= 5)
-  );
-  return Array.from(unique).sort((a, b) => a - b);
-};
-
 class PaymentRepository {
   /**
    * Recupera il prospetto completo dei pagamenti per studenti per mese e anno
@@ -90,7 +80,6 @@ class PaymentRepository {
       `SELECT smt.id, smt.student_id, smt.year, smt.month,
               smt.package_id, p.name AS package_name, p.code AS package_code,
               smt.tariff_id, smt.amount_paid, smt.covered_days,
-              smt.scheduled_weekdays, smt.start_date,
               smt.assigned_at, smt.notes
        FROM student_monthly_tariffs smt
        JOIN afterschool_packages p ON smt.package_id = p.id
@@ -116,8 +105,6 @@ class PaymentRepository {
         tariff_id: t.tariff_id,
         amount_paid: Number(t.amount_paid),
         covered_days: Number(t.covered_days),
-        scheduled_weekdays: Array.isArray(t.scheduled_weekdays) ? t.scheduled_weekdays.map(Number) : [],
-        start_date: formatDateOnly(t.start_date) || fromDate,
         assigned_at: t.assigned_at,
         notes: t.notes
       });
@@ -309,24 +296,10 @@ class PaymentRepository {
   /**
    * Assegna un pacchetto doposcuola a uno studente per un determinato mese/anno
    */
-  async assignTariffToStudent({ student_id, year, month, package_id, scheduled_weekdays = [], start_date = null, notes = null }) {
+  async assignTariffToStudent({ student_id, year, month, package_id, notes = null }) {
     const y = parseInt(year, 10);
     const m = parseInt(month, 10);
     const referenceDate = `${y}-${String(m).padStart(2, '0')}-01`;
-
-    const normalizedWeekdays = normalizeWeekdays(scheduled_weekdays);
-
-    let effectiveStartDate = referenceDate;
-    if (start_date && /^\d{4}-\d{2}-\d{2}$/.test(String(start_date))) {
-      effectiveStartDate = String(start_date);
-    } else {
-      const now = new Date();
-      const curY = now.getFullYear();
-      const curM = now.getMonth() + 1;
-      if (curY === y && curM === m) {
-        effectiveStartDate = `${curY}-${String(curM).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-      }
-    }
 
     // 1. Recupera il pacchetto
     const pkgRes = await db.query('SELECT * FROM afterschool_packages WHERE id = $1', [package_id]);
@@ -349,12 +322,12 @@ class PaymentRepository {
     }
     const tariff = tariffRes.rows[0];
 
-    // 3. Inserimento in student_monthly_tariffs
+    // 3. Inserimento in student_monthly_tariffs (le colonne legacy usano i DEFAULT DB)
     const insertRes = await db.query(
-      `INSERT INTO student_monthly_tariffs (student_id, year, month, package_id, tariff_id, amount_paid, covered_days, scheduled_weekdays, start_date, notes)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-       RETURNING *`,
-      [student_id, y, m, package_id, tariff.id, Number(tariff.price), Number(pkg.monthly_days), normalizedWeekdays, effectiveStartDate, notes]
+      `INSERT INTO student_monthly_tariffs (student_id, year, month, package_id, tariff_id, amount_paid, covered_days, notes)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+       RETURNING id, student_id, year, month, package_id, tariff_id, amount_paid, covered_days, assigned_at, notes, created_at, updated_at`,
+      [student_id, y, m, package_id, tariff.id, Number(tariff.price), Number(pkg.monthly_days), notes]
     );
 
     const row = insertRes.rows[0];
@@ -362,19 +335,17 @@ class PaymentRepository {
       ...row,
       amount_paid: Number(row.amount_paid),
       covered_days: Number(row.covered_days),
-      scheduled_weekdays: Array.isArray(row.scheduled_weekdays) ? row.scheduled_weekdays.map(Number) : normalizedWeekdays,
-      start_date: formatDateOnly(row.start_date) || effectiveStartDate,
       package_name: pkg.name,
       package_code: pkg.code
     };
   }
 
   /**
-   * Aggiorna la pianificazione settimanale, la data di decorrenza e le note di un pacchetto assegnato
+   * Aggiorna le note di un pacchetto assegnato
    */
-  async updateStudentTariff(assignmentId, { scheduled_weekdays, start_date, notes } = {}) {
+  async updateStudentTariff(assignmentId, { notes } = {}) {
     const existingRes = await db.query(
-      `SELECT * FROM student_monthly_tariffs WHERE id = $1`,
+      `SELECT id, notes FROM student_monthly_tariffs WHERE id = $1`,
       [assignmentId]
     );
     if (existingRes.rows.length === 0) {
@@ -382,26 +353,21 @@ class PaymentRepository {
     }
 
     const current = existingRes.rows[0];
-    const nextWeekdays = scheduled_weekdays !== undefined
-      ? normalizeWeekdays(scheduled_weekdays)
-      : (Array.isArray(current.scheduled_weekdays) ? current.scheduled_weekdays.map(Number) : []);
-    const nextStartDate = (start_date && /^\d{4}-\d{2}-\d{2}$/.test(String(start_date)))
-      ? String(start_date)
-      : (formatDateOnly(current.start_date) || `${current.year}-${String(current.month).padStart(2, '0')}-01`);
     const nextNotes = notes !== undefined ? notes : current.notes;
 
     await db.query(
       `UPDATE student_monthly_tariffs
-       SET scheduled_weekdays = $2,
-           start_date = $3,
-           notes = $4,
+       SET notes = $2,
            updated_at = NOW()
        WHERE id = $1`,
-      [assignmentId, nextWeekdays, nextStartDate, nextNotes]
+      [assignmentId, nextNotes]
     );
 
     const updatedRes = await db.query(
-      `SELECT smt.*, p.name AS package_name, p.code AS package_code
+      `SELECT smt.id, smt.student_id, smt.year, smt.month, smt.package_id, smt.tariff_id,
+              smt.amount_paid, smt.covered_days, smt.assigned_at, smt.notes,
+              smt.created_at, smt.updated_at,
+              p.name AS package_name, p.code AS package_code
        FROM student_monthly_tariffs smt
        JOIN afterschool_packages p ON smt.package_id = p.id
        WHERE smt.id = $1`,
@@ -413,9 +379,7 @@ class PaymentRepository {
     return {
       ...row,
       amount_paid: Number(row.amount_paid),
-      covered_days: Number(row.covered_days),
-      scheduled_weekdays: Array.isArray(row.scheduled_weekdays) ? row.scheduled_weekdays.map(Number) : nextWeekdays,
-      start_date: formatDateOnly(row.start_date) || nextStartDate
+      covered_days: Number(row.covered_days)
     };
   }
 

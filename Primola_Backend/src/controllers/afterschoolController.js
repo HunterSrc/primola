@@ -488,6 +488,46 @@ class AfterschoolController {
   }
 
   /**
+   * POST /api/afterschool/copy-previous-students
+   * Copia gli studenti previsti (attendances) dalla settimana precedente
+   * Payload: { weekStartDate: 'YYYY-MM-DD' }
+   */
+  async copyPreviousStudents(req, res) {
+    try {
+      const { weekStartDate } = req.body;
+      if (!weekStartDate || !/^\d{4}-\d{2}-\d{2}$/.test(weekStartDate)) {
+        return sendError(res, 400, "Campo 'weekStartDate' obbligatorio nel formato YYYY-MM-DD.");
+      }
+
+      const result = await afterschoolRepository.copyStudentsFromPreviousWeek(weekStartDate);
+      return sendSuccess(res, 200, result);
+    } catch (error) {
+      console.error('Errore in copyPreviousStudents:', error);
+      return sendError(res, 500, 'Errore durante la copia degli studenti dalla settimana precedente.');
+    }
+  }
+
+  /**
+   * POST /api/afterschool/copy-previous-teachers
+   * Copia i turni dei docenti dalla settimana precedente
+   * Payload: { weekStartDate: 'YYYY-MM-DD' }
+   */
+  async copyPreviousTeachers(req, res) {
+    try {
+      const { weekStartDate } = req.body;
+      if (!weekStartDate || !/^\d{4}-\d{2}-\d{2}$/.test(weekStartDate)) {
+        return sendError(res, 400, "Campo 'weekStartDate' obbligatorio nel formato YYYY-MM-DD.");
+      }
+
+      const result = await afterschoolRepository.copyTeachersFromPreviousWeek(weekStartDate);
+      return sendSuccess(res, 200, result);
+    } catch (error) {
+      console.error('Errore in copyPreviousTeachers:', error);
+      return sendError(res, 500, 'Errore durante la copia dei turni docenti dalla settimana precedente.');
+    }
+  }
+
+  /**
    * DELETE /api/afterschool/expenses/:id
    * Elimina una nota spesa
    */
