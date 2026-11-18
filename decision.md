@@ -5,14 +5,14 @@
 
 ---
 
-## Indice Riepilogativo (D1–D10)
+## Indice Riepilogativo (D1–D11)
 
 | ID | Titolo | Ambito Principale | Stato |
 |---|---|---|---|
-| **D1** | Appello Giornaliero & Pre-caricamento Attesi | Backend Attendances + Frontend `/dashboard` | Approvata |
+| **D1** | Appello Giornaliero & Pre-caricamento Attesi | Backend Attendances + Frontend `/dashboard` | Approvata (agg. D11) |
 | **D2** | Fonte Unica Copertura Giorni Mensili | Pagamenti `/payments` + Report Mensile Admin | Approvata |
 | **D3** | Unificazione Listino Tariffe Doposcuola | `afterschool_packages` + `system_settings` | Approvata |
-| **D4** | Bilancio Economico Mensile — Previsto vs Incassato vs Pending | Report Finanziario `/admin/dashboard` | Approvata |
+| **D4** | Bilancio Economico Mensile — Previsto vs Incassato vs Pending | Report Finanziario `/admin/dashboard` | Approvata (agg. D11) |
 | **D5** | Chiusure Straordinarie & Festività Nazionali | Calendario, Appello, Reportistica | Approvata |
 | **D6a** | Permessi `TEACHER` su Appello | RBAC Backend & Frontend `/dashboard` | Approvata |
 | **D6b** | Permessi `OFFICE` su Chiusure Straordinarie | RBAC Backend & Frontend `/afterschool-calendar` | Approvata |
@@ -20,14 +20,15 @@
 | **D8** | Menu Reportistica | Sidebar Navigation & Access Guards | Approvata |
 | **D9** | Turni Doposcuola solo per gruppo `TEACHER` | Calendario Doposcuola & Assegnazioni | Approvata |
 | **D10** | Backup Preventivo Automatico e Tutela Utenti | Database, Deploy & Script di Migrazione | Approvata |
+| **D11** | Pianificazione Giorni Settimanali Mensili nei Pagamenti Doposcuola & Decorrenza da Data Pagamento | Pagamenti `/payments`, Anagrafica, Calendario, Appello, Report | Approvata |
 
 ---
 
 ## D1 — Appello Giornaliero & Pre-caricamento Attesi
 
 ### Decisione
-1. L'endpoint `GET /api/attendances/expected?date=YYYY-MM-DD` e la pagina frontend `/dashboard` (**"Segna Presenze"**) devono **pre-caricare automaticamente** gli studenti attesi per la data selezionata in base al piano di abbonamento settimanale:
-   - Condizione di attesa su `students.giorni_abbonamento`: `EXTRACT(ISODOW FROM $1::date) = ANY(s.giorni_abbonamento)` (`1 = Lunedì ... 5 = Venerdì`).
+1. L'endpoint `GET /api/attendances/expected?date=YYYY-MM-DD` e la pagina frontend `/dashboard` (**"Segna Presenze"**) devono **pre-caricare automaticamente** gli studenti attesi per la data selezionata in base alla pianificazione mensile dei pacchetti doposcuola assegnati (**aggiornato da D11**):
+   - Condizione di attesa su `student_monthly_tariffs`: lo studente ha un pacchetto assegnato per `(EXTRACT(YEAR FROM $1::date), EXTRACT(MONTH FROM $1::date))` con data di decorrenza rispettata (`$1::date >= smt.start_date`) e giorno della settimana incluso in `smt.scheduled_weekdays` (`EXTRACT(ISODOW FROM $1::date) = ANY(smt.scheduled_weekdays)`, `1 = Lunedì ... 5 = Venerdì`).
    - Inclusione tramite `LEFT JOIN attendances a ON s.id = a.student_id AND a.date = $1` di eventuali **studenti extra** già registrati in `attendances` per quella data (`OR a.id IS NOT NULL`), garantendo piena coerenza con il Calendario Settimanale (`/afterschool-calendar`).
    - Nei giorni di chiusura straordinaria o festività nazionale italiana si applica la priorità definita in **D5** (pre-caricamento automatico azzerato; restano visibili solo gli studenti già registrati in `attendances` per quella data).
 2. Gli utenti `OFFICE` e `ADMIN` possono **rimuovere permanentemente** uno studente dall'appello di una specifica data tramite l'endpoint:
@@ -77,10 +78,10 @@
 ## D4 — Bilancio Economico Mensile — Previsto vs Incassato vs Pending
 
 ### Decisione
-Nel Report Finanziario Mensile (`GET /api/reports/financial-monthly?year=YYYY&month=MM`) e nella scheda *"Bilancio Economico"* di `/admin/dashboard` (oggetto `doposcuola.revenues`), le tre componenti economiche sono calcolate come segue:
+Nel Report Finanziario Mensile (`GET /api/reports/financial-monthly?year=YYYY&month=MM`) e nella scheda *"Bilancio Economico"* di `/admin/dashboard` (oggetto `doposcuola.revenues`), le tre componenti economiche sono calcolate come segue (**aggiornato da D11**):
 
 1. **`expected` (Maturato / Previsto)**:
-   - Somma dei pacchetti assegnati agli studenti nel mese (`student_monthly_tariffs.amount_paid`); per gli studenti che non hanno ancora un pacchetto assegnato nel mese, si usa la stima basata sulla tariffa attiva del pacchetto corrispondente al numero di giorni di abbonamento (`giorni_abbonamento.length` tra `1..5`, codici `1_DAY_WEEK`..`5_DAYS_WEEK`).
+   - Somma dei pacchetti assegnati agli studenti nel mese (`student_monthly_tariffs.amount_paid`); gli studenti privi di pacchetto assegnato nel mese contribuiscono con `0` alla quota pacchetti attesa (poiché la frequenza e l'abbonamento sono determinati mensilmente in `/payments` secondo **D11**). I giorni attesi nel mese (`expected_days`) sono calcolati sui giorni feriali `1..5` (escluse festività nazionali italiane e `closure_days`) in cui lo studente ha un pacchetto attivo con `date >= start_date` e `dow` incluso in `scheduled_weekdays`.
    - `+` giorni extra maturati: `extra_days * ONE_OFF` (dove `extra_days = Math.max(0, days_present - covered_days)`).
    - `+` pasti consumati maturati: `actual_meals * meal_fee_student`.
 2. **`actual` (Incassato)**:
@@ -92,7 +93,7 @@ Nel Report Finanziario Mensile (`GET /api/reports/financial-monthly?year=YYYY&mo
    - `+` pasti consumati non ancora saldati (`meals_paid = false`).
 
 ### Riferimenti Tecnici
-- Backend: `Primola_Backend/src/controllers/reportController.js` (`getFinancialMonthlyReport`, includendo la corretta valorizzazione di `totalActualStudentDays`).
+- Backend: `Primola_Backend/src/controllers/reportController.js` (`getFinancialMonthlyReport`, includendo la corretta valorizzazione di `totalActualStudentDays` e `totalExpectedStudentDays` basato su `student_monthly_tariffs`).
 - Frontend: `primola_frontend/src/app/core/models/index.ts` (`FinancialMonthlyReport`), `features/admin/admin-dashboard.component.ts`.
 
 ---
@@ -175,3 +176,38 @@ Il menu a tendina per la selezione dell'insegnante nei turni doposcuola in `/aft
 - Script: `scripts/deploy.ps1` (`Backup-Db`, `Run-Migration`), `scripts/deploy.sh` (`backup_db`, `run_migration`).
 - Directory: `backups/`.
 - Regole di Progetto: `.gemini/rules.md`.
+
+---
+
+## D11 — Pianificazione Giorni Settimanali Mensili nei Pagamenti Doposcuola & Decorrenza da Data Pagamento
+
+### Decisione
+1. **Spostamento dei Giorni di Frequenza dall'Anagrafica ai Pagamenti Mensili**:
+   - I giorni di frequenza del doposcuola **non** sono più una proprietà statica dell'anagrafica dello studente, poiché possono variare di mese in mese e dipendono dall'effettiva sottoscrizione/pagamento del pacchetto mensile.
+   - Dalla UI di Anagrafica (`/anagrafica` — form *"Nuovo Studente"* e tabella/card *"Lista Iscritti"* — e `/anagrafica/:id/edit`) vengono rimossi i selettori e i badge dei giorni di frequenza settimanale (`L M M G V`), inviando `giorni_abbonamento: []` (`{}`) come default per compatibilità con lo schema DB.
+2. **Pianificazione Settimanale e Data di Decorrenza in `student_monthly_tariffs` (`/payments`)**:
+   - La tabella `student_monthly_tariffs` include:
+     - `scheduled_weekdays SMALLINT[] NOT NULL DEFAULT '{}'`: array dei giorni della settimana (`1 = Lunedì ... 5 = Venerdì`) concordati per il pacchetto nel mese.
+     - `start_date DATE NOT NULL DEFAULT CURRENT_DATE`: data di pagamento/decorrenza da cui ha effetto la pianificazione nel mese selezionato.
+   - Gli operatori `OFFICE` e `ADMIN` possono:
+     - Assegnare un pacchetto (`POST /api/payments/assign-tariff`) specificando `scheduled_weekdays` e `start_date`.
+     - Modificare in qualsiasi momento i giorni settimanali pianificati, la data di decorrenza e le note di un pacchetto già assegnato (`PUT /api/payments/tariffs/:assignmentId`) senza dover eliminare e ricreare il pagamento.
+3. **Regola di Pre-caricamento Calendario e Appello (da `start_date` in poi)**:
+   - Sia il Calendario Settimanale Doposcuola (`GET /api/afterschool/week-summary`, `afterschoolRepository.getStudentsForDate`) sia l'Appello Giornaliero (`GET /api/attendances/expected`, `attendanceRepository.getExpectedStudents`) e i Report (`getDailyReport`, `getFinancialMonthlyReport`) pre-caricano uno studente in una data `D` (non festiva e non presente in `closure_days`) **esclusivamente** se:
+     - Esiste un record in `student_monthly_tariffs` per lo studente con `year = EXTRACT(YEAR FROM D)`, `month = EXTRACT(MONTH FROM D)`, **`D >= start_date`** e **`EXTRACT(ISODOW FROM D) = ANY(scheduled_weekdays)`**;
+     - **oppure** esiste già una presenza registrata manualmente in `attendances` per quella data (`a.id IS NOT NULL`).
+   - Le date del mese antecedenti a `start_date` **non** vengono popolate retroattivamente.
+4. **Avviso Non Bloccante di Incongruenza Calendario (Festività / Chiusure / Decorrenza)**:
+   - Nella modale di assegnazione/modifica pacchetto in `/payments`, il sistema calcola in tempo reale le date effettive del mese a partire da `start_date` che coincidono con `scheduled_weekdays`, escludendo le festività nazionali italiane (`getItalianHoliday`) e le chiusure straordinarie (`closure_days`).
+   - Se il numero di date effettivamente pianificabili nel calendario differisce dai giorni coperti dal pacchetto (`covered_days` / `monthly_days`) o se il numero di giorni selezionati in `scheduled_weekdays` differisce da `days_per_week`:
+     - Viene mostrato all'operatore un **alert informativo non bloccante (ambra)** che evidenzia la discrepanza (es. pagamento il `02/12/2026` di un pacchetto da `1 giorno/settimana` = 4 ingressi con scelta del **Martedì**: `01/12` escluso perché antecedente al pagamento, `08/12` escluso per *Immacolata Concezione*, con soli **3** martedì effettivi a calendario `15/12, 22/12, 29/12`).
+     - La copertura contabile del pacchetto rimane invariata (`covered_days = 4`), consentendo allo studente di recuperare il giorno mancante in un'altra data del mese senza generare addebiti extra.
+5. **Promemoria e Saldo Rapido Pendenze del Mese Precedente (`previous_month_pending`)**:
+   - L'endpoint `GET /api/payments/monthly?year=YYYY&month=MM` calcola e restituisce per ogni studente l'oggetto `previous_month_pending` relativo al mese immediatamente precedente (`extra_days` e `meals` non ancora saldati).
+   - Nella schermata `/payments` (sia nella riga dello studente che nella modale di assegnazione nuovo pacchetto), se `previous_month_pending.has_pending === true`, viene mostrato un badge di avviso con pulsante rapido **"Salda [Mese Precedente]"** per registrare immediatamente il saldo delle pendenze pregresse.
+
+### Riferimenti Tecnici
+- Database: `Primola_Backend/db/migrations/012_tariff_scheduled_weekdays_and_start_date.sql`, `010_student_monthly_tariffs_and_payments.sql`, `db_schema.sql`, `src/config/memoryDb.js`.
+- Backend: `Primola_Backend/src/repositories/paymentRepository.js`, `attendanceRepository.js`, `afterschoolRepository.js`, `controllers/paymentController.js`, `controllers/reportController.js`, `routes/payments.js`.
+- Frontend: `primola_frontend/src/app/core/models/payment.model.ts`, `core/services/api.service.ts`, `features/payments/payments-dashboard.component.ts`, `features/anagrafica/anagrafica.component.ts`, `features/anagrafica/student-edit.component.ts`.
+

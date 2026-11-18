@@ -207,3 +207,97 @@ FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 CREATE INDEX IF NOT EXISTS idx_afterschool_expenses_date ON afterschool_expenses(expense_date);
 CREATE INDEX IF NOT EXISTS idx_afterschool_expenses_category ON afterschool_expenses(category);
 
+-- ==========================================
+-- TABELLE: afterschool_packages & afterschool_tariffs
+-- ==========================================
+CREATE TABLE IF NOT EXISTS afterschool_packages (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name VARCHAR(100) NOT NULL,
+    code VARCHAR(50) UNIQUE,
+    monthly_days INTEGER NOT NULL DEFAULT 4,
+    days_per_week INTEGER,
+    is_active BOOLEAN NOT NULL DEFAULT true,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE TRIGGER tg_afterschool_packages_updated_at
+BEFORE UPDATE ON afterschool_packages
+FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+CREATE TABLE IF NOT EXISTS afterschool_tariffs (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    package_id UUID NOT NULL REFERENCES afterschool_packages(id) ON DELETE CASCADE,
+    price NUMERIC(10,2) NOT NULL DEFAULT 0.00,
+    valid_from DATE NOT NULL,
+    valid_to DATE NOT NULL DEFAULT '9999-01-01',
+    notes TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE TRIGGER tg_afterschool_tariffs_updated_at
+BEFORE UPDATE ON afterschool_tariffs
+FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+CREATE INDEX IF NOT EXISTS idx_afterschool_tariffs_package ON afterschool_tariffs(package_id);
+CREATE INDEX IF NOT EXISTS idx_afterschool_tariffs_dates ON afterschool_tariffs(valid_from, valid_to);
+
+-- ==========================================
+-- TABELLE: student_monthly_tariffs & student_monthly_settlements
+-- ==========================================
+CREATE TABLE IF NOT EXISTS student_monthly_tariffs (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    student_id UUID NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+    year SMALLINT NOT NULL,
+    month SMALLINT NOT NULL,
+    package_id UUID NOT NULL REFERENCES afterschool_packages(id) ON DELETE CASCADE,
+    tariff_id UUID NOT NULL REFERENCES afterschool_tariffs(id) ON DELETE CASCADE,
+    amount_paid NUMERIC(10,2) NOT NULL DEFAULT 0.00,
+    covered_days INTEGER NOT NULL DEFAULT 0,
+    scheduled_weekdays SMALLINT[] NOT NULL DEFAULT '{}',
+    start_date DATE NOT NULL DEFAULT CURRENT_DATE,
+    assigned_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    notes TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE TRIGGER tg_student_monthly_tariffs_updated_at
+BEFORE UPDATE ON student_monthly_tariffs
+FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+CREATE INDEX IF NOT EXISTS idx_student_monthly_tariffs_period ON student_monthly_tariffs(year, month);
+CREATE INDEX IF NOT EXISTS idx_student_monthly_tariffs_student ON student_monthly_tariffs(student_id);
+CREATE INDEX IF NOT EXISTS idx_student_monthly_tariffs_schedule ON student_monthly_tariffs(year, month, start_date);
+
+CREATE TABLE IF NOT EXISTS student_monthly_settlements (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    student_id UUID NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+    year SMALLINT NOT NULL,
+    month SMALLINT NOT NULL,
+    extra_days_count INTEGER NOT NULL DEFAULT 0,
+    extra_days_unit_fee NUMERIC(10,2) NOT NULL DEFAULT 0.00,
+    extra_days_total NUMERIC(10,2) NOT NULL DEFAULT 0.00,
+    extra_paid BOOLEAN NOT NULL DEFAULT false,
+    extra_paid_at TIMESTAMP WITH TIME ZONE,
+    meals_count INTEGER NOT NULL DEFAULT 0,
+    meal_unit_fee NUMERIC(10,2) NOT NULL DEFAULT 0.00,
+    meals_total NUMERIC(10,2) NOT NULL DEFAULT 0.00,
+    meals_paid BOOLEAN NOT NULL DEFAULT false,
+    meals_paid_at TIMESTAMP WITH TIME ZONE,
+    payment_method VARCHAR(50),
+    notes TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    CONSTRAINT uq_student_monthly_settlement UNIQUE(student_id, year, month)
+);
+
+CREATE TRIGGER tg_student_monthly_settlements_updated_at
+BEFORE UPDATE ON student_monthly_settlements
+FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+CREATE INDEX IF NOT EXISTS idx_student_monthly_settlements_period ON student_monthly_settlements(year, month);
+
+

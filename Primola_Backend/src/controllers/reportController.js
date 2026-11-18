@@ -22,7 +22,14 @@ exports.getDailyReport = async (req, res, next) => {
   try {
     const statsQuery = `
       SELECT 
-        (SELECT COUNT(*) FROM students WHERE EXTRACT(ISODOW FROM $1::date) = ANY(giorni_abbonamento) AND NOT EXISTS (SELECT 1 FROM closure_days WHERE date = $1)) AS total_expected,
+        (SELECT COUNT(*) FROM students s WHERE NOT EXISTS (SELECT 1 FROM closure_days WHERE date = $1) AND s.id IN (
+          SELECT smt.student_id
+          FROM student_monthly_tariffs smt
+          WHERE smt.year = EXTRACT(YEAR FROM $1::date)
+            AND smt.month = EXTRACT(MONTH FROM $1::date)
+            AND $1::date >= smt.start_date
+            AND EXTRACT(ISODOW FROM $1::date) = ANY(smt.scheduled_weekdays)
+        )) AS total_expected,
         COUNT(CASE WHEN is_present = true THEN 1 END) AS total_present,
         COUNT(CASE WHEN is_present = false THEN 1 END) AS total_absent
       FROM attendances
@@ -627,37 +634,13 @@ exports.getFinancialMonthlyReport = async (req, res, next) => {
     );
     const closureDates = new Set(closuresRes.rows.map(r => formatDateStr(r.date)));
 
-    // 2. Studenti e calcolo presenze attese (escludendo festività nazionali e chiusure straordinarie)
+    // 2. Studenti e pacchetti assegnati nel mese per calcolo presenze attese (D11)
     const studentsRes = await client.query(
       `SELECT id, nome AS first_name, cognome AS last_name, scuola, giorni_abbonamento, pasti_settimanali 
        FROM students 
        ORDER BY cognome ASC, nome ASC`
     );
     const students = studentsRes.rows;
-
-    const expectedDaysByStudent = new Map();
-    let totalExpectedStudentDays = 0;
-
-    for (const s of students) {
-      const subDays = Array.isArray(s.giorni_abbonamento) ? s.giorni_abbonamento.map(Number) : [];
-      if (subDays.length === 0) {
-        expectedDaysByStudent.set(s.id, 0);
-        continue;
-      }
-
-      let sDays = 0;
-      for (let day = 1; day <= lastDay; day++) {
-        const dStr = `${y}-${String(m).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-        const utcDate = new Date(Date.UTC(y, m - 1, day));
-        const jsDow = utcDate.getUTCDay();
-        const dow = jsDow === 0 ? 7 : jsDow;
-        if (dow <= 5 && !closureDates.has(dStr) && !isItalianHoliday(dStr) && subDays.includes(dow)) {
-          sDays++;
-        }
-      }
-      expectedDaysByStudent.set(s.id, sDays);
-      totalExpectedStudentDays += sDays;
-    }
 
     // 3. Caricamento tariffe attive dei pacchetti doposcuola (1_DAY_WEEK..5_DAYS_WEEK + ONE_OFF)
     const activePackagesRes = await client.query(
@@ -681,9 +664,9 @@ exports.getFinancialMonthlyReport = async (req, res, next) => {
     }
     const oneOffFee = packagePriceByCode.has('ONE_OFF') ? packagePriceByCode.get('ONE_OFF') : 15.00;
 
-    // Pacchetti assegnati agli studenti nel mese
+    // Pacchetti assegnati agli studenti nel mese (con scheduled_weekdays e start_date)
     const assignedTariffsRes = await client.query(
-      `SELECT student_id, amount_paid, covered_days
+      `SELECT student_id, amount_paid, covered_days, scheduled_weekdays, start_date
        FROM student_monthly_tariffs
        WHERE year = $1 AND month = $2`,
       [y, m]
@@ -691,6 +674,7 @@ exports.getFinancialMonthlyReport = async (req, res, next) => {
 
     const assignedRevenueByStudent = new Map();
     const assignedCoverageByStudent = new Map();
+    const tariffsByStudent = new Map();
     const studentsWithAssignedPackage = new Set();
 
     for (const row of assignedTariffsRes.rows) {
@@ -703,6 +687,42 @@ exports.getFinancialMonthlyReport = async (req, res, next) => {
         row.student_id,
         (assignedCoverageByStudent.get(row.student_id) || 0) + Number(row.covered_days || 0)
       );
+      if (!tariffsByStudent.has(row.student_id)) {
+        tariffsByStudent.set(row.student_id, []);
+      }
+      tariffsByStudent.get(row.student_id).push({
+        scheduled_weekdays: Array.isArray(row.scheduled_weekdays) ? row.scheduled_weekdays.map(Number) : [],
+        start_date: formatDateStr(row.start_date) || fromDate
+      });
+    }
+
+    const expectedDaysByStudent = new Map();
+    let totalExpectedStudentDays = 0;
+
+    for (const s of students) {
+      const studentTariffs = tariffsByStudent.get(s.id) || [];
+      if (studentTariffs.length === 0) {
+        expectedDaysByStudent.set(s.id, 0);
+        continue;
+      }
+
+      let sDays = 0;
+      for (let day = 1; day <= lastDay; day++) {
+        const dStr = `${y}-${String(m).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        const utcDate = new Date(Date.UTC(y, m - 1, day));
+        const jsDow = utcDate.getUTCDay();
+        const dow = jsDow === 0 ? 7 : jsDow;
+        if (dow <= 5 && !closureDates.has(dStr) && !isItalianHoliday(dStr)) {
+          const isScheduledOnDay = studentTariffs.some(
+            t => dStr >= t.start_date && t.scheduled_weekdays.includes(dow)
+          );
+          if (isScheduledOnDay) {
+            sDays++;
+          }
+        }
+      }
+      expectedDaysByStudent.set(s.id, sDays);
+      totalExpectedStudentDays += sDays;
     }
 
     // Saldi mensili per extra e pasti
@@ -739,7 +759,7 @@ exports.getFinancialMonthlyReport = async (req, res, next) => {
       }
     }
 
-    // Calcolo entrate doposcuola per studente: Previsto/Maturato vs Incassato vs Pending (D3, D4)
+    // Calcolo entrate doposcuola per studente: Previsto/Maturato vs Incassato vs Pending (D3, D4, D11)
     let expectedPackagesRevenue = 0;
     let totalPackagesRevenue = 0;
     let totalExtraRevenue = 0;
@@ -751,8 +771,6 @@ exports.getFinancialMonthlyReport = async (req, res, next) => {
 
     for (const s of students) {
       const hasAssigned = studentsWithAssignedPackage.has(s.id);
-      const subDays = Array.isArray(s.giorni_abbonamento) ? s.giorni_abbonamento.map(Number) : [];
-      const uniqueSubCount = new Set(subDays.filter(d => d >= 1 && d <= 5)).size;
 
       let studentExpectedPkg = 0;
       let studentActualPkg = 0;
@@ -763,14 +781,9 @@ exports.getFinancialMonthlyReport = async (req, res, next) => {
         studentActualPkg = studentExpectedPkg;
         cov = assignedCoverageByStudent.get(s.id) || 0;
       } else {
-        if (uniqueSubCount >= 1 && uniqueSubCount <= 5) {
-          const codeFallback = uniqueSubCount === 1 ? '1_DAY_WEEK' : `${uniqueSubCount}_DAYS_WEEK`;
-          studentExpectedPkg = packagePriceByDaysPerWeek.get(uniqueSubCount)
-            ?? packagePriceByCode.get(codeFallback)
-            ?? 0;
-        }
+        studentExpectedPkg = 0;
         studentActualPkg = 0;
-        cov = expectedDaysByStudent.get(s.id) || 0;
+        cov = 0;
       }
 
       expectedPackagesRevenue += studentExpectedPkg;

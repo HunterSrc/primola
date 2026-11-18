@@ -9,8 +9,23 @@ export interface AssignedTariff {
   tariff_id: string;
   amount_paid: number;
   covered_days: number;
+  scheduled_weekdays?: number[];
+  start_date?: string | null;
   assigned_at?: string;
   notes?: string | null;
+}
+
+export interface PreviousMonthPending {
+  year: number;
+  month: number;
+  extra_days_count: number;
+  extra_days_total: number;
+  extra_paid: boolean;
+  meals_count: number;
+  meals_total: number;
+  meals_paid: boolean;
+  total_pending: number;
+  has_pending: boolean;
 }
 
 export interface StudentMonthlyBilling {
@@ -35,6 +50,7 @@ export interface StudentMonthlyBilling {
   payment_method?: string | null;
   total_due_month: number;
   notes?: string | null;
+  previous_month_pending?: PreviousMonthPending | null;
 }
 
 export interface MonthlyBillingSummary {
@@ -44,6 +60,7 @@ export interface MonthlyBillingSummary {
     one_off_fee: number;
     meal_fee_student: number;
   };
+  closures?: { id?: string; date: string; title: string; notes?: string | null }[];
   totals: {
     total_students: number;
     total_packages_revenue: number;
@@ -61,6 +78,14 @@ export interface AssignPackagePayload {
   year: number;
   month: number;
   package_id: string;
+  scheduled_weekdays?: number[];
+  start_date?: string | null;
+  notes?: string | null;
+}
+
+export interface UpdateAssignedTariffPayload {
+  scheduled_weekdays: number[];
+  start_date: string;
   notes?: string | null;
 }
 

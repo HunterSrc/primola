@@ -44,6 +44,11 @@ describe('AnagraficaComponent', () => {
     expect(component.students().length).toBe(2);
     expect(component.tutors.length).toBe(1);
     expect(component.activeTab()).toBe('NEW');
+    expect(component.studentForm.value.sub_lun).toBe(false);
+    expect(component.studentForm.value.sub_mar).toBe(false);
+    expect(component.studentForm.value.sub_mer).toBe(false);
+    expect(component.studentForm.value.sub_gio).toBe(false);
+    expect(component.studentForm.value.sub_ven).toBe(false);
   });
 
   it('should manage tutors FormArray: add and remove', () => {

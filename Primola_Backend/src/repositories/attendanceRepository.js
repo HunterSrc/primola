@@ -56,8 +56,15 @@ const getExpectedStudents = async (dateStr) => {
         LEFT JOIN attendances a
           ON s.id = a.student_id AND a.date = $1
         ${tutorJoin}
-        WHERE EXTRACT(ISODOW FROM $1::date) = ANY(s.giorni_abbonamento)
-           OR a.id IS NOT NULL
+        WHERE s.id IN (
+          SELECT smt.student_id
+          FROM student_monthly_tariffs smt
+          WHERE smt.year = EXTRACT(YEAR FROM $1::date)
+            AND smt.month = EXTRACT(MONTH FROM $1::date)
+            AND $1::date >= smt.start_date
+            AND EXTRACT(ISODOW FROM $1::date) = ANY(smt.scheduled_weekdays)
+        )
+        OR a.id IS NOT NULL
         ORDER BY s.cognome ASC, s.nome ASC;
       `;
 

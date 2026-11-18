@@ -63,3 +63,9 @@ Questo file viene letto da Antigravity per garantire continuità di standard, si
    - **Backup Preventivo Obbligatorio**: Prima di applicare qualsiasi migrazione SQL, seed, operazione DDL/DML strutturale o cancellazione dati sul database (locale o remoto), **DEVE SEMPRE** essere eseguito un dump di backup preventivo (`backups/primola_backup_YYYYMMDD_HHmmss.sql`). Gli script di deployment `scripts/deploy.ps1` e `scripts/deploy.sh` invocano automaticamente `Backup-Db` / `backup_db` prima di applicare qualsiasi migrazione con `-Target migrate`.
    - **Tutela Assoluta delle Anagrafiche Utenti**: Gli utenti (`users`, `user_groups`, `groups`) **non devono MAI essere cancellati, troncati o azzerati** durante operazioni di seed o pulizia dati.
    - **Isolamento delle Operazioni di Reset**: Operazioni di reset o rigenerazione dati operativi (es. iscritti, presenze, pasti) devono limitare i comandi `DELETE` unicamente alle tabelle di dominio pertinenti (`students`, `tutors`, `attendances`), lasciando sempre intatto il patrimonio anagrafico degli utenti e dei ruoli RBAC.
+
+8. **Orchestrazione Piani e Sviluppo tramite Swarm**:
+   - Ogni volta che viene elaborato un piano di implementazione (`/plan`) e si procede all'esecuzione, **includere sempre nel piano la strategia di esecuzione tramite `swarm`** e utilizzare lo strumento `swarm` per parallelizzare le attività indipendenti (es. Database/Docs, Backend, Frontend, Verifier) ottimizzando i tempi di sviluppo e verifica.
+   - **Scelta Modelli nei Worker Swarm**:
+     - **Worker di lavorazione/implementazione** (es. `db-docs`, `backend`, `frontend` e tutte le fasi di sviluppo): utilizzare sempre **Hydrogen** (`model: "gemini-4-hydrogen-medium"`).
+     - **Worker di verifica** (`verifier`): utilizzare sempre **Flash** (`model: "gemini-3.8-flash-medium"`).

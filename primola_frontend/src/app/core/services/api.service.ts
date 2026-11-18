@@ -28,6 +28,7 @@ import {
   AfterschoolExpensesSummary,
   MonthlyBillingSummary,
   AssignPackagePayload,
+  UpdateAssignedTariffPayload,
   SettlePayload,
   AssignedTariff
 } from '../models';
@@ -828,6 +829,12 @@ export class ApiService {
 
   assignTariffToStudent(payload: AssignPackagePayload): Observable<AssignedTariff> {
     return this.http.post<ApiResponse<AssignedTariff>>(`${this.baseUrl}/payments/assign-tariff`, payload).pipe(
+      map(res => res.data)
+    );
+  }
+
+  updateStudentTariff(assignmentId: string, payload: UpdateAssignedTariffPayload): Observable<AssignedTariff> {
+    return this.http.put<ApiResponse<AssignedTariff>>(`${this.baseUrl}/payments/tariffs/${assignmentId}`, payload).pipe(
       map(res => res.data)
     );
   }

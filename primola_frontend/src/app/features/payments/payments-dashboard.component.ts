@@ -2,12 +2,24 @@ import { Component, inject, signal, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../core/services/api.service';
+import { getItalianHoliday } from '../../core/utils/holidays.util';
 import {
   MonthlyBillingSummary,
   StudentMonthlyBilling,
   AfterschoolPackage,
   AssignedTariff
 } from '../../core/models';
+
+export interface SchedulePreviewResult {
+  expectedCoveredDays: number;
+  daysPerWeek: number | null;
+  effectiveDates: { date: string; label: string }[];
+  excludedDates: { date: string; label: string; reason: string }[];
+  beforeStartDates: { date: string; label: string }[];
+  weekdaysMismatch: boolean;
+  daysCountMismatch: boolean;
+  hasIncongruence: boolean;
+}
 
 @Component({
   selector: 'app-payments-dashboard',
@@ -161,29 +173,69 @@ import {
                 <td class="px-4 py-3.5 font-medium text-slate-900">
                   <div class="font-bold text-slate-800">{{ stu.last_name }} {{ stu.first_name }}</div>
                   <div class="text-[11px] text-slate-400">{{ stu.school || 'Scuola non specificata' }}</div>
+
+                  <!-- Alert Mese Precedente Da Saldare -->
+                  <div *ngIf="stu.previous_month_pending?.has_pending" class="mt-2 p-2 rounded-xl bg-amber-50 border border-amber-300 text-amber-900 text-[11px] space-y-1">
+                    <div class="font-bold flex items-center gap-1">
+                      <span>⚠️ Da saldare {{ getMonthName(stu.previous_month_pending!.month) }}:</span>
+                      <span class="text-rose-700">{{ stu.previous_month_pending!.total_pending | currency:'EUR':'symbol':'1.2-2' }}</span>
+                    </div>
+                    <div class="text-[10px] text-amber-800">
+                      <span *ngIf="!stu.previous_month_pending!.meals_paid && stu.previous_month_pending!.meals_count > 0">
+                        {{ stu.previous_month_pending!.meals_count }} pasti ({{ stu.previous_month_pending!.meals_total | currency:'EUR':'symbol':'1.2-2' }})
+                      </span>
+                      <span *ngIf="!stu.previous_month_pending!.meals_paid && stu.previous_month_pending!.meals_count > 0 && !stu.previous_month_pending!.extra_paid && stu.previous_month_pending!.extra_days_count > 0"> + </span>
+                      <span *ngIf="!stu.previous_month_pending!.extra_paid && stu.previous_month_pending!.extra_days_count > 0">
+                        {{ stu.previous_month_pending!.extra_days_count }} extra ({{ stu.previous_month_pending!.extra_days_total | currency:'EUR':'symbol':'1.2-2' }})
+                      </span>
+                    </div>
+                    <button
+                      (click)="openSettleModal(stu, stu.previous_month_pending!.year, stu.previous_month_pending!.month)"
+                      class="inline-flex items-center px-2 py-0.5 text-[10px] font-bold text-white bg-amber-600 hover:bg-amber-700 rounded-md transition-colors cursor-pointer"
+                    >
+                      💳 Salda {{ getMonthName(stu.previous_month_pending!.month) }}
+                    </button>
+                  </div>
                 </td>
 
                 <!-- Pacchetti Assegnati -->
                 <td class="px-4 py-3.5">
                   <div class="flex flex-wrap items-center gap-1.5">
-                    <span
+                    <div
                       *ngFor="let pkg of stu.assigned_packages"
-                      class="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-200"
+                      class="inline-flex flex-col gap-0.5 px-2.5 py-1.5 text-xs rounded-xl bg-emerald-50 text-emerald-900 border border-emerald-200"
                     >
-                      <span class="font-medium">{{ pkg.package_name }}</span>
-                      <span class="text-[10px] font-bold text-emerald-600">({{ pkg.amount_paid | currency:'EUR':'symbol':'1.2-2' }})</span>
-                      <button
-                        (click)="removePackage(pkg.id)"
-                        class="text-rose-500 hover:text-rose-700 font-bold text-xs ml-1 cursor-pointer"
-                        title="Rimuovi pacchetto"
-                      >
-                        ✕
-                      </button>
-                    </span>
+                      <div class="flex items-center gap-1.5">
+                        <span class="font-semibold">{{ pkg.package_name }}</span>
+                        <span class="text-[10px] font-bold text-emerald-700">({{ pkg.amount_paid | currency:'EUR':'symbol':'1.2-2' }})</span>
+                        <button
+                          (click)="openEditTariffModal(stu, pkg)"
+                          class="text-slate-500 hover:text-emerald-700 font-bold text-xs ml-1 cursor-pointer"
+                          title="Modifica giorni fissi e decorrenza"
+                        >
+                          ✎
+                        </button>
+                        <button
+                          (click)="removePackage(pkg.id)"
+                          class="text-rose-500 hover:text-rose-700 font-bold text-xs cursor-pointer"
+                          title="Rimuovi pacchetto"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                      <div class="flex items-center gap-1.5 text-[10px] text-emerald-700">
+                        <span class="px-1.5 py-0.2 bg-white/80 border border-emerald-200 rounded font-semibold">
+                          📅 {{ formatWeekdaysLabel(pkg.scheduled_weekdays) }}
+                        </span>
+                        <span *ngIf="pkg.start_date" class="text-slate-500">
+                          dal {{ formatShortDate(pkg.start_date) }}
+                        </span>
+                      </div>
+                    </div>
 
                     <button
                       (click)="openAssignModal(stu)"
-                      class="inline-flex items-center px-2 py-1 text-xs font-semibold text-emerald-700 bg-white hover:bg-emerald-50 border border-dashed border-emerald-400 rounded-lg transition-colors cursor-pointer"
+                      class="inline-flex items-center px-2.5 py-1.5 text-xs font-semibold text-emerald-700 bg-white hover:bg-emerald-50 border border-dashed border-emerald-400 rounded-xl transition-colors cursor-pointer"
                       title="Assegna un nuovo pacchetto per questo mese"
                     >
                       + Pacchetto
@@ -276,23 +328,53 @@ import {
         </div>
       </div>
 
-      <!-- MODALE ASSEGNAZIONE PACCHETTO -->
-      <div *ngIf="showAssignModal()" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-fade-in">
-        <div class="bg-white rounded-2xl shadow-xl border border-slate-200 w-full max-w-md p-6 space-y-5">
+      <!-- MODALE ASSEGNAZIONE / MODIFICA PACCHETTO -->
+      <div *ngIf="showAssignModal()" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-fade-in overflow-y-auto">
+        <div class="bg-white rounded-2xl shadow-xl border border-slate-200 w-full max-w-lg p-6 space-y-5 my-8">
           <div class="flex items-center justify-between pb-3 border-b border-slate-100">
             <h3 class="text-base font-bold text-slate-800">
-              ➕ Assegna Pacchetto a: <span class="text-emerald-700">{{ selectedStudent()?.last_name }} {{ selectedStudent()?.first_name }}</span>
+              {{ editingTariff() ? '✎ Modifica Pianificazione Pacchetto:' : '➕ Assegna Pacchetto a:' }}
+              <span class="text-emerald-700">{{ selectedStudent()?.last_name }} {{ selectedStudent()?.first_name }}</span>
             </h3>
             <button (click)="closeAssignModal()" class="text-slate-400 hover:text-slate-600 font-bold text-lg">✕</button>
           </div>
 
+          <!-- Avviso Pendenze Mese Precedente nel Modale -->
+          <div *ngIf="selectedStudent()?.previous_month_pending?.has_pending" class="p-3.5 rounded-xl bg-amber-50 border border-amber-300 text-amber-900 text-xs space-y-2">
+            <div class="flex items-center justify-between gap-2">
+              <div class="font-bold">
+                ⚠️ Pendenza {{ getMonthName(selectedStudent()!.previous_month_pending!.month) }} {{ selectedStudent()!.previous_month_pending!.year }}:
+                <span class="text-rose-700">{{ selectedStudent()!.previous_month_pending!.total_pending | currency:'EUR':'symbol':'1.2-2' }}</span>
+              </div>
+              <button
+                type="button"
+                (click)="openSettleModal(selectedStudent()!, selectedStudent()!.previous_month_pending!.year, selectedStudent()!.previous_month_pending!.month)"
+                class="px-2.5 py-1 text-[11px] font-bold text-white bg-amber-600 hover:bg-amber-700 rounded-lg transition-colors cursor-pointer shrink-0"
+              >
+                💳 Salda {{ getMonthName(selectedStudent()!.previous_month_pending!.month) }}
+              </button>
+            </div>
+            <div class="text-[11px] text-amber-800">
+              Risultano ancora da saldare:
+              <strong *ngIf="!selectedStudent()!.previous_month_pending!.meals_paid && selectedStudent()!.previous_month_pending!.meals_count > 0">
+                {{ selectedStudent()!.previous_month_pending!.meals_count }} pasti ({{ selectedStudent()!.previous_month_pending!.meals_total | currency:'EUR':'symbol':'1.2-2' }})
+              </strong>
+              <span *ngIf="!selectedStudent()!.previous_month_pending!.meals_paid && selectedStudent()!.previous_month_pending!.meals_count > 0 && !selectedStudent()!.previous_month_pending!.extra_paid && selectedStudent()!.previous_month_pending!.extra_days_count > 0"> e </span>
+              <strong *ngIf="!selectedStudent()!.previous_month_pending!.extra_paid && selectedStudent()!.previous_month_pending!.extra_days_count > 0">
+                {{ selectedStudent()!.previous_month_pending!.extra_days_count }} ingressi extra ({{ selectedStudent()!.previous_month_pending!.extra_days_total | currency:'EUR':'symbol':'1.2-2' }})
+              </strong>.
+            </div>
+          </div>
+
           <div class="space-y-4">
-            <div>
+            <!-- Selezione Pacchetto (solo in creazione) o Info Pacchetto (in modifica) -->
+            <div *ngIf="!editingTariff()">
               <label class="block text-xs font-semibold text-slate-700 mb-1">
                 Seleziona Pacchetto Doposcuola *
               </label>
               <select
                 [(ngModel)]="selectedPackageId"
+                (ngModelChange)="onPackageSelected($event)"
                 class="w-full px-3 py-2 text-sm rounded-xl border border-slate-300 focus:ring-2 focus:ring-emerald-500"
               >
                 <option value="" disabled>-- Seleziona un pacchetto --</option>
@@ -302,6 +384,104 @@ import {
               </select>
             </div>
 
+            <div *ngIf="editingTariff()" class="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs flex items-center justify-between">
+              <div>
+                <span class="text-slate-500">Pacchetto:</span>
+                <strong class="ml-1 text-slate-800">{{ editingTariff()!.package_name }}</strong>
+                <span class="ml-1 text-emerald-700 font-bold">({{ editingTariff()!.covered_days }} gg coperti)</span>
+              </div>
+              <span class="font-bold text-slate-700">{{ editingTariff()!.amount_paid | currency:'EUR':'symbol':'1.2-2' }}</span>
+            </div>
+
+            <!-- Data Pagamento / Decorrenza -->
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 mb-1">
+                Data Pagamento / Inizio Copertura Calendario *
+              </label>
+              <input
+                type="date"
+                [(ngModel)]="assignStartDate"
+                [min]="getMonthMinDate()"
+                [max]="getMonthMaxDate()"
+                class="w-full px-3 py-2 text-sm rounded-xl border border-slate-300 focus:ring-2 focus:ring-emerald-500"
+              />
+              <p class="text-[11px] text-slate-500 mt-1">
+                Lo studente sarà pianificato nel calendario Doposcuola a partire da questa data fino a fine mese.
+              </p>
+            </div>
+
+            <!-- Giorni Fissi Settimanali -->
+            <div>
+              <div class="flex items-center justify-between mb-1.5">
+                <label class="block text-xs font-semibold text-slate-700">
+                  Giorni Settimanali Pianificati ({{ getMonthName(selectedMonth) }} {{ selectedYear }})
+                </label>
+                <span class="text-[11px] text-slate-500 font-medium">
+                  Selezionati: {{ assignWeekdays.length }} / 5
+                </span>
+              </div>
+              <div class="grid grid-cols-5 gap-2">
+                <button
+                  *ngFor="let wd of weekdaysOptions"
+                  type="button"
+                  (click)="toggleAssignWeekday(wd.value)"
+                  class="py-2 px-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer flex flex-col items-center justify-center"
+                  [ngClass]="isWeekdaySelected(wd.value)
+                    ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
+                    : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'"
+                >
+                  <span>{{ wd.short }}</span>
+                  <span class="text-[10px] font-normal opacity-80">{{ wd.label }}</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Preview Calendario & Alert Incongruenza Giorni / Festività -->
+            <ng-container *ngIf="editingTariff() || selectedPackageId">
+              <ng-container *ngIf="computeSchedulePreview() as preview">
+                <!-- Box Alert Ambra non bloccante in caso di incongruenza -->
+                <div *ngIf="preview.hasIncongruence" class="p-3.5 rounded-xl bg-amber-50 border border-amber-300 text-amber-900 text-xs space-y-2">
+                  <div class="font-bold flex items-center gap-1.5">
+                    <span>⚠️ Attenzione: Incongruenza giorni pianificati nel mese</span>
+                  </div>
+                  <p class="text-[11px] leading-relaxed">
+                    Il pacchetto prevede <strong>{{ preview.expectedCoveredDays }} giorni coperti</strong>
+                    <span *ngIf="preview.daysPerWeek"> ({{ preview.daysPerWeek }} gg/settimana)</span>,
+                    ma dal <strong>{{ formatShortDate(assignStartDate) }}</strong> a fine mese risultano
+                    <strong>{{ preview.effectiveDates.length }} giorni effettivi</strong> a calendario
+                    ({{ assignWeekdays.length }} giorni settimanali selezionati).
+                  </p>
+                  <div *ngIf="preview.beforeStartDates.length > 0" class="text-[11px] text-amber-800">
+                    <strong>Giorni antecedenti alla data pagamento ({{ preview.beforeStartDates.length }}):</strong>
+                    {{ formatPreviewDatesList(preview.beforeStartDates) }}
+                  </div>
+                  <div *ngIf="preview.excludedDates.length > 0" class="text-[11px] text-rose-800">
+                    <strong>Festività / Chiusure escluse ({{ preview.excludedDates.length }}):</strong>
+                    <span *ngFor="let ex of preview.excludedDates; let last = last">
+                      {{ ex.label }} escluso per {{ ex.reason }}{{ !last ? '; ' : '' }}
+                    </span>
+                  </div>
+                  <div class="text-[11px] text-amber-900">
+                    <strong>Giorni effettivi a calendario ({{ preview.effectiveDates.length }}):</strong>
+                    {{ preview.effectiveDates.length > 0 ? formatPreviewDatesList(preview.effectiveDates) : 'Nessun giorno' }}
+                  </div>
+                  <div class="text-[11px] bg-white/70 p-2 rounded-lg border border-amber-200 text-amber-950">
+                    💡 <strong>Nota copertura:</strong> La copertura tariffaria resta di <strong>{{ preview.expectedCoveredDays }} presenze</strong> nel mese; eventuali recuperi in altri giorni non saranno conteggiati come extra finché non si superano i {{ preview.expectedCoveredDays }} ingressi.
+                  </div>
+                </div>
+
+                <!-- Box Verde se congruente -->
+                <div *ngIf="!preview.hasIncongruence && assignWeekdays.length > 0" class="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs space-y-1">
+                  <div class="font-bold">
+                    ✅ Pianificazione congruente ({{ preview.effectiveDates.length }} / {{ preview.expectedCoveredDays }} giorni a calendario)
+                  </div>
+                  <div class="text-[11px] text-emerald-800">
+                    <strong>Date programmate:</strong> {{ formatPreviewDatesList(preview.effectiveDates) }}
+                  </div>
+                </div>
+              </ng-container>
+            </ng-container>
+
             <div>
               <label class="block text-xs font-semibold text-slate-700 mb-1">
                 Note Opzionali
@@ -309,7 +489,7 @@ import {
               <input
                 type="text"
                 [(ngModel)]="assignNotes"
-                placeholder="es. Assegnazione concordata con genitore"
+                placeholder="es. Assegnazione concordata con genitore / recupero festività"
                 class="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 focus:ring-2 focus:ring-emerald-500"
               />
             </div>
@@ -324,10 +504,10 @@ import {
             </button>
             <button
               (click)="submitAssignPackage()"
-              [disabled]="!selectedPackageId || isSubmitting()"
+              [disabled]="(!editingTariff() && !selectedPackageId) || !assignStartDate || isSubmitting()"
               class="px-4 py-2 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl shadow-sm transition-colors cursor-pointer disabled:opacity-50"
             >
-              {{ isSubmitting() ? 'Assegnazione...' : 'Conferma & Registra' }}
+              {{ isSubmitting() ? 'Salvataggio...' : (editingTariff() ? 'Salva Modifiche' : 'Conferma & Registra') }}
             </button>
           </div>
         </div>
@@ -337,9 +517,12 @@ import {
       <div *ngIf="showSettleModal()" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-fade-in">
         <div class="bg-white rounded-2xl shadow-xl border border-slate-200 w-full max-w-md p-6 space-y-5">
           <div class="flex items-center justify-between pb-3 border-b border-slate-100">
-            <h3 class="text-base font-bold text-slate-800">
-              💳 Salda Fine Mese: <span class="text-emerald-700">{{ selectedStudent()?.last_name }} {{ selectedStudent()?.first_name }}</span>
-            </h3>
+            <div>
+              <h3 class="text-base font-bold text-slate-800">
+                💳 Salda {{ getMonthName(settleTargetMonth) }} {{ settleTargetYear }}:
+                <span class="text-emerald-700">{{ selectedStudent()?.last_name }} {{ selectedStudent()?.first_name }}</span>
+              </h3>
+            </div>
             <button (click)="closeSettleModal()" class="text-slate-400 hover:text-slate-600 font-bold text-lg">✕</button>
           </div>
 
@@ -349,13 +532,13 @@ import {
                 <input
                   type="checkbox"
                   [(ngModel)]="settleExtraCheck"
-                  [disabled]="selectedStudent()?.extra_paid || selectedStudent()?.extra_days_count === 0"
+                  [disabled]="settleExtraPaid || settleExtraDaysCount === 0"
                   class="rounded text-emerald-600 focus:ring-emerald-500 w-4 h-4"
                 />
                 <div>
-                  <span class="font-bold text-slate-800">Salda Extra Giorni:</span>
-                  <span class="ml-1 text-amber-700 font-semibold">{{ selectedStudent()?.extra_days_total | currency:'EUR':'symbol':'1.2-2' }}</span>
-                  <span *ngIf="selectedStudent()?.extra_paid" class="ml-2 text-emerald-600 font-semibold">(Già saldato)</span>
+                  <span class="font-bold text-slate-800">Salda Extra Giorni ({{ settleExtraDaysCount }}):</span>
+                  <span class="ml-1 text-amber-700 font-semibold">{{ settleExtraDaysTotal | currency:'EUR':'symbol':'1.2-2' }}</span>
+                  <span *ngIf="settleExtraPaid" class="ml-2 text-emerald-600 font-semibold">(Già saldato)</span>
                 </div>
               </label>
 
@@ -363,13 +546,13 @@ import {
                 <input
                   type="checkbox"
                   [(ngModel)]="settleMealsCheck"
-                  [disabled]="selectedStudent()?.meals_paid || selectedStudent()?.meals_count === 0"
+                  [disabled]="settleMealsPaid || settleMealsCount === 0"
                   class="rounded text-emerald-600 focus:ring-emerald-500 w-4 h-4"
                 />
                 <div>
-                  <span class="font-bold text-slate-800">Salda Pasti Cumulativi:</span>
-                  <span class="ml-1 text-blue-700 font-semibold">{{ selectedStudent()?.meals_total | currency:'EUR':'symbol':'1.2-2' }}</span>
-                  <span *ngIf="selectedStudent()?.meals_paid" class="ml-2 text-emerald-600 font-semibold">(Già saldato)</span>
+                  <span class="font-bold text-slate-800">Salda Pasti Cumulativi ({{ settleMealsCount }}):</span>
+                  <span class="ml-1 text-blue-700 font-semibold">{{ settleMealsTotal | currency:'EUR':'symbol':'1.2-2' }}</span>
+                  <span *ngIf="settleMealsPaid" class="ml-2 text-emerald-600 font-semibold">(Già saldato)</span>
                 </div>
               </label>
             </div>
@@ -455,14 +638,33 @@ export class PaymentsDashboardComponent implements OnInit {
   alertMessage = signal<string | null>(null);
   alertType = signal<'success' | 'error'>('success');
 
-  // Modale Assegnazione
+  // Modale Assegnazione / Modifica
   showAssignModal = signal<boolean>(false);
   selectedStudent = signal<StudentMonthlyBilling | null>(null);
+  editingTariff = signal<AssignedTariff | null>(null);
   selectedPackageId = '';
+  assignStartDate = '';
+  assignWeekdays: number[] = [];
   assignNotes = '';
+
+  readonly weekdaysOptions = [
+    { value: 1, short: 'Lun', label: 'Lunedì' },
+    { value: 2, short: 'Mar', label: 'Martedì' },
+    { value: 3, short: 'Mer', label: 'Mercoledì' },
+    { value: 4, short: 'Gio', label: 'Giovedì' },
+    { value: 5, short: 'Ven', label: 'Venerdì' }
+  ];
 
   // Modale Saldo
   showSettleModal = signal<boolean>(false);
+  settleTargetYear = new Date().getFullYear();
+  settleTargetMonth = new Date().getMonth() + 1;
+  settleExtraDaysCount = 0;
+  settleExtraDaysTotal = 0;
+  settleExtraPaid = false;
+  settleMealsCount = 0;
+  settleMealsTotal = 0;
+  settleMealsPaid = false;
   settleExtraCheck = false;
   settleMealsCheck = false;
   settlePaymentMethod = 'Bonifico';
@@ -471,6 +673,139 @@ export class PaymentsDashboardComponent implements OnInit {
   ngOnInit(): void {
     this.loadPackagesCatalog();
     this.loadBilling();
+  }
+
+  getMonthName(month: number): string {
+    return this.monthsList.find(m => m.value === Number(month))?.name || '';
+  }
+
+  getMonthMinDate(): string {
+    return `${this.selectedYear}-${String(this.selectedMonth).padStart(2, '0')}-01`;
+  }
+
+  getMonthMaxDate(): string {
+    const lastDay = new Date(Number(this.selectedYear), Number(this.selectedMonth), 0).getDate();
+    return `${this.selectedYear}-${String(this.selectedMonth).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+  }
+
+  getDefaultStartDate(): string {
+    const now = new Date();
+    const y = Number(this.selectedYear);
+    const m = Number(this.selectedMonth);
+    if (now.getFullYear() === y && (now.getMonth() + 1) === m) {
+      return `${y}-${String(m).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    }
+    return `${y}-${String(m).padStart(2, '0')}-01`;
+  }
+
+  formatWeekdaysLabel(weekdays?: number[]): string {
+    if (!Array.isArray(weekdays) || weekdays.length === 0) {
+      return 'Nessun giorno fisso';
+    }
+    const mapShort: Record<number, string> = { 1: 'Lun', 2: 'Mar', 3: 'Mer', 4: 'Gio', 5: 'Ven' };
+    return [...weekdays]
+      .sort((a, b) => a - b)
+      .map(d => mapShort[d])
+      .filter(Boolean)
+      .join(', ');
+  }
+
+  formatShortDate(dateStr?: string | null): string {
+    if (!dateStr) return '';
+    const clean = String(dateStr).slice(0, 10);
+    const parts = clean.split('-');
+    if (parts.length !== 3) return clean;
+    return `${parts[2]}/${parts[1]}`;
+  }
+
+  formatPreviewDatesList(items: { date: string; label: string }[]): string {
+    return items.map(i => i.label).join(', ');
+  }
+
+  isWeekdaySelected(day: number): boolean {
+    return this.assignWeekdays.includes(day);
+  }
+
+  toggleAssignWeekday(day: number): void {
+    if (this.assignWeekdays.includes(day)) {
+      this.assignWeekdays = this.assignWeekdays.filter(d => d !== day);
+    } else {
+      this.assignWeekdays = [...this.assignWeekdays, day].sort((a, b) => a - b);
+    }
+  }
+
+  onPackageSelected(packageId: string): void {
+    const pkg = this.availablePackages().find(p => p.id === packageId);
+    if (pkg && pkg.days_per_week === 5 && this.assignWeekdays.length === 0) {
+      this.assignWeekdays = [1, 2, 3, 4, 5];
+    }
+  }
+
+  computeSchedulePreview(): SchedulePreviewResult {
+    const y = Number(this.selectedYear);
+    const m = Number(this.selectedMonth);
+    const edit = this.editingTariff();
+    const pkg = edit
+      ? this.availablePackages().find(p => p.id === edit.package_id)
+      : this.availablePackages().find(p => p.id === this.selectedPackageId);
+
+    const expectedCoveredDays = edit ? Number(edit.covered_days) : Number(pkg?.monthly_days ?? 0);
+    const daysPerWeek = pkg?.days_per_week !== undefined && pkg?.days_per_week !== null
+      ? Number(pkg.days_per_week)
+      : null;
+
+    const startDate = (this.assignStartDate || this.getMonthMinDate()).slice(0, 10);
+    const lastDay = new Date(y, m, 0).getDate();
+    const mapShort: Record<number, string> = { 1: 'Lun', 2: 'Mar', 3: 'Mer', 4: 'Gio', 5: 'Ven' };
+    const closures = this.billingData()?.closures || [];
+
+    const effectiveDates: { date: string; label: string }[] = [];
+    const excludedDates: { date: string; label: string; reason: string }[] = [];
+    const beforeStartDates: { date: string; label: string }[] = [];
+
+    for (let d = 1; d <= lastDay; d++) {
+      const dateStr = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+      const dt = new Date(Date.UTC(y, m - 1, d));
+      const utcDay = dt.getUTCDay();
+      const isoWeekday = utcDay === 0 ? 7 : utcDay;
+
+      if (!this.assignWeekdays.includes(isoWeekday)) continue;
+
+      const label = `${mapShort[isoWeekday]} ${String(d).padStart(2, '0')}/${String(m).padStart(2, '0')}`;
+
+      if (dateStr < startDate) {
+        beforeStartDates.push({ date: dateStr, label });
+        continue;
+      }
+
+      const holiday = getItalianHoliday(dateStr);
+      const closure = closures.find(c => String(c.date).slice(0, 10) === dateStr);
+
+      if (holiday || closure) {
+        excludedDates.push({
+          date: dateStr,
+          label,
+          reason: holiday ? holiday.name : (closure?.title || 'Chiusura straordinaria')
+        });
+      } else {
+        effectiveDates.push({ date: dateStr, label });
+      }
+    }
+
+    const weekdaysMismatch = daysPerWeek !== null && this.assignWeekdays.length !== daysPerWeek;
+    const daysCountMismatch = expectedCoveredDays > 0 && effectiveDates.length !== expectedCoveredDays;
+    const hasIncongruence = weekdaysMismatch || daysCountMismatch;
+
+    return {
+      expectedCoveredDays,
+      daysPerWeek,
+      effectiveDates,
+      excludedDates,
+      beforeStartDates,
+      weekdaysMismatch,
+      daysCountMismatch,
+      hasIncongruence
+    };
   }
 
   loadPackagesCatalog(): void {
@@ -482,9 +817,14 @@ export class PaymentsDashboardComponent implements OnInit {
 
   loadBilling(): void {
     this.isLoading.set(true);
-    this.api.getMonthlyBilling(this.selectedYear, this.selectedMonth).subscribe({
+    this.api.getMonthlyBilling(Number(this.selectedYear), Number(this.selectedMonth)).subscribe({
       next: (summary) => {
         this.billingData.set(summary);
+        const currentSelected = this.selectedStudent();
+        if (currentSelected) {
+          const updated = summary.students.find(s => s.student_id === currentSelected.student_id);
+          if (updated) this.selectedStudent.set(updated);
+        }
         this.isLoading.set(false);
       },
       error: (err) => {
@@ -495,21 +835,21 @@ export class PaymentsDashboardComponent implements OnInit {
   }
 
   previousMonth(): void {
-    if (this.selectedMonth === 1) {
+    if (Number(this.selectedMonth) === 1) {
       this.selectedMonth = 12;
-      this.selectedYear--;
+      this.selectedYear = Number(this.selectedYear) - 1;
     } else {
-      this.selectedMonth--;
+      this.selectedMonth = Number(this.selectedMonth) - 1;
     }
     this.loadBilling();
   }
 
   nextMonth(): void {
-    if (this.selectedMonth === 12) {
+    if (Number(this.selectedMonth) === 12) {
       this.selectedMonth = 1;
-      this.selectedYear++;
+      this.selectedYear = Number(this.selectedYear) + 1;
     } else {
-      this.selectedMonth++;
+      this.selectedMonth = Number(this.selectedMonth) + 1;
     }
     this.loadBilling();
   }
@@ -535,29 +875,71 @@ export class PaymentsDashboardComponent implements OnInit {
     }, 4000);
   }
 
-  // Assegnazione
+  // Assegnazione & Modifica
   openAssignModal(stu: StudentMonthlyBilling): void {
     this.selectedStudent.set(stu);
+    this.editingTariff.set(null);
     this.selectedPackageId = '';
+    this.assignStartDate = this.getDefaultStartDate();
+    this.assignWeekdays = [];
     this.assignNotes = '';
+    this.showAssignModal.set(true);
+  }
+
+  openEditTariffModal(stu: StudentMonthlyBilling, pkg: AssignedTariff): void {
+    this.selectedStudent.set(stu);
+    this.editingTariff.set(pkg);
+    this.selectedPackageId = pkg.package_id;
+    this.assignStartDate = pkg.start_date ? String(pkg.start_date).slice(0, 10) : this.getMonthMinDate();
+    this.assignWeekdays = Array.isArray(pkg.scheduled_weekdays) ? [...pkg.scheduled_weekdays] : [];
+    this.assignNotes = pkg.notes || '';
     this.showAssignModal.set(true);
   }
 
   closeAssignModal(): void {
     this.showAssignModal.set(false);
-    this.selectedStudent.set(null);
+    this.editingTariff.set(null);
+    if (!this.showSettleModal()) {
+      this.selectedStudent.set(null);
+    }
   }
 
   submitAssignPackage(): void {
     const stu = this.selectedStudent();
-    if (!stu || !this.selectedPackageId) return;
+    const edit = this.editingTariff();
+    if (!stu) return;
+
+    if (edit) {
+      this.isSubmitting.set(true);
+      this.api.updateStudentTariff(edit.id, {
+        scheduled_weekdays: this.assignWeekdays,
+        start_date: this.assignStartDate,
+        notes: this.assignNotes.trim() || null
+      }).subscribe({
+        next: () => {
+          this.isSubmitting.set(false);
+          this.closeAssignModal();
+          this.showAlert('Pianificazione pacchetto aggiornata con successo', 'success');
+          this.loadBilling();
+        },
+        error: (err) => {
+          this.isSubmitting.set(false);
+          this.showAlert(err.error?.error || 'Errore durante l\'aggiornamento del pacchetto', 'error');
+        }
+      });
+      return;
+    }
+
+    if (!this.selectedPackageId) return;
 
     this.isSubmitting.set(true);
     this.api.assignTariffToStudent({
       student_id: stu.student_id,
-      year: this.selectedYear,
-      month: this.selectedMonth,
+      year: Number(this.selectedYear),
+      month: Number(this.selectedMonth),
       package_id: this.selectedPackageId,
+      scheduled_weekdays: this.assignWeekdays,
+      start_date: this.assignStartDate,
       notes: this.assignNotes.trim() || null
     }).subscribe({
       next: () => {
@@ -588,18 +970,47 @@ export class PaymentsDashboardComponent implements OnInit {
   }
 
   // Saldo
-  openSettleModal(stu: StudentMonthlyBilling): void {
+  openSettleModal(stu: StudentMonthlyBilling, targetYear?: number, targetMonth?: number): void {
     this.selectedStudent.set(stu);
-    this.settleExtraCheck = !stu.extra_paid && stu.extra_days_count > 0;
-    this.settleMealsCheck = !stu.meals_paid && stu.meals_count > 0;
-    this.settlePaymentMethod = stu.payment_method || 'Bonifico';
-    this.settleNotes = stu.notes || '';
+    const y = targetYear ?? Number(this.selectedYear);
+    const m = targetMonth ?? Number(this.selectedMonth);
+    this.settleTargetYear = y;
+    this.settleTargetMonth = m;
+
+    const prev = stu.previous_month_pending;
+    const isPrev = !!(prev && prev.year === y && prev.month === m);
+
+    if (isPrev && prev) {
+      this.settleExtraDaysCount = prev.extra_days_count;
+      this.settleExtraDaysTotal = prev.extra_days_total;
+      this.settleExtraPaid = prev.extra_paid;
+      this.settleMealsCount = prev.meals_count;
+      this.settleMealsTotal = prev.meals_total;
+      this.settleMealsPaid = prev.meals_paid;
+      this.settleExtraCheck = !prev.extra_paid && prev.extra_days_count > 0;
+      this.settleMealsCheck = !prev.meals_paid && prev.meals_count > 0;
+      this.settlePaymentMethod = 'Bonifico';
+      this.settleNotes = '';
+    } else {
+      this.settleExtraDaysCount = stu.extra_days_count;
+      this.settleExtraDaysTotal = stu.extra_days_total;
+      this.settleExtraPaid = stu.extra_paid;
+      this.settleMealsCount = stu.meals_count;
+      this.settleMealsTotal = stu.meals_total;
+      this.settleMealsPaid = stu.meals_paid;
+      this.settleExtraCheck = !stu.extra_paid && stu.extra_days_count > 0;
+      this.settleMealsCheck = !stu.meals_paid && stu.meals_count > 0;
+      this.settlePaymentMethod = stu.payment_method || 'Bonifico';
+      this.settleNotes = stu.notes || '';
+    }
     this.showSettleModal.set(true);
   }
 
   closeSettleModal(): void {
     this.showSettleModal.set(false);
-    this.selectedStudent.set(null);
+    if (!this.showAssignModal()) {
+      this.selectedStudent.set(null);
+    }
   }
 
   submitSettlePayments(): void {
@@ -609,8 +1020,8 @@ export class PaymentsDashboardComponent implements OnInit {
     this.isSubmitting.set(true);
     this.api.settleMonthlyPayments({
       student_id: stu.student_id,
-      year: this.selectedYear,
-      month: this.selectedMonth,
+      year: this.settleTargetYear,
+      month: this.settleTargetMonth,
       settle_extra: this.settleExtraCheck,
       settle_meals: this.settleMealsCheck,
       payment_method: this.settlePaymentMethod,

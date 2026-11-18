@@ -14,6 +14,8 @@ CREATE TABLE IF NOT EXISTS student_monthly_tariffs (
     tariff_id UUID NOT NULL REFERENCES afterschool_tariffs(id) ON DELETE CASCADE,
     amount_paid NUMERIC(10,2) NOT NULL DEFAULT 0.00,
     covered_days INTEGER NOT NULL DEFAULT 0,
+    scheduled_weekdays SMALLINT[] NOT NULL DEFAULT '{}',
+    start_date DATE NOT NULL DEFAULT CURRENT_DATE,
     assigned_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     notes TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -22,6 +24,7 @@ CREATE TABLE IF NOT EXISTS student_monthly_tariffs (
 
 CREATE INDEX IF NOT EXISTS idx_student_monthly_tariffs_period ON student_monthly_tariffs(year, month);
 CREATE INDEX IF NOT EXISTS idx_student_monthly_tariffs_student ON student_monthly_tariffs(student_id);
+CREATE INDEX IF NOT EXISTS idx_student_monthly_tariffs_schedule ON student_monthly_tariffs(year, month, start_date);
 
 -- 2. Saldi mensili per extra (giorni eccedenti a tariffa una tantum) e pasti cumulativi
 CREATE TABLE IF NOT EXISTS student_monthly_settlements (

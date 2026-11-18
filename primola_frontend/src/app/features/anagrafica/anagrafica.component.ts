@@ -116,47 +116,11 @@ import { Student, Tutor } from '../../core/models';
             </div>
           </div>
 
-          <!-- Sezione 2: Giorni di Frequenza Settimanale -->
-          <div class="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-slate-200/80 space-y-4">
-            <h2 class="text-base sm:text-lg font-bold text-slate-800 flex items-center space-x-2">
-              <span class="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center text-xs font-bold shrink-0">2</span>
-              <span>Giorni di Frequenza Iscrizione</span>
-            </h2>
-            <p class="text-xs text-slate-500">I giorni selezionati determinano se lo studente compare automaticamente nella schermata presenze:</p>
-
-            <div class="grid grid-cols-2 sm:grid-cols-5 gap-2.5 sm:gap-3">
-              <label class="flex items-center space-x-2.5 sm:space-x-3 p-3 bg-slate-50 border border-slate-200 rounded-xl cursor-pointer hover:bg-slate-100 transition-colors">
-                <input type="checkbox" formControlName="sub_lun" class="w-5 h-5 rounded text-emerald-600 focus:ring-emerald-500 border-slate-300" />
-                <span class="text-xs sm:text-sm font-semibold text-slate-700">Lunedì</span>
-              </label>
-
-              <label class="flex items-center space-x-2.5 sm:space-x-3 p-3 bg-slate-50 border border-slate-200 rounded-xl cursor-pointer hover:bg-slate-100 transition-colors">
-                <input type="checkbox" formControlName="sub_mar" class="w-5 h-5 rounded text-emerald-600 focus:ring-emerald-500 border-slate-300" />
-                <span class="text-xs sm:text-sm font-semibold text-slate-700">Martedì</span>
-              </label>
-
-              <label class="flex items-center space-x-2.5 sm:space-x-3 p-3 bg-slate-50 border border-slate-200 rounded-xl cursor-pointer hover:bg-slate-100 transition-colors">
-                <input type="checkbox" formControlName="sub_mer" class="w-5 h-5 rounded text-emerald-600 focus:ring-emerald-500 border-slate-300" />
-                <span class="text-xs sm:text-sm font-semibold text-slate-700">Mercoledì</span>
-              </label>
-
-              <label class="flex items-center space-x-2.5 sm:space-x-3 p-3 bg-slate-50 border border-slate-200 rounded-xl cursor-pointer hover:bg-slate-100 transition-colors">
-                <input type="checkbox" formControlName="sub_gio" class="w-5 h-5 rounded text-emerald-600 focus:ring-emerald-500 border-slate-300" />
-                <span class="text-xs sm:text-sm font-semibold text-slate-700">Giovedì</span>
-              </label>
-
-              <label class="flex items-center space-x-2.5 sm:space-x-3 p-3 bg-slate-50 border border-slate-200 rounded-xl cursor-pointer hover:bg-slate-100 transition-colors col-span-2 sm:col-span-1">
-                <input type="checkbox" formControlName="sub_ven" class="w-5 h-5 rounded text-emerald-600 focus:ring-emerald-500 border-slate-300" />
-                <span class="text-xs sm:text-sm font-semibold text-slate-700">Venerdì</span>
-              </label>
-            </div>
-          </div>
-
-          <!-- Sezione 3: Tutori e Contatti di Emergenza -->
+          <!-- Sezione 2: Tutori e Contatti di Emergenza -->
           <div class="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-slate-200/80 space-y-4">
             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <h2 class="text-base sm:text-lg font-bold text-slate-800 flex items-center space-x-2">
-                <span class="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center text-xs font-bold shrink-0">3</span>
+                <span class="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center text-xs font-bold shrink-0">2</span>
                 <span>Tutori e Contatti di Riferimento</span>
               </h2>
               <button
@@ -269,14 +233,10 @@ import { Student, Tutor } from '../../core/models';
                   </span>
                 </div>
 
-                <!-- Giorni Frequenza Pill -->
+                <!-- Contatto Tutore -->
                 <div class="mt-3 flex items-center justify-between pt-2.5 border-t border-slate-100">
-                  <div class="flex space-x-1">
-                    <span class="w-6 h-6 rounded flex items-center justify-center text-[10px] font-bold" [class]="student.sub_lun ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-300'">L</span>
-                    <span class="w-6 h-6 rounded flex items-center justify-center text-[10px] font-bold" [class]="student.sub_mar ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-300'">M</span>
-                    <span class="w-6 h-6 rounded flex items-center justify-center text-[10px] font-bold" [class]="student.sub_mer ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-300'">M</span>
-                    <span class="w-6 h-6 rounded flex items-center justify-center text-[10px] font-bold" [class]="student.sub_gio ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-300'">G</span>
-                    <span class="w-6 h-6 rounded flex items-center justify-center text-[10px] font-bold" [class]="student.sub_ven ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-300'">V</span>
+                  <div class="text-xs text-slate-600 font-medium">
+                    {{ student.main_tutor_name || student.tutors?.[0]?.first_name || 'Nessun tutore' }}
                   </div>
 
                   <div class="text-right text-xs">
@@ -309,7 +269,6 @@ import { Student, Tutor } from '../../core/models';
                   <tr class="bg-slate-50 text-slate-600 text-xs font-semibold uppercase tracking-wider border-b border-slate-200">
                     <th class="py-3.5 px-6">Studente</th>
                     <th class="py-3.5 px-6">Scuola</th>
-                    <th class="py-3.5 px-6">Giorni Frequenza</th>
                     <th class="py-3.5 px-6">Tutore Principale</th>
                     <th class="py-3.5 px-6 text-right">Azioni</th>
                   </tr>
@@ -326,15 +285,6 @@ import { Student, Tutor } from '../../core/models';
                       </td>
                       <td class="py-4 px-6 text-slate-500 text-xs">
                         {{ student.school || 'Non specificata' }}
-                      </td>
-                      <td class="py-4 px-6">
-                        <div class="flex space-x-1">
-                          <span class="w-6 h-6 rounded flex items-center justify-center text-[10px] font-bold" [class]="student.sub_lun ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-300'">L</span>
-                          <span class="w-6 h-6 rounded flex items-center justify-center text-[10px] font-bold" [class]="student.sub_mar ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-300'">M</span>
-                          <span class="w-6 h-6 rounded flex items-center justify-center text-[10px] font-bold" [class]="student.sub_mer ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-300'">M</span>
-                          <span class="w-6 h-6 rounded flex items-center justify-center text-[10px] font-bold" [class]="student.sub_gio ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-300'">G</span>
-                          <span class="w-6 h-6 rounded flex items-center justify-center text-[10px] font-bold" [class]="student.sub_ven ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-300'">V</span>
-                        </div>
                       </td>
                       <td class="py-4 px-6 text-xs text-slate-600">
                         <p class="font-medium text-slate-800">{{ student.main_tutor_name || student.tutors?.[0]?.first_name || 'Nessuno' }}</p>
@@ -355,7 +305,7 @@ import { Student, Tutor } from '../../core/models';
                     </tr>
                   } @empty {
                     <tr>
-                      <td colspan="5" class="py-12 text-center text-slate-400 font-medium">Nessuno studente trovato.</td>
+                      <td colspan="4" class="py-12 text-center text-slate-400 font-medium">Nessuno studente trovato.</td>
                     </tr>
                   }
                 </tbody>
@@ -384,11 +334,11 @@ export class AnagraficaComponent implements OnInit {
     last_name: ['', Validators.required],
     school: [''],
     birth_date: [''],
-    sub_lun: [true],
-    sub_mar: [true],
-    sub_mer: [true],
-    sub_gio: [true],
-    sub_ven: [true],
+    sub_lun: [false],
+    sub_mar: [false],
+    sub_mer: [false],
+    sub_gio: [false],
+    sub_ven: [false],
     weekly_meals: [0],
     tutors: this.fb.array([])
   });
@@ -445,11 +395,11 @@ export class AnagraficaComponent implements OnInit {
         this.isSubmitting.set(false);
         this.successMessage.set(`Studente ${created.first_name} ${created.last_name} registrato con successo!`);
         this.studentForm.reset({
-          sub_lun: true,
-          sub_mar: true,
-          sub_mer: true,
-          sub_gio: true,
-          sub_ven: true,
+          sub_lun: false,
+          sub_mar: false,
+          sub_mer: false,
+          sub_gio: false,
+          sub_ven: false,
           weekly_meals: 0
         });
         this.tutors.clear();

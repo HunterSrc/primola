@@ -13,6 +13,9 @@ router.get('/monthly', paymentController.getMonthlyBilling);
 // Assegnazione pacchetto a studente
 router.post('/assign-tariff', paymentController.assignTariff);
 
+// Aggiornamento pianificazione giorni e data decorrenza pacchetto assegnato
+router.put('/tariffs/:assignmentId', paymentController.updateTariff);
+
 // Rimozione assegnazione pacchetto
 router.delete('/tariffs/:assignmentId', paymentController.removeTariff);
 

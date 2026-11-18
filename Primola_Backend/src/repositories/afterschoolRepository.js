@@ -149,8 +149,8 @@ class AfterschoolRepository {
 
   /**
    * Recupera i bambini del doposcuola per una specifica data:
-   * include tutti gli studenti che hanno quella giornata nel piano di abbonamento
-   * OPPURE che hanno una presenza già registrata in quella data.
+   * include tutti gli studenti che hanno quella giornata pianificata in student_monthly_tariffs
+   * (con start_date <= dateStr) OPPURE che hanno una presenza già registrata in quella data.
    */
   async getStudentsForDate(dateStr) {
     const query = `
@@ -167,8 +167,15 @@ class AfterschoolRepository {
         COALESCE(a.canteen_used, false) AS has_meal_plan
       FROM students s
       LEFT JOIN attendances a ON s.id = a.student_id AND a.date = $1
-      WHERE EXTRACT(ISODOW FROM $1::date) = ANY(s.giorni_abbonamento)
-         OR a.id IS NOT NULL
+      WHERE s.id IN (
+        SELECT smt.student_id
+        FROM student_monthly_tariffs smt
+        WHERE smt.year = EXTRACT(YEAR FROM $1::date)
+          AND smt.month = EXTRACT(MONTH FROM $1::date)
+          AND $1::date >= smt.start_date
+          AND EXTRACT(ISODOW FROM $1::date) = ANY(smt.scheduled_weekdays)
+      )
+      OR a.id IS NOT NULL
       ORDER BY s.cognome ASC, s.nome ASC
     `;
     const result = await db.query(query, [dateStr]);

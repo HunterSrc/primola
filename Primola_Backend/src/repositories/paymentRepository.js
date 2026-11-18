@@ -1,5 +1,22 @@
 const db = require('../config/database');
 
+const formatDateOnly = (val) => {
+  if (!val) return null;
+  if (typeof val === 'string') return val.slice(0, 10);
+  if (val instanceof Date) return val.toISOString().slice(0, 10);
+  return String(val).slice(0, 10);
+};
+
+const normalizeWeekdays = (arr) => {
+  if (!Array.isArray(arr)) return [];
+  const unique = new Set(
+    arr
+      .map(v => parseInt(v, 10))
+      .filter(n => !isNaN(n) && n >= 1 && n <= 5)
+  );
+  return Array.from(unique).sort((a, b) => a - b);
+};
+
 class PaymentRepository {
   /**
    * Recupera il prospetto completo dei pagamenti per studenti per mese e anno
@@ -11,6 +28,12 @@ class PaymentRepository {
     const fromDate = `${y}-${String(m).padStart(2, '0')}-01`;
     const lastDay = new Date(y, m, 0).getDate();
     const toDate = `${y}-${String(m).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+
+    const prevYear = m === 1 ? y - 1 : y;
+    const prevMonth = m === 1 ? 12 : m - 1;
+    const prevFromDate = `${prevYear}-${String(prevMonth).padStart(2, '0')}-01`;
+    const prevLastDay = new Date(prevYear, prevMonth, 0).getDate();
+    const prevToDate = `${prevYear}-${String(prevMonth).padStart(2, '0')}-${String(prevLastDay).padStart(2, '0')}`;
 
     // 1. Recupera tariffa attiva 'ONE_OFF' per il mese e tariffa pasto da system_settings
     const oneOffTariffRes = await db.query(
@@ -24,10 +47,36 @@ class PaymentRepository {
     );
     const oneOffFee = oneOffTariffRes.rows.length > 0 ? Number(oneOffTariffRes.rows[0].price) : 15.00;
 
+    const prevOneOffRes = await db.query(
+      `SELECT t.price 
+       FROM afterschool_packages p
+       JOIN afterschool_tariffs t ON p.id = t.package_id
+       WHERE p.code = 'ONE_OFF'
+         AND t.valid_from <= $1 AND t.valid_to >= $1
+       ORDER BY t.valid_from DESC LIMIT 1`,
+      [prevFromDate]
+    );
+    const prevOneOffFee = prevOneOffRes.rows.length > 0 ? Number(prevOneOffRes.rows[0].price) : oneOffFee;
+
     const settingsRes = await db.query(
       `SELECT key, value FROM system_settings WHERE key = 'meal_fee_student'`
     );
     const mealFee = settingsRes.rows.length > 0 ? Number(settingsRes.rows[0].value) : 5.50;
+
+    // 1b. Chiusure straordinarie del mese
+    const closuresRes = await db.query(
+      `SELECT id, date, title, notes
+       FROM closure_days
+       WHERE date BETWEEN $1 AND $2
+       ORDER BY date ASC`,
+      [fromDate, toDate]
+    );
+    const closures = closuresRes.rows.map(c => ({
+      id: c.id,
+      date: formatDateOnly(c.date),
+      title: c.title,
+      notes: c.notes || null
+    }));
 
     // 2. Tutti gli studenti
     const studentsRes = await db.query(
@@ -41,6 +90,7 @@ class PaymentRepository {
       `SELECT smt.id, smt.student_id, smt.year, smt.month,
               smt.package_id, p.name AS package_name, p.code AS package_code,
               smt.tariff_id, smt.amount_paid, smt.covered_days,
+              smt.scheduled_weekdays, smt.start_date,
               smt.assigned_at, smt.notes
        FROM student_monthly_tariffs smt
        JOIN afterschool_packages p ON smt.package_id = p.id
@@ -66,6 +116,8 @@ class PaymentRepository {
         tariff_id: t.tariff_id,
         amount_paid: Number(t.amount_paid),
         covered_days: Number(t.covered_days),
+        scheduled_weekdays: Array.isArray(t.scheduled_weekdays) ? t.scheduled_weekdays.map(Number) : [],
+        start_date: formatDateOnly(t.start_date) || fromDate,
         assigned_at: t.assigned_at,
         notes: t.notes
       });
@@ -101,6 +153,47 @@ class PaymentRepository {
       settlementsByStudent.set(set.student_id, set);
     }
 
+    // 5b. Dati mese precedente per calcolo pendenze (pasti + giorni extra non saldati del mese precedente)
+    const prevTariffsRes = await db.query(
+      `SELECT student_id, COALESCE(SUM(covered_days), 0) AS total_covered_days
+       FROM student_monthly_tariffs
+       WHERE year = $1 AND month = $2
+       GROUP BY student_id`,
+      [prevYear, prevMonth]
+    );
+    const prevCoveredByStudent = new Map();
+    for (const r of prevTariffsRes.rows) {
+      prevCoveredByStudent.set(r.student_id, Number(r.total_covered_days || 0));
+    }
+
+    const prevAttendancesRes = await db.query(
+      `SELECT student_id,
+              COUNT(CASE WHEN is_present = true THEN 1 END) AS days_present,
+              COUNT(CASE WHEN canteen_used = true THEN 1 END) AS meals_count
+       FROM attendances
+       WHERE date BETWEEN $1 AND $2
+       GROUP BY student_id`,
+      [prevFromDate, prevToDate]
+    );
+    const prevAttendancesByStudent = new Map();
+    for (const att of prevAttendancesRes.rows) {
+      prevAttendancesByStudent.set(att.student_id, {
+        days_present: Number(att.days_present || 0),
+        meals_count: Number(att.meals_count || 0)
+      });
+    }
+
+    const prevSettlementsRes = await db.query(
+      `SELECT student_id, extra_paid, meals_paid
+       FROM student_monthly_settlements
+       WHERE year = $1 AND month = $2`,
+      [prevYear, prevMonth]
+    );
+    const prevSettlementsByStudent = new Map();
+    for (const set of prevSettlementsRes.rows) {
+      prevSettlementsByStudent.set(set.student_id, set);
+    }
+
     // 6. Costruzione lista e calcolo totali
     let totalPackagesRevenue = 0;
     let totalExtraPending = 0;
@@ -127,6 +220,17 @@ class PaymentRepository {
       const mealsPaid = !!settlement.meals_paid;
       const mealsPaidAt = settlement.meals_paid_at || null;
       const paymentMethod = settlement.payment_method || null;
+
+      // Calcolo pendenza mese precedente
+      const prevCoveredDays = prevCoveredByStudent.get(stu.id) || 0;
+      const prevAtt = prevAttendancesByStudent.get(stu.id) || { days_present: 0, meals_count: 0 };
+      const prevExtraDaysCount = Math.max(0, prevAtt.days_present - prevCoveredDays);
+      const prevExtraDaysTotal = Number((prevExtraDaysCount * prevOneOffFee).toFixed(2));
+      const prevMealsCount = prevAtt.meals_count;
+      const prevMealsTotal = Number((prevMealsCount * mealFee).toFixed(2));
+      const prevSettlement = prevSettlementsByStudent.get(stu.id) || {};
+      const prevExtraPaid = !!prevSettlement.extra_paid;
+      const prevMealsPaid = !!prevSettlement.meals_paid;
 
       // Aggregazione KPI globali
       totalPackagesRevenue += totalPaidPackages;
@@ -165,13 +269,26 @@ class PaymentRepository {
         meals_paid_at: mealsPaidAt,
         payment_method: paymentMethod,
         total_due_month: totalDueMonth,
-        notes: settlement.notes || null
+        notes: settlement.notes || null,
+        previous_month_pending: {
+          year: prevYear,
+          month: prevMonth,
+          extra_days_count: prevExtraDaysCount,
+          extra_days_total: prevExtraDaysTotal,
+          extra_paid: prevExtraPaid,
+          meals_count: prevMealsCount,
+          meals_total: prevMealsTotal,
+          meals_paid: prevMealsPaid,
+          total_pending: Number(((prevExtraPaid ? 0 : prevExtraDaysTotal) + (prevMealsPaid ? 0 : prevMealsTotal)).toFixed(2)),
+          has_pending: (!prevExtraPaid && prevExtraDaysTotal > 0) || (!prevMealsPaid && prevMealsTotal > 0)
+        }
       };
     });
 
     return {
       year: y,
       month: m,
+      closures,
       unit_rates: {
         one_off_fee: oneOffFee,
         meal_fee_student: mealFee
@@ -192,10 +309,24 @@ class PaymentRepository {
   /**
    * Assegna un pacchetto doposcuola a uno studente per un determinato mese/anno
    */
-  async assignTariffToStudent({ student_id, year, month, package_id, notes = null }) {
+  async assignTariffToStudent({ student_id, year, month, package_id, scheduled_weekdays = [], start_date = null, notes = null }) {
     const y = parseInt(year, 10);
     const m = parseInt(month, 10);
     const referenceDate = `${y}-${String(m).padStart(2, '0')}-01`;
+
+    const normalizedWeekdays = normalizeWeekdays(scheduled_weekdays);
+
+    let effectiveStartDate = referenceDate;
+    if (start_date && /^\d{4}-\d{2}-\d{2}$/.test(String(start_date))) {
+      effectiveStartDate = String(start_date);
+    } else {
+      const now = new Date();
+      const curY = now.getFullYear();
+      const curM = now.getMonth() + 1;
+      if (curY === y && curM === m) {
+        effectiveStartDate = `${curY}-${String(curM).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+      }
+    }
 
     // 1. Recupera il pacchetto
     const pkgRes = await db.query('SELECT * FROM afterschool_packages WHERE id = $1', [package_id]);
@@ -220,16 +351,71 @@ class PaymentRepository {
 
     // 3. Inserimento in student_monthly_tariffs
     const insertRes = await db.query(
-      `INSERT INTO student_monthly_tariffs (student_id, year, month, package_id, tariff_id, amount_paid, covered_days, notes)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      `INSERT INTO student_monthly_tariffs (student_id, year, month, package_id, tariff_id, amount_paid, covered_days, scheduled_weekdays, start_date, notes)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
        RETURNING *`,
-      [student_id, y, m, package_id, tariff.id, Number(tariff.price), Number(pkg.monthly_days), notes]
+      [student_id, y, m, package_id, tariff.id, Number(tariff.price), Number(pkg.monthly_days), normalizedWeekdays, effectiveStartDate, notes]
     );
 
+    const row = insertRes.rows[0];
     return {
-      ...insertRes.rows[0],
+      ...row,
+      amount_paid: Number(row.amount_paid),
+      covered_days: Number(row.covered_days),
+      scheduled_weekdays: Array.isArray(row.scheduled_weekdays) ? row.scheduled_weekdays.map(Number) : normalizedWeekdays,
+      start_date: formatDateOnly(row.start_date) || effectiveStartDate,
       package_name: pkg.name,
       package_code: pkg.code
+    };
+  }
+
+  /**
+   * Aggiorna la pianificazione settimanale, la data di decorrenza e le note di un pacchetto assegnato
+   */
+  async updateStudentTariff(assignmentId, { scheduled_weekdays, start_date, notes } = {}) {
+    const existingRes = await db.query(
+      `SELECT * FROM student_monthly_tariffs WHERE id = $1`,
+      [assignmentId]
+    );
+    if (existingRes.rows.length === 0) {
+      return null;
+    }
+
+    const current = existingRes.rows[0];
+    const nextWeekdays = scheduled_weekdays !== undefined
+      ? normalizeWeekdays(scheduled_weekdays)
+      : (Array.isArray(current.scheduled_weekdays) ? current.scheduled_weekdays.map(Number) : []);
+    const nextStartDate = (start_date && /^\d{4}-\d{2}-\d{2}$/.test(String(start_date)))
+      ? String(start_date)
+      : (formatDateOnly(current.start_date) || `${current.year}-${String(current.month).padStart(2, '0')}-01`);
+    const nextNotes = notes !== undefined ? notes : current.notes;
+
+    await db.query(
+      `UPDATE student_monthly_tariffs
+       SET scheduled_weekdays = $2,
+           start_date = $3,
+           notes = $4,
+           updated_at = NOW()
+       WHERE id = $1`,
+      [assignmentId, nextWeekdays, nextStartDate, nextNotes]
+    );
+
+    const updatedRes = await db.query(
+      `SELECT smt.*, p.name AS package_name, p.code AS package_code
+       FROM student_monthly_tariffs smt
+       JOIN afterschool_packages p ON smt.package_id = p.id
+       WHERE smt.id = $1`,
+      [assignmentId]
+    );
+
+    if (updatedRes.rows.length === 0) return null;
+    const row = updatedRes.rows[0];
+    return {
+      ...row,
+      amount_paid: Number(row.amount_paid),
+      covered_days: Number(row.covered_days),
+      scheduled_weekdays: Array.isArray(row.scheduled_weekdays) ? row.scheduled_weekdays.map(Number) : nextWeekdays,
+      start_date: formatDateOnly(row.start_date) || nextStartDate
     };
   }
 

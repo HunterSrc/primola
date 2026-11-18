@@ -28,8 +28,10 @@ describe('Payments & Student Monthly Tariffs API Tests', () => {
       { expiresIn: '1h' }
     );
 
-    // Recupera studente o inseriscine uno
-    const stuRes = await db.query('SELECT id FROM students LIMIT 1');
+    // Usa Luigi Bianchi (44444444-4444-4444-4444-444444444444) che non ha pacchetti seed in 2026-10
+    const stuRes = await db.query(
+      `SELECT id FROM students WHERE id = '44444444-4444-4444-4444-444444444444'`
+    );
     if (stuRes.rows.length > 0) {
       studentId = stuRes.rows[0].id;
     } else {
@@ -166,5 +168,147 @@ describe('Payments & Student Monthly Tariffs API Tests', () => {
     const stuBilling = billingRes.body.data.students.find(s => s.student_id === studentId);
     expect(stuBilling.extra_paid).toBe(true);
     expect(stuBilling.meals_paid).toBe(true);
+  });
+
+  it('PUT /api/payments/tariffs/:assignmentId updates scheduled_weekdays, start_date and notes', async () => {
+    const assignRes = await request(app)
+      .post('/api/payments/assign-tariff')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({
+        student_id: studentId,
+        year: 2026,
+        month: 9,
+        package_id: package1Id,
+        scheduled_weekdays: [1],
+        start_date: '2026-09-01',
+        notes: 'Pianificazione iniziale'
+      });
+
+    expect(assignRes.status).toBe(201);
+    expect(assignRes.body.data.scheduled_weekdays).toEqual([1]);
+    expect(assignRes.body.data.start_date).toBe('2026-09-01');
+    const assignmentId = assignRes.body.data.id;
+
+    const updateRes = await request(app)
+      .put(`/api/payments/tariffs/${assignmentId}`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({
+        scheduled_weekdays: [4, 2, 2],
+        start_date: '2026-09-07',
+        notes: 'Spostato a martedì e giovedì'
+      });
+
+    expect(updateRes.status).toBe(200);
+    expect(updateRes.body.success).toBe(true);
+    expect(updateRes.body.data.scheduled_weekdays).toEqual([2, 4]);
+    expect(updateRes.body.data.start_date).toBe('2026-09-07');
+    expect(updateRes.body.data.notes).toBe('Spostato a martedì e giovedì');
+  });
+
+  it('GET /api/payments/monthly exposes closures and previous_month_pending for unpaid previous month meals/extras', async () => {
+    // In memoryDb seed for 2026-11: Sofia (55555555-...) has 1 meal not settled, Mario (33333333-...) has 2 meals settled
+    const decBillingRes = await request(app)
+      .get('/api/payments/monthly?year=2026&month=12')
+      .set('Authorization', `Bearer ${adminToken}`);
+
+    expect(decBillingRes.status).toBe(200);
+    expect(Array.isArray(decBillingRes.body.data.closures)).toBe(true);
+    expect(decBillingRes.body.data.closures.some(c => c.date === '2026-12-07')).toBe(true);
+
+    const sofia = decBillingRes.body.data.students.find(
+      s => s.student_id === '55555555-5555-5555-5555-555555555555'
+    );
+    expect(sofia).toBeDefined();
+    expect(sofia.previous_month_pending).toBeDefined();
+    expect(sofia.previous_month_pending.year).toBe(2026);
+    expect(sofia.previous_month_pending.month).toBe(11);
+    expect(sofia.previous_month_pending.meals_count).toBe(1);
+    expect(sofia.previous_month_pending.meals_paid).toBe(false);
+    expect(sofia.previous_month_pending.has_pending).toBe(true);
+    expect(sofia.previous_month_pending.total_pending).toBeGreaterThan(0);
+
+    const mario = decBillingRes.body.data.students.find(
+      s => s.student_id === '33333333-3333-3333-3333-333333333333'
+    );
+    expect(mario).toBeDefined();
+    expect(mario.previous_month_pending.meals_paid).toBe(true);
+    expect(mario.previous_month_pending.has_pending).toBe(false);
+    expect(mario.previous_month_pending.total_pending).toBe(0);
+  });
+
+  it('schedules student in calendar and attendances only from start_date on scheduled_weekdays, skipping holidays (Dec 2026 Tuesday scenario - D11)', async () => {
+    // Creiamo uno studente dedicato per testare il caso utente del 2 Dicembre 2026 (Mercoledì)
+    // Pacchetto 1_DAY_WEEK (4 ingressi coperti), scelto Martedì ([2]), start_date = 2026-12-02
+    const newStuRes = await db.query(
+      `INSERT INTO students (nome, cognome, data_nascita, luogo_nascita, residenza, scuola, giorni_abbonamento)
+       VALUES ('Chiara', 'Galli', '2016-08-14', 'Bologna', 'Via Zamboni 12', 'Scuola Rodari', '{}')
+       RETURNING id`
+    );
+    const chiaraId = newStuRes.rows[0].id;
+
+    const assignRes = await request(app)
+      .post('/api/payments/assign-tariff')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({
+        student_id: chiaraId,
+        year: 2026,
+        month: 12,
+        package_id: package1Id,
+        scheduled_weekdays: [2], // Martedì
+        start_date: '2026-12-02', // Pagato mercoledì 2 dicembre
+        notes: 'Abbonamento 1 giorno/settimana (Martedì) pagato il 02/12'
+      });
+
+    expect(assignRes.status).toBe(201);
+    expect(assignRes.body.data.covered_days).toBe(4);
+    expect(assignRes.body.data.scheduled_weekdays).toEqual([2]);
+    expect(assignRes.body.data.start_date).toBe('2026-12-02');
+
+    // 1. Martedì 2026-12-01 (precedente a start_date 2026-12-02) -> NON attesa
+    const expDec01 = await request(app)
+      .get('/api/attendances/expected?date=2026-12-01')
+      .set('Authorization', `Bearer ${adminToken}`);
+    expect(expDec01.status).toBe(200);
+    expect(expDec01.body.data.map(s => s.student_id)).not.toContain(chiaraId);
+
+    // 2. Martedì 2026-12-08 (Immacolata Concezione - festivo nazionale) -> NON attesa
+    const expDec08 = await request(app)
+      .get('/api/attendances/expected?date=2026-12-08')
+      .set('Authorization', `Bearer ${adminToken}`);
+    expect(expDec08.status).toBe(200);
+    expect(expDec08.body.data.map(s => s.student_id)).not.toContain(chiaraId);
+
+    // 3. Martedì 2026-12-15, 2026-12-22, 2026-12-29 -> ATTESA sia in /api/attendances/expected sia in /api/afterschool/week-summary
+    for (const tuesdayDate of ['2026-12-15', '2026-12-22', '2026-12-29']) {
+      const expRes = await request(app)
+        .get(`/api/attendances/expected?date=${tuesdayDate}`)
+        .set('Authorization', `Bearer ${adminToken}`);
+      expect(expRes.status).toBe(200);
+      expect(expRes.body.data.map(s => s.student_id)).toContain(chiaraId);
+    }
+
+    // Verifica anche nel calendario settimanale /api/afterschool/week-summary
+    const week1Res = await request(app)
+      .get('/api/afterschool/week-summary?startDate=2026-11-30')
+      .set('Authorization', `Bearer ${adminToken}`);
+    const dayDec01 = week1Res.body.data.days.find(d => d.date === '2026-12-01');
+    expect(dayDec01.students.map(s => s.student_id)).not.toContain(chiaraId);
+
+    const week2Res = await request(app)
+      .get('/api/afterschool/week-summary?startDate=2026-12-07')
+      .set('Authorization', `Bearer ${adminToken}`);
+    const dayDec08 = week2Res.body.data.days.find(d => d.date === '2026-12-08');
+    expect(dayDec08.holiday).toEqual({ name: 'Immacolata Concezione', isHoliday: true });
+    expect(dayDec08.students.map(s => s.student_id)).not.toContain(chiaraId);
+
+    const week3Res = await request(app)
+      .get('/api/afterschool/week-summary?startDate=2026-12-14')
+      .set('Authorization', `Bearer ${adminToken}`);
+    const dayDec15 = week3Res.body.data.days.find(d => d.date === '2026-12-15');
+    expect(dayDec15.students.map(s => s.student_id)).toContain(chiaraId);
+
+    // Pulizia dello studente creato nel test
+    await db.query('DELETE FROM student_monthly_tariffs WHERE student_id = $1', [chiaraId]);
+    await db.query('DELETE FROM students WHERE id = $1', [chiaraId]);
   });
 });

@@ -126,37 +126,6 @@ import { Student } from '../../core/models';
               </div>
             </div>
 
-            <!-- Sezione Frequenza Settimanale -->
-            <div class="space-y-4">
-              <h2 class="text-sm sm:text-base font-bold text-slate-700 flex items-center space-x-2 border-b pb-2">
-                <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
-                <span>Giorni Frequenza Abbonamento</span>
-              </h2>
-
-              <div class="grid grid-cols-2 sm:grid-cols-5 gap-2.5 sm:gap-3">
-                <label class="flex items-center space-x-2.5 sm:space-x-3 p-3 rounded-xl border border-slate-200 bg-slate-50/50 cursor-pointer hover:bg-emerald-50/40">
-                  <input type="checkbox" formControlName="sub_lun" class="w-4 h-4 text-emerald-600 rounded focus:ring-emerald-500" />
-                  <span class="text-xs sm:text-sm font-semibold text-slate-700">Lunedì</span>
-                </label>
-                <label class="flex items-center space-x-2.5 sm:space-x-3 p-3 rounded-xl border border-slate-200 bg-slate-50/50 cursor-pointer hover:bg-emerald-50/40">
-                  <input type="checkbox" formControlName="sub_mar" class="w-4 h-4 text-emerald-600 rounded focus:ring-emerald-500" />
-                  <span class="text-xs sm:text-sm font-semibold text-slate-700">Martedì</span>
-                </label>
-                <label class="flex items-center space-x-2.5 sm:space-x-3 p-3 rounded-xl border border-slate-200 bg-slate-50/50 cursor-pointer hover:bg-emerald-50/40">
-                  <input type="checkbox" formControlName="sub_mer" class="w-4 h-4 text-emerald-600 rounded focus:ring-emerald-500" />
-                  <span class="text-xs sm:text-sm font-semibold text-slate-700">Mercoledì</span>
-                </label>
-                <label class="flex items-center space-x-2.5 sm:space-x-3 p-3 rounded-xl border border-slate-200 bg-slate-50/50 cursor-pointer hover:bg-emerald-50/40">
-                  <input type="checkbox" formControlName="sub_gio" class="w-4 h-4 text-emerald-600 rounded focus:ring-emerald-500" />
-                  <span class="text-xs sm:text-sm font-semibold text-slate-700">Giovedì</span>
-                </label>
-                <label class="flex items-center space-x-2.5 sm:space-x-3 p-3 rounded-xl border border-slate-200 bg-slate-50/50 cursor-pointer hover:bg-emerald-50/40 col-span-2 sm:col-span-1">
-                  <input type="checkbox" formControlName="sub_ven" class="w-4 h-4 text-emerald-600 rounded focus:ring-emerald-500" />
-                  <span class="text-xs sm:text-sm font-semibold text-slate-700">Venerdì</span>
-                </label>
-              </div>
-            </div>
-
             <!-- Sezione Tutori / Contatti -->
             <div class="space-y-4">
               <div class="flex flex-col sm:flex-row sm:items-center justify-between border-b pb-2 gap-2">

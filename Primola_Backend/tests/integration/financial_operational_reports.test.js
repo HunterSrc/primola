@@ -122,10 +122,10 @@ describe('Financial & Operational Reports API Tests', () => {
 
       expect(novRes.status).toBe(200);
       const novData = novRes.body.data;
-      // Nel seed di novembre: Mario (200) + Luigi (130) assegnati; Sofia (90) + Emma (170) + Leonardo (200) stimati = 790
+      // Nel seed di novembre (D11): Mario (200) + Luigi (130) + Sofia (90) + Emma (170) + Leonardo (200) assegnati = 790
       // Pasti: 4 * 6.00 = 24.00 (Mario 2 saldati = 12.00; Sofia 1 + Emma 1 da incassare = 12.00)
       expect(novData.doposcuola.revenues.expected).toBe(814);
-      expect(novData.doposcuola.revenues.actual).toBe(342);
+      expect(novData.doposcuola.revenues.actual).toBe(802);
       expect(novData.doposcuola.revenues.pending).toBe(12);
       expect(novData.doposcuola.revenues.actual_days).toBe(5);
       expect(novData.doposcuola.revenues.expected_meals).toBe(4);
