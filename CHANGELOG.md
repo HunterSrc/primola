@@ -1,3 +1,10 @@
+## Release v2.1.0 - 2026-11-18
+
+- **feat(nav)**: sidebar accordion con box interna elevata, animazione fluida e chiusura automatica (D12)
+- **feat(payments)**: pianificazione mensile giorni doposcuola, decorrenza data pagamento e pendenze pregresse (D11)
+- **feat(auth)**: registrazione autonoma utenti, approvazione admin e pulizia login (D10)
+- **chore(release)**: allineamento e incremento versione v2.1.0
+
 ## Push to main - 2026-11-02 16:46:51
 
 - 8b4d958 feat: spese doposcuola, pacchetti/tariffe, tracciamento pagamenti e rimozione app flutter deprecata (HunterSrc)

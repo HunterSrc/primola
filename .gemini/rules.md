@@ -69,3 +69,11 @@ Questo file viene letto da Antigravity per garantire continuità di standard, si
    - **Scelta Modelli nei Worker Swarm**:
      - **Worker di lavorazione/implementazione** (es. `db-docs`, `backend`, `frontend` e tutte le fasi di sviluppo): utilizzare sempre **Hydrogen** (`model: "gemini-4-hydrogen-medium"`).
      - **Worker di verifica** (`verifier`): utilizzare sempre **Flash** (`model: "gemini-3.8-flash-medium"`).
+
+9. **Gestione Versioni & Procedura di Deploy**:
+   - A ogni deploy (totale o mirato), **avanzare obbligatoriamente di versione**.
+   - **Chiedere SEMPRE all'utente prima del deploy** se si tratta di un rilascio **Minor** (es. da `v2.0` a `v2.1`) o **Major** (es. da `v2.0` a `v3.0`).
+   - Aggiornare la versione nei riferimenti del gestionale:
+     - Badge versione nella Sidebar UI (`primola_frontend/src/app/layout/main-layout.component.ts`)
+     - File di configurazione (`primola_frontend/package.json`, `Primola_Backend/package.json`)
+     - Tracciamento nel `CHANGELOG.md` e creazione del relativo git tag.
