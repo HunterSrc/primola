@@ -1,6 +1,10 @@
 import { Component, inject, signal } from '@angular/core';
-import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
+import { Router, NavigationEnd, RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { filter } from 'rxjs';
 import { AuthService } from '../core/services/auth.service';
+
+export type AccordionSection = 'doposcuola' | 'corsi' | 'admin' | null;
 
 @Component({
   selector: 'app-main-layout',
@@ -88,208 +92,344 @@ import { AuthService } from '../core/services/auth.service';
             </div>
           </div>
 
-          <!-- Sezione Doposcuola -->
-          <div class="px-6 pt-5 pb-2 text-[11px] font-bold text-amber-400/90 uppercase tracking-wider flex items-center space-x-1.5">
-            <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-            </svg>
-            <span>Doposcuola</span>
-          </div>
-
-          <!-- Nav Items Doposcuola -->
-          <nav class="px-4 space-y-1.5">
-            <a
-              routerLink="/dashboard"
-              (click)="closeMobileMenu()"
-              routerLinkActive="bg-[#3857F1] text-white shadow-lg shadow-blue-600/30 font-semibold"
-              [routerLinkActiveOptions]="{ exact: true }"
-              class="flex items-center space-x-3.5 px-4 py-2.5 rounded-2xl text-slate-300 hover:bg-slate-800/80 hover:text-white transition-all group"
+          <!-- Nav Items: Accordion Sections as Elevated Boxes -->
+          <nav class="px-3.5 py-4 space-y-3">
+            
+            <!-- Box 1: Doposcuola -->
+            <div
+              class="rounded-2xl border transition-all duration-300 overflow-hidden shadow-md"
+              [class.bg-slate-900/80]="openSection() !== 'doposcuola'"
+              [class.border-slate-800/80]="openSection() !== 'doposcuola'"
+              [class.shadow-black/20]="openSection() !== 'doposcuola'"
+              [class.bg-slate-900/95]="openSection() === 'doposcuola'"
+              [class.border-amber-500/40]="openSection() === 'doposcuola'"
+              [class.shadow-lg]="openSection() === 'doposcuola'"
+              [class.shadow-amber-500/5]="openSection() === 'doposcuola'"
             >
-              <div class="p-1.5 rounded-xl bg-slate-800/60 group-hover:bg-slate-700/60 transition-colors">
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-blue-400 group-hover:scale-110 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-                </svg>
+              <!-- Accordion Header -->
+              <button
+                type="button"
+                (click)="toggleSection('doposcuola')"
+                class="w-full px-3.5 py-3 flex items-center justify-between text-left transition-colors group cursor-pointer focus:outline-none focus-visible:ring-1 focus-visible:ring-amber-400"
+                [attr.aria-expanded]="openSection() === 'doposcuola'"
+              >
+                <div class="flex items-center space-x-2.5 min-w-0">
+                  <div class="p-1.5 rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/20 group-hover:bg-amber-500/20 transition-colors shrink-0">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                    </svg>
+                  </div>
+                  <div class="flex items-center space-x-2 truncate">
+                    <span class="text-xs font-bold uppercase tracking-wider text-amber-400/90 group-hover:text-amber-300 transition-colors">Doposcuola</span>
+                    @if (openSection() !== 'doposcuola' && isSectionActive('doposcuola')) {
+                      <span class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" title="Sezione attiva"></span>
+                    }
+                  </div>
+                </div>
+
+                <div
+                  class="text-slate-400 group-hover:text-slate-200 transition-transform duration-300"
+                  [class.rotate-180]="openSection() === 'doposcuola'"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M19 9l-7 7-7-7" />
+                  </svg>
+                </div>
+              </button>
+
+              <!-- Animated Content -->
+              <div
+                class="grid transition-[grid-template-rows] duration-300 ease-in-out"
+                [class.grid-rows-[1fr]]="openSection() === 'doposcuola'"
+                [class.grid-rows-[0fr]]="openSection() !== 'doposcuola'"
+              >
+                <div class="overflow-hidden">
+                  <div class="px-2 pt-1 pb-2 space-y-1 border-t border-slate-800/50">
+                    <a
+                      routerLink="/dashboard"
+                      (click)="closeMobileMenu()"
+                      routerLinkActive="bg-[#3857F1] text-white shadow-lg shadow-blue-600/30 font-semibold"
+                      [routerLinkActiveOptions]="{ exact: true }"
+                      class="flex items-center space-x-3 px-3 py-2 rounded-xl text-slate-300 hover:bg-slate-800/80 hover:text-white transition-all group/item"
+                    >
+                      <div class="p-1.5 rounded-lg bg-slate-800/60 group-hover/item:bg-slate-700/60 transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-blue-400 group-hover/item:scale-110 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                        </svg>
+                      </div>
+                      <span class="text-sm">Segna Presenze</span>
+                    </a>
+
+                    <a
+                      routerLink="/afterschool-calendar"
+                      (click)="closeMobileMenu()"
+                      routerLinkActive="bg-[#3857F1] text-white shadow-lg shadow-blue-600/30 font-semibold"
+                      class="flex items-center space-x-3 px-3 py-2 rounded-xl text-slate-300 hover:bg-slate-800/80 hover:text-white transition-all group/item"
+                    >
+                      <div class="p-1.5 rounded-lg bg-slate-800/60 group-hover/item:bg-slate-700/60 transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-amber-400 group-hover/item:scale-110 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                      </div>
+                      <span class="text-sm">Calendario Doposcuola</span>
+                    </a>
+
+                    @if (authService.canManageStudents()) {
+                      <a
+                        routerLink="/anagrafica"
+                        (click)="closeMobileMenu()"
+                        routerLinkActive="bg-[#3857F1] text-white shadow-lg shadow-blue-600/30 font-semibold"
+                        class="flex items-center space-x-3 px-3 py-2 rounded-xl text-slate-300 hover:bg-slate-800/80 hover:text-white transition-all group/item"
+                      >
+                        <div class="p-1.5 rounded-lg bg-slate-800/60 group-hover/item:bg-slate-700/60 transition-colors">
+                          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-teal-400 group-hover/item:scale-110 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                          </svg>
+                        </div>
+                        <span class="text-sm">Anagrafica Studenti</span>
+                      </a>
+                    }
+
+                    @if (authService.canManageUsers()) {
+                      <a
+                        routerLink="/payments"
+                        (click)="closeMobileMenu()"
+                        routerLinkActive="bg-[#3857F1] text-white shadow-lg shadow-blue-600/30 font-semibold"
+                        class="flex items-center space-x-3 px-3 py-2 rounded-xl text-slate-300 hover:bg-slate-800/80 hover:text-white transition-all group/item"
+                      >
+                        <div class="p-1.5 rounded-lg bg-slate-800/60 group-hover/item:bg-slate-700/60 transition-colors">
+                          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-emerald-400 group-hover/item:scale-110 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                        </div>
+                        <span class="text-sm">Gestione Pagamenti Doposcuola</span>
+                      </a>
+
+                      <a
+                        routerLink="/afterschool"
+                        (click)="closeMobileMenu()"
+                        routerLinkActive="bg-[#3857F1] text-white shadow-lg shadow-blue-600/30 font-semibold"
+                        class="flex items-center space-x-3 px-3 py-2 rounded-xl text-slate-300 hover:bg-slate-800/80 hover:text-white transition-all group/item"
+                      >
+                        <div class="p-1.5 rounded-lg bg-slate-800/60 group-hover/item:bg-slate-700/60 transition-colors">
+                          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-yellow-400 group-hover/item:scale-110 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                          </svg>
+                        </div>
+                        <span class="text-sm">Tariffe Docenti Doposcuola</span>
+                      </a>
+                    }
+                  </div>
+                </div>
               </div>
-              <span class="text-sm">Segna Presenze</span>
-            </a>
-
-            <!-- Calendario Doposcuola -->
-            <a
-              routerLink="/afterschool-calendar"
-              (click)="closeMobileMenu()"
-              routerLinkActive="bg-[#3857F1] text-white shadow-lg shadow-blue-600/30 font-semibold"
-              class="flex items-center space-x-3.5 px-4 py-2.5 rounded-2xl text-slate-300 hover:bg-slate-800/80 hover:text-white transition-all group"
-            >
-              <div class="p-1.5 rounded-xl bg-slate-800/60 group-hover:bg-slate-700/60 transition-colors">
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-amber-400 group-hover:scale-110 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
-              </div>
-              <span class="text-sm">Calendario Doposcuola</span>
-            </a>
-
-            @if (authService.canManageStudents()) {
-              <a
-                routerLink="/anagrafica"
-                (click)="closeMobileMenu()"
-                routerLinkActive="bg-[#3857F1] text-white shadow-lg shadow-blue-600/30 font-semibold"
-                class="flex items-center space-x-3.5 px-4 py-2.5 rounded-2xl text-slate-300 hover:bg-slate-800/80 hover:text-white transition-all group"
-              >
-                <div class="p-1.5 rounded-xl bg-slate-800/60 group-hover:bg-slate-700/60 transition-colors">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-teal-400 group-hover:scale-110 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-                  </svg>
-                </div>
-                <span class="text-sm">Anagrafica Studenti</span>
-              </a>
-            }
-
-            @if (authService.canManageUsers()) {
-              <!-- Gestione Pagamenti Studenti -->
-              <a
-                routerLink="/payments"
-                (click)="closeMobileMenu()"
-                routerLinkActive="bg-[#3857F1] text-white shadow-lg shadow-blue-600/30 font-semibold"
-                class="flex items-center space-x-3.5 px-4 py-2.5 rounded-2xl text-slate-300 hover:bg-slate-800/80 hover:text-white transition-all group"
-              >
-                <div class="p-1.5 rounded-xl bg-slate-800/60 group-hover:bg-slate-700/60 transition-colors">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-emerald-400 group-hover:scale-110 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                </div>
-                <span class="text-sm">Gestione Pagamenti Doposcuola</span>
-              </a>
-
-              <!-- Commessa Speciale Dopo Scuola -->
-              <a
-                routerLink="/afterschool"
-                (click)="closeMobileMenu()"
-                routerLinkActive="bg-[#3857F1] text-white shadow-lg shadow-blue-600/30 font-semibold"
-                class="flex items-center space-x-3.5 px-4 py-2.5 rounded-2xl text-slate-300 hover:bg-slate-800/80 hover:text-white transition-all group"
-              >
-                <div class="p-1.5 rounded-xl bg-slate-800/60 group-hover:bg-slate-700/60 transition-colors">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-yellow-400 group-hover:scale-110 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                  </svg>
-                </div>
-                <span class="text-sm">Tariffe Docenti Doposcuola</span>
-              </a>
-            }
-
-            <!-- Sezione Corsi & Attività -->
-            @if (authService.canManageUsers()) {
-              <div class="pt-5 pb-1 px-2 text-[11px] font-bold text-blue-400/90 uppercase tracking-wider flex items-center space-x-1.5">
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                </svg>
-                <span>Corsi & Attività</span>
-              </div>
-
-              <!-- Corsi & Progetti -->
-              <a
-                routerLink="/projects"
-                (click)="closeMobileMenu()"
-                routerLinkActive="bg-[#3857F1] text-white shadow-lg shadow-blue-600/30 font-semibold"
-                class="flex items-center space-x-3.5 px-4 py-2.5 rounded-2xl text-slate-300 hover:bg-slate-800/80 hover:text-white transition-all group"
-              >
-                <div class="p-1.5 rounded-xl bg-slate-800/60 group-hover:bg-slate-700/60 transition-colors">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-amber-400 group-hover:scale-110 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                  </svg>
-                </div>
-                <span class="text-sm">Elenco Corsi</span>
-              </a>
-
-              <!-- Report Corsi & Ore -->
-              <a
-                routerLink="/reports"
-                (click)="closeMobileMenu()"
-                routerLinkActive="bg-[#3857F1] text-white shadow-lg shadow-blue-600/30 font-semibold"
-                class="flex items-center space-x-3.5 px-4 py-2.5 rounded-2xl text-slate-300 hover:bg-slate-800/80 hover:text-white transition-all group"
-              >
-                <div class="p-1.5 rounded-xl bg-slate-800/60 group-hover:bg-slate-700/60 transition-colors">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-emerald-400 group-hover:scale-110 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
-                </div>
-                <span class="text-sm">Rendicontazione Operativa</span>
-              </a>
-            }
-
-            <!-- Sezione Utenti & Sistema -->
-            <div class="pt-5 pb-1 px-2 text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center space-x-1.5">
-              <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-              </svg>
-              <span>{{ authService.canManageUsers() ? 'Amministrazione & Utenti' : 'Account' }}</span>
             </div>
 
-            <!-- Utenti & Ruoli -->
-            <a
-              routerLink="/users"
-              (click)="closeMobileMenu()"
-              routerLinkActive="bg-[#3857F1] text-white shadow-lg shadow-blue-600/30 font-semibold"
-              class="flex items-center space-x-3.5 px-4 py-2.5 rounded-2xl text-slate-300 hover:bg-slate-800/80 hover:text-white transition-all group"
-            >
-              <div class="p-1.5 rounded-xl bg-slate-800/60 group-hover:bg-slate-700/60 transition-colors">
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-indigo-400 group-hover:scale-110 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                </svg>
-              </div>
-              <span class="text-sm">{{ authService.canManageUsers() ? 'Gestione Utenti' : 'Il Mio Profilo' }}</span>
-            </a>
-
+            <!-- Box 2: Corsi & Attività -->
             @if (authService.canManageUsers()) {
-              <a
-                routerLink="/afterschool-expenses"
-                (click)="closeMobileMenu()"
-                routerLinkActive="bg-[#3857F1] text-white shadow-lg shadow-blue-600/30 font-semibold"
-                class="flex items-center space-x-3.5 px-4 py-2.5 rounded-2xl text-slate-300 hover:bg-slate-800/80 hover:text-white transition-all group"
+              <div
+                class="rounded-2xl border transition-all duration-300 overflow-hidden shadow-md"
+                [class.bg-slate-900/80]="openSection() !== 'corsi'"
+                [class.border-slate-800/80]="openSection() !== 'corsi'"
+                [class.shadow-black/20]="openSection() !== 'corsi'"
+                [class.bg-slate-900/95]="openSection() === 'corsi'"
+                [class.border-blue-500/40]="openSection() === 'corsi'"
+                [class.shadow-lg]="openSection() === 'corsi'"
+                [class.shadow-blue-500/5]="openSection() === 'corsi'"
               >
-                <div class="p-1.5 rounded-xl bg-slate-800/60 group-hover:bg-slate-700/60 transition-colors">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-rose-400 group-hover:scale-110 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2z" />
-                  </svg>
+                <!-- Accordion Header -->
+                <button
+                  type="button"
+                  (click)="toggleSection('corsi')"
+                  class="w-full px-3.5 py-3 flex items-center justify-between text-left transition-colors group cursor-pointer focus:outline-none focus-visible:ring-1 focus-visible:ring-blue-400"
+                  [attr.aria-expanded]="openSection() === 'corsi'"
+                >
+                  <div class="flex items-center space-x-2.5 min-w-0">
+                    <div class="p-1.5 rounded-xl bg-blue-500/10 text-blue-400 border border-blue-500/20 group-hover:bg-blue-500/20 transition-colors shrink-0">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                      </svg>
+                    </div>
+                    <div class="flex items-center space-x-2 truncate">
+                      <span class="text-xs font-bold uppercase tracking-wider text-blue-400/90 group-hover:text-blue-300 transition-colors">Corsi & Attività</span>
+                      @if (openSection() !== 'corsi' && isSectionActive('corsi')) {
+                        <span class="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" title="Sezione attiva"></span>
+                      }
+                    </div>
+                  </div>
+
+                  <div
+                    class="text-slate-400 group-hover:text-slate-200 transition-transform duration-300"
+                    [class.rotate-180]="openSection() === 'corsi'"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </div>
+                </button>
+
+                <!-- Animated Content -->
+                <div
+                  class="grid transition-[grid-template-rows] duration-300 ease-in-out"
+                  [class.grid-rows-[1fr]]="openSection() === 'corsi'"
+                  [class.grid-rows-[0fr]]="openSection() !== 'corsi'"
+                >
+                  <div class="overflow-hidden">
+                    <div class="px-2 pt-1 pb-2 space-y-1 border-t border-slate-800/50">
+                      <a
+                        routerLink="/projects"
+                        (click)="closeMobileMenu()"
+                        routerLinkActive="bg-[#3857F1] text-white shadow-lg shadow-blue-600/30 font-semibold"
+                        class="flex items-center space-x-3 px-3 py-2 rounded-xl text-slate-300 hover:bg-slate-800/80 hover:text-white transition-all group/item"
+                      >
+                        <div class="p-1.5 rounded-lg bg-slate-800/60 group-hover/item:bg-slate-700/60 transition-colors">
+                          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-amber-400 group-hover/item:scale-110 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                          </svg>
+                        </div>
+                        <span class="text-sm">Elenco Corsi</span>
+                      </a>
+
+                      <a
+                        routerLink="/reports"
+                        (click)="closeMobileMenu()"
+                        routerLinkActive="bg-[#3857F1] text-white shadow-lg shadow-blue-600/30 font-semibold"
+                        class="flex items-center space-x-3 px-3 py-2 rounded-xl text-slate-300 hover:bg-slate-800/80 hover:text-white transition-all group/item"
+                      >
+                        <div class="p-1.5 rounded-lg bg-slate-800/60 group-hover/item:bg-slate-700/60 transition-colors">
+                          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-emerald-400 group-hover/item:scale-110 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                          </svg>
+                        </div>
+                        <span class="text-sm">Rendicontazione Operativa</span>
+                      </a>
+                    </div>
+                  </div>
                 </div>
-                <span class="text-sm">Gestione Mensa & Spese</span>
-              </a>
+              </div>
             }
 
-            @if (authService.isAdmin()) {
-              <a
-                routerLink="/admin/afterschool-packages"
-                (click)="closeMobileMenu()"
-                routerLinkActive="bg-[#3857F1] text-white shadow-lg shadow-blue-600/30 font-semibold"
-                class="flex items-center space-x-3.5 px-4 py-2.5 rounded-2xl text-slate-300 hover:bg-slate-800/80 hover:text-white transition-all group"
+            <!-- Box 3: Amministrazione & Utenti / Account -->
+            <div
+              class="rounded-2xl border transition-all duration-300 overflow-hidden shadow-md"
+              [class.bg-slate-900/80]="openSection() !== 'admin'"
+              [class.border-slate-800/80]="openSection() !== 'admin'"
+              [class.shadow-black/20]="openSection() !== 'admin'"
+              [class.bg-slate-900/95]="openSection() === 'admin'"
+              [class.border-indigo-500/40]="openSection() === 'admin'"
+              [class.shadow-lg]="openSection() === 'admin'"
+              [class.shadow-indigo-500/5]="openSection() === 'admin'"
+            >
+              <!-- Accordion Header -->
+              <button
+                type="button"
+                (click)="toggleSection('admin')"
+                class="w-full px-3.5 py-3 flex items-center justify-between text-left transition-colors group cursor-pointer focus:outline-none focus-visible:ring-1 focus-visible:ring-indigo-400"
+                [attr.aria-expanded]="openSection() === 'admin'"
               >
-                <div class="p-1.5 rounded-xl bg-slate-800/60 group-hover:bg-slate-700/60 transition-colors">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-amber-400 group-hover:scale-110 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                  </svg>
+                <div class="flex items-center space-x-2.5 min-w-0">
+                  <div class="p-1.5 rounded-xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 group-hover:bg-indigo-500/20 transition-colors shrink-0">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                  </div>
+                  <div class="flex items-center space-x-2 truncate">
+                    <span class="text-xs font-bold uppercase tracking-wider text-slate-300 group-hover:text-white transition-colors">
+                      {{ authService.canManageUsers() ? 'Amministrazione & Utenti' : 'Account' }}
+                    </span>
+                    @if (openSection() !== 'admin' && isSectionActive('admin')) {
+                      <span class="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse" title="Sezione attiva"></span>
+                    }
+                  </div>
                 </div>
-                <div class="flex items-center justify-between flex-1">
-                  <span class="text-sm">Tariffe Doposcuola</span>
-                  <span class="text-[10px] bg-amber-500/20 text-amber-300 font-bold px-2 py-0.5 rounded-full border border-amber-500/30">ADMIN</span>
-                </div>
-              </a>
 
-              <a
-                routerLink="/admin/dashboard"
-                (click)="closeMobileMenu()"
-                routerLinkActive="bg-[#3857F1] text-white shadow-lg shadow-blue-600/30 font-semibold"
-                class="flex items-center space-x-3.5 px-4 py-2.5 rounded-2xl text-slate-300 hover:bg-slate-800/80 hover:text-white transition-all group"
-              >
-                <div class="p-1.5 rounded-xl bg-slate-800/60 group-hover:bg-slate-700/60 transition-colors">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-amber-400 group-hover:scale-110 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                <div
+                  class="text-slate-400 group-hover:text-slate-200 transition-transform duration-300"
+                  [class.rotate-180]="openSection() === 'admin'"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M19 9l-7 7-7-7" />
                   </svg>
                 </div>
-                <div class="flex items-center justify-between flex-1">
-                  <span class="text-sm">Riepiloghi & Bilancio Admin</span>
-                  <span class="text-[10px] bg-amber-500/20 text-amber-300 font-bold px-2 py-0.5 rounded-full border border-amber-500/30">ADMIN</span>
+              </button>
+
+              <!-- Animated Content -->
+              <div
+                class="grid transition-[grid-template-rows] duration-300 ease-in-out"
+                [class.grid-rows-[1fr]]="openSection() === 'admin'"
+                [class.grid-rows-[0fr]]="openSection() !== 'admin'"
+              >
+                <div class="overflow-hidden">
+                  <div class="px-2 pt-1 pb-2 space-y-1 border-t border-slate-800/50">
+                    <a
+                      routerLink="/users"
+                      (click)="closeMobileMenu()"
+                      routerLinkActive="bg-[#3857F1] text-white shadow-lg shadow-blue-600/30 font-semibold"
+                      class="flex items-center space-x-3 px-3 py-2 rounded-xl text-slate-300 hover:bg-slate-800/80 hover:text-white transition-all group/item"
+                    >
+                      <div class="p-1.5 rounded-lg bg-slate-800/60 group-hover/item:bg-slate-700/60 transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-indigo-400 group-hover/item:scale-110 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                        </svg>
+                      </div>
+                      <span class="text-sm">{{ authService.canManageUsers() ? 'Gestione Utenti' : 'Il Mio Profilo' }}</span>
+                    </a>
+
+                    @if (authService.canManageUsers()) {
+                      <a
+                        routerLink="/afterschool-expenses"
+                        (click)="closeMobileMenu()"
+                        routerLinkActive="bg-[#3857F1] text-white shadow-lg shadow-blue-600/30 font-semibold"
+                        class="flex items-center space-x-3 px-3 py-2 rounded-xl text-slate-300 hover:bg-slate-800/80 hover:text-white transition-all group/item"
+                      >
+                        <div class="p-1.5 rounded-lg bg-slate-800/60 group-hover/item:bg-slate-700/60 transition-colors">
+                          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-rose-400 group-hover/item:scale-110 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2z" />
+                          </svg>
+                        </div>
+                        <span class="text-sm">Gestione Mensa & Spese</span>
+                      </a>
+                    }
+
+                    @if (authService.isAdmin()) {
+                      <a
+                        routerLink="/admin/afterschool-packages"
+                        (click)="closeMobileMenu()"
+                        routerLinkActive="bg-[#3857F1] text-white shadow-lg shadow-blue-600/30 font-semibold"
+                        class="flex items-center space-x-3 px-3 py-2 rounded-xl text-slate-300 hover:bg-slate-800/80 hover:text-white transition-all group/item"
+                      >
+                        <div class="p-1.5 rounded-lg bg-slate-800/60 group-hover/item:bg-slate-700/60 transition-colors">
+                          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-amber-400 group-hover/item:scale-110 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                          </svg>
+                        </div>
+                        <div class="flex items-center justify-between flex-1">
+                          <span class="text-sm">Tariffe Doposcuola</span>
+                          <span class="text-[10px] bg-amber-500/20 text-amber-300 font-bold px-2 py-0.5 rounded-full border border-amber-500/30">ADMIN</span>
+                        </div>
+                      </a>
+
+                      <a
+                        routerLink="/admin/dashboard"
+                        (click)="closeMobileMenu()"
+                        routerLinkActive="bg-[#3857F1] text-white shadow-lg shadow-blue-600/30 font-semibold"
+                        class="flex items-center space-x-3 px-3 py-2 rounded-xl text-slate-300 hover:bg-slate-800/80 hover:text-white transition-all group/item"
+                      >
+                        <div class="p-1.5 rounded-lg bg-slate-800/60 group-hover/item:bg-slate-700/60 transition-colors">
+                          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-amber-400 group-hover/item:scale-110 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                          </svg>
+                        </div>
+                        <div class="flex items-center justify-between flex-1">
+                          <span class="text-sm">Riepiloghi & Bilancio Admin</span>
+                          <span class="text-[10px] bg-amber-500/20 text-amber-300 font-bold px-2 py-0.5 rounded-full border border-amber-500/30">ADMIN</span>
+                        </div>
+                      </a>
+                    }
+                  </div>
                 </div>
-              </a>
-            }
+              </div>
+            </div>
+
           </nav>
         </div>
 
@@ -332,7 +472,52 @@ import { AuthService } from '../core/services/auth.service';
 })
 export class MainLayoutComponent {
   readonly authService = inject(AuthService);
+  readonly router = inject(Router, { optional: true });
   readonly mobileMenuOpen = signal<boolean>(false);
+  readonly openSection = signal<AccordionSection>('doposcuola');
+
+  constructor() {
+    if (this.router) {
+      this.syncSectionWithUrl(this.router.url);
+
+      this.router.events.pipe(
+        filter((e): e is NavigationEnd => e instanceof NavigationEnd),
+        takeUntilDestroyed()
+      ).subscribe(e => {
+        this.syncSectionWithUrl(e.urlAfterRedirects || e.url);
+      });
+    }
+  }
+
+  syncSectionWithUrl(url: string | undefined): void {
+    if (!url) return;
+    const detected = this.detectSectionFromUrl(url);
+    if (detected) {
+      this.openSection.set(detected);
+    }
+  }
+
+  detectSectionFromUrl(url: string): AccordionSection {
+    if (url.includes('/projects') || url.includes('/reports')) {
+      return 'corsi';
+    }
+    if (url.includes('/users') || url.includes('/admin') || url.includes('/afterschool-expenses')) {
+      return 'admin';
+    }
+    if (url.includes('/dashboard') || url.includes('/afterschool-calendar') || url.includes('/payments') || url.includes('/anagrafica') || url.includes('/afterschool')) {
+      return 'doposcuola';
+    }
+    return 'doposcuola';
+  }
+
+  isSectionActive(section: AccordionSection): boolean {
+    const url = this.router?.url || '';
+    return this.detectSectionFromUrl(url) === section;
+  }
+
+  toggleSection(section: AccordionSection): void {
+    this.openSection.update(current => (current === section ? null : section));
+  }
 
   toggleMobileMenu(): void {
     this.mobileMenuOpen.update(v => !v);
