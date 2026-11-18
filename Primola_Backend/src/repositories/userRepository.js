@@ -13,7 +13,7 @@ class UserRepository {
       SELECT u.id, u.email, u.password_hash, 
              COALESCE(u.first_name, u.nome) AS first_name,
              COALESCE(u.last_name, u.cognome) AS last_name,
-             u.phone, u.role, u.created_at, u.updated_at
+             u.phone, u.role, COALESCE(u.status, 'APPROVED') AS status, u.created_at, u.updated_at
       FROM users u
       WHERE LOWER(u.email) = LOWER($1)
       LIMIT 1
@@ -41,7 +41,7 @@ class UserRepository {
       SELECT u.id, u.email,
              COALESCE(u.first_name, u.nome) AS first_name,
              COALESCE(u.last_name, u.cognome) AS last_name,
-             u.phone, u.role, u.created_at, u.updated_at
+             u.phone, u.role, COALESCE(u.status, 'APPROVED') AS status, u.created_at, u.updated_at
       FROM users u
       WHERE u.id = $1
     `;
@@ -67,7 +67,7 @@ class UserRepository {
       SELECT u.id, u.email,
              COALESCE(u.first_name, u.nome) AS first_name,
              COALESCE(u.last_name, u.cognome) AS last_name,
-             u.phone, u.role, u.created_at, u.updated_at
+             u.phone, u.role, COALESCE(u.status, 'APPROVED') AS status, u.created_at, u.updated_at
       FROM users u
       ORDER BY COALESCE(u.last_name, u.cognome) ASC, COALESCE(u.first_name, u.nome) ASC
     `;
@@ -88,18 +88,18 @@ class UserRepository {
   /**
    * Crea un nuovo utente con eventuale password e lista gruppi
    */
-  async create({ email, password, password_hash, first_name, last_name, phone, nome, cognome, role = 'TEACHER', groups = [] }) {
+  async create({ email, password, password_hash, first_name, last_name, phone, nome, cognome, role = 'TEACHER', groups = [], status = 'APPROVED' }) {
     const fn = first_name || nome || '';
     const ln = last_name || cognome || '';
     const hash = password_hash || (password ? await bcrypt.hash(password, 10) : await bcrypt.hash('Primola2026!', 10));
 
     const client = await db.getClient ? await db.getClient() : null;
     const query = `
-      INSERT INTO users (email, password_hash, first_name, last_name, phone, nome, cognome, role)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-      RETURNING id, email, first_name, last_name, phone, created_at, updated_at
+      INSERT INTO users (email, password_hash, first_name, last_name, phone, nome, cognome, role, status)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      RETURNING id, email, first_name, last_name, phone, status, created_at, updated_at
     `;
-    const params = [email.toLowerCase().trim(), hash, fn, ln, phone || null, fn, ln, role];
+    const params = [email.toLowerCase().trim(), hash, fn, ln, phone || null, fn, ln, role, status];
 
     try {
       if (client) await client.query('BEGIN');
@@ -123,9 +123,28 @@ class UserRepository {
   }
 
   /**
+   * Aggiorna lo stato di un utente (PENDING, APPROVED, REJECTED)
+   */
+  async updateStatus(id, status) {
+    const validStatuses = ['PENDING', 'APPROVED', 'REJECTED'];
+    if (!validStatuses.includes(status)) {
+      throw new Error(`Stato non valido: ${status}`);
+    }
+    const query = `
+      UPDATE users 
+      SET status = $1, updated_at = NOW() 
+      WHERE id = $2 
+      RETURNING id, email, first_name, last_name, phone, status, created_at, updated_at
+    `;
+    const result = await db.query(query, [status, id]);
+    if (result.rows.length === 0) return null;
+    return await this.findById(id);
+  }
+
+  /**
    * Aggiorna utente esistente
    */
-  async update(id, { email, password, first_name, last_name, phone, groups }, canEditGroups = false) {
+  async update(id, { email, password, first_name, last_name, phone, groups, status }, canEditAdminFields = false) {
     const existing = await this.findById(id);
     if (!existing) return null;
 
@@ -158,6 +177,13 @@ class UserRepository {
       updates.push(`password_hash = $${paramIndex++}`);
       params.push(hash);
     }
+    if (status !== undefined && canEditAdminFields) {
+      const validStatuses = ['PENDING', 'APPROVED', 'REJECTED'];
+      if (validStatuses.includes(status)) {
+        updates.push(`status = $${paramIndex++}`);
+        params.push(status);
+      }
+    }
 
     const client = await db.getClient ? await db.getClient() : null;
     try {
@@ -170,12 +196,12 @@ class UserRepository {
           UPDATE users 
           SET ${updates.join(', ')}, updated_at = NOW() 
           WHERE id = $${paramIndex}
-          RETURNING id, email, first_name, last_name, phone, created_at, updated_at
+          RETURNING id, email, first_name, last_name, phone, status, created_at, updated_at
         `;
         await executor.query(query, params);
       }
 
-      if (canEditGroups && Array.isArray(groups)) {
+      if (canEditAdminFields && Array.isArray(groups)) {
         await groupRepository.setUserGroups(id, groups, client);
       }
 

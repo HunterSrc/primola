@@ -55,4 +55,30 @@ router.get('/expected', verifyToken, requireRole(['ADMIN', 'OFFICE', 'TEACHER', 
  */
 router.post('/bulk', verifyToken, requireRole(['ADMIN', 'OFFICE', 'TEACHER', 'STAFF']), attendanceController.bulkUpsert);
 
+/**
+ * @swagger
+ * /api/attendances/{date}/{studentId}:
+ *   delete:
+ *     summary: Rimuovi definitivamente la presenza di uno studente per una data
+ *     tags: [Attendances]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: date
+ *         required: true
+ *         schema:
+ *           type: string
+ *           example: "2026-04-28"
+ *       - in: path
+ *         name: studentId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Presenza rimossa con successo
+ */
+router.delete('/:date/:studentId', verifyToken, requireRole(['ADMIN', 'OFFICE']), attendanceController.removeAttendance);
+
 module.exports = router;

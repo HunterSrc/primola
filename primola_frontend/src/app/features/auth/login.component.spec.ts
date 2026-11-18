@@ -30,48 +30,47 @@ describe('LoginComponent', () => {
     component = TestBed.inject(LoginComponent);
   });
 
-  it('should instantiate successfully', () => {
+  it('should instantiate successfully with empty credentials and no prefill', () => {
     expect(component).toBeTruthy();
-    expect(component.email).toBe('admin@primola.it');
+    expect(component.email).toBe('');
+    expect(component.password).toBe('');
+    expect(component.isLoading()).toBe(false);
+  });
+
+  it('should not submit if email or password are empty', () => {
+    component.email = '';
+    component.password = '';
+    component.onSubmit();
+
+    expect(mockAuthService.loginWithCredentials).not.toHaveBeenCalled();
+    expect(mockRouter.navigate).not.toHaveBeenCalled();
   });
 
   it('should trigger loginWithCredentials on submit and navigate to dashboard on success', () => {
     mockAuthService.loginWithCredentials.mockReturnValue(of({ success: true }));
 
-    component.email = 'admin@primola.it';
-    component.password = 'AdminPrimola2026!';
+    component.email = 'docente@primola.it';
+    component.password = 'Password123!';
     component.onSubmit();
 
     expect(mockAuthService.loginWithCredentials).toHaveBeenCalledWith({
-      email: 'admin@primola.it',
-      password: 'AdminPrimola2026!'
+      email: 'docente@primola.it',
+      password: 'Password123!'
     });
     expect(mockRouter.navigate).toHaveBeenCalledWith(['/dashboard']);
     expect(component.errorMessage()).toBeNull();
   });
 
-  it('should set error message on failed login', () => {
+  it('should set error message on failed login (e.g. pending admin approval or wrong credentials)', () => {
     mockAuthService.loginWithCredentials.mockReturnValue(throwError(() => ({
-      error: { error: 'Credenziali non valide.' }
+      error: { error: 'Il tuo account è in attesa di approvazione da parte di un amministratore.' }
     })));
 
-    component.email = 'admin@primola.it';
-    component.password = 'WrongPass';
+    component.email = 'in.attesa@primola.it';
+    component.password = 'Password123!';
     component.onSubmit();
 
-    expect(component.errorMessage()).toBe('Credenziali non valide.');
+    expect(component.errorMessage()).toBe('Il tuo account è in attesa di approvazione da parte di un amministratore.');
     expect(component.isLoading()).toBe(false);
-  });
-
-  it('should prefill admin credentials when prefillAdmin is called', () => {
-    component.email = '';
-    component.password = '';
-    component.errorMessage.set('errore pregresso');
-
-    component.prefillAdmin();
-
-    expect(component.email).toBe('admin@primola.it');
-    expect(component.password).toBe('AdminPrimola2026!');
-    expect(component.errorMessage()).toBeNull();
   });
 });

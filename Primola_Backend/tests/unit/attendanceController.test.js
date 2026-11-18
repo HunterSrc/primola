@@ -121,4 +121,42 @@ describe('attendanceController unit tests', () => {
       expect(nextFn).toHaveBeenCalledWith(err);
     });
   });
+
+  describe('removeAttendance', () => {
+    it('should return 400 if date param is invalid', async () => {
+      mockReq.params = { date: 'bad-date', studentId: 's1' };
+      await attendanceController.removeAttendance(mockReq, mockRes, nextFn);
+      expect(mockRes.status).toHaveBeenCalledWith(400);
+    });
+
+    it('should return 400 if studentId param is missing', async () => {
+      mockReq.params = { date: '2026-10-22' };
+      await attendanceController.removeAttendance(mockReq, mockRes, nextFn);
+      expect(mockRes.status).toHaveBeenCalledWith(400);
+    });
+
+    it('should return 200 when attendance is deleted', async () => {
+      mockReq.params = { date: '2026-10-22', studentId: 's1' };
+      attendanceRepository.deleteAttendance.mockResolvedValue({ id: 'att-1' });
+
+      await attendanceController.removeAttendance(mockReq, mockRes, nextFn);
+
+      expect(attendanceRepository.deleteAttendance).toHaveBeenCalledWith('s1', '2026-10-22');
+      expect(mockRes.status).toHaveBeenCalledWith(200);
+      expect(mockRes.json).toHaveBeenCalledWith({
+        success: true,
+        data: expect.objectContaining({ removed: true }),
+        error: null
+      });
+    });
+
+    it('should call next(err) if deleteAttendance rejects', async () => {
+      mockReq.params = { date: '2026-10-22', studentId: 's1' };
+      const err = new Error('Delete failed');
+      attendanceRepository.deleteAttendance.mockRejectedValue(err);
+
+      await attendanceController.removeAttendance(mockReq, mockRes, nextFn);
+      expect(nextFn).toHaveBeenCalledWith(err);
+    });
+  });
 });

@@ -1,4 +1,6 @@
 const request = require('supertest');
+process.env.USE_MEMORY_DB = 'true';
+const db = require('../../src/config/database');
 const app = require('../../src/app');
 const jwt = require('jsonwebtoken');
 
@@ -25,7 +27,8 @@ describe('Users, Projects & RBAC Integration Tests', () => {
   let createdProjectId;
 
   beforeAll(async () => {
-    const db = require('../../src/config/database');
+    process.env.USE_MEMORY_DB = 'true';
+    await db.testConnection();
     await db.query("DELETE FROM users WHERE email LIKE 'prof.bianchi.%'");
   });
 
@@ -86,6 +89,29 @@ describe('Users, Projects & RBAC Integration Tests', () => {
       expect(res.status).toBe(200);
       expect(res.body.success).toBe(true);
       expect(res.body.data.first_name).toBe('Paolo Aggiornato');
+    });
+
+    it('non-ADMIN (OFFICE o TEACHER) should NOT be able to change user status', async () => {
+      const resOffice = await request(app)
+        .patch(`/api/users/${createdUserId}/status`)
+        .set('Authorization', `Bearer ${officeToken}`)
+        .send({ status: 'APPROVED' });
+      expect(resOffice.status).toBe(403);
+
+      const resTeacher = await request(app)
+        .patch(`/api/users/${createdUserId}/status`)
+        .set('Authorization', `Bearer ${teacherToken}`)
+        .send({ status: 'APPROVED' });
+      expect(resTeacher.status).toBe(403);
+    });
+
+    it('ADMIN should change user status via PATCH /api/users/:id/status', async () => {
+      const res = await request(app)
+        .patch(`/api/users/${createdUserId}/status`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ status: 'APPROVED' });
+      expect(res.status).toBe(200);
+      expect(res.body.data.status).toBe('APPROVED');
     });
 
     it('TEACHER should only see their own profile in list and detail', async () => {

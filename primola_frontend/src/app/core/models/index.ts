@@ -117,8 +117,8 @@ export interface MensaStudentBreakdown {
   last_name: string;
   studentName: string;
   school: string;
-  weekly_meals: number;
-  expected_meals: number;
+  weekly_meals?: number;
+  expected_meals?: number;
   delivered_regular: number;
   delivered_extra: number;
   delivered_total: number;
@@ -132,7 +132,7 @@ export interface MensaReport {
   total_meals: number;
   delivered_regular: number;
   delivered_extra: number;
-  expected_meals: number;
+  expected_meals?: number;
   breakdown: MensaReportDay[];
   students_breakdown?: MensaStudentBreakdown[];
 }
@@ -187,6 +187,7 @@ export interface MonthlyPlanItem {
 
 export type UserGroup = 'ADMIN' | 'OFFICE' | 'TEACHER';
 export type UserRole = UserGroup | 'STAFF';
+export type UserStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
 
 export interface User {
   id: string | number;
@@ -195,6 +196,7 @@ export interface User {
   first_name?: string;
   last_name?: string;
   phone?: string;
+  status?: UserStatus;
   groups?: UserGroup[];
   role?: UserRole;
   token?: string;
@@ -269,6 +271,14 @@ export interface LoginRequest {
   password: string;
 }
 
+export interface RegisterRequest {
+  first_name: string;
+  last_name: string;
+  email: string;
+  password: string;
+  phone?: string;
+}
+
 export interface AuthTokens {
   accessToken: string;
   refreshToken: string;
@@ -283,6 +293,7 @@ export interface AuthResponseData {
     nome?: string;
     cognome?: string;
     phone?: string;
+    status?: UserStatus;
     groups?: UserGroup[];
     role?: UserRole;
   };
@@ -343,7 +354,8 @@ export interface AfterschoolWeekSchedule {
 }
 
 export interface SystemSettings {
-  doposcuola_daily_fee: number;
+  doposcuola_daily_fee?: number;
+  one_off_fee?: number;
   meal_fee_student: number;
   meal_cost_provider?: number;
 }
@@ -378,6 +390,7 @@ export interface FinancialMonthlyReport {
     revenues: {
       expected: number;
       actual: number;
+      pending?: number;
       expected_days: number;
       actual_days: number;
       expected_meals: number;
@@ -419,6 +432,7 @@ export interface FinancialMonthlyReport {
   summary: {
     total_expected_revenues: number;
     total_actual_revenues: number;
+    total_pending_revenues?: number;
     total_expected_expenses: number;
     total_actual_expenses: number;
     total_expected_margin: number;
@@ -457,8 +471,8 @@ export interface OperationalStudentMeal {
   school: string;
   days_present: number;
   meals_consumed: number;
-  expected_meals: number;
-  weekly_meals: number;
+  expected_meals?: number;
+  weekly_meals?: number;
 }
 
 export interface OperationalTeacherShiftDetail {

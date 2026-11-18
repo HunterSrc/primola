@@ -26,7 +26,8 @@ describe('AttendanceDashboardComponent', () => {
     mockApi = {
       getStudents: vi.fn().mockReturnValue(of(mockStudents)),
       getExpectedAttendances: vi.fn().mockReturnValue(of(mockRecords)),
-      saveAttendancesBulk: vi.fn().mockReturnValue(of({ count: 2 }))
+      saveAttendancesBulk: vi.fn().mockReturnValue(of({ count: 2 })),
+      deleteAttendance: vi.fn().mockReturnValue(of({ success: true }))
     };
 
     const canStudentsSig = signal(true);
@@ -116,7 +117,7 @@ describe('AttendanceDashboardComponent', () => {
     expect(available[0].id).toBe(3);
   });
 
-  it('should add student to attendance when user has permission', () => {
+  it('should add student to attendance as present without meal pre-activation', () => {
     component.records.set([]);
     component.showStudentModal.set(true);
 
@@ -132,8 +133,8 @@ describe('AttendanceDashboardComponent', () => {
     component.addStudentToAttendance(newStudent);
     expect(component.records().length).toBe(1);
     expect(component.records()[0].student_id).toBe(99);
-    expect(component.records()[0].is_present).toBe(false);
-    expect(component.records()[0].has_meal).toBe(true);
+    expect(component.records()[0].is_present).toBe(true);
+    expect(component.records()[0].has_meal).toBe(false);
     expect(component.showStudentModal()).toBe(false);
   });
 
@@ -146,15 +147,28 @@ describe('AttendanceDashboardComponent', () => {
     expect(component.records().length).toBe(0);
   });
 
-  it('should remove student from attendance when user has permission', () => {
+  it('should remove student from attendance via deleteAttendance API when user has permission', () => {
+    component.selectedDate.set('2026-10-22');
     component.records.set([
-      { student_id: 1, first_name: 'A', last_name: 'B', is_present: true, has_meal: false, is_excused: false },
-      { student_id: 99, first_name: 'X', last_name: 'Y', is_present: true, has_meal: false, is_excused: false }
+      { student_id: 1, first_name: 'A', last_name: 'B', is_present: true, has_meal: false },
+      { student_id: 99, first_name: 'X', last_name: 'Y', is_present: true, has_meal: false }
     ]);
 
     component.removeStudent(99);
+    expect(mockApi.deleteAttendance).toHaveBeenCalledWith('2026-10-22', 99);
     expect(component.records().length).toBe(1);
     expect(component.records()[0].student_id).toBe(1);
+  });
+
+  it('should not remove student if user lacks permission', () => {
+    mockAuth.canStudentsSig.set(false);
+    component.records.set([
+      { student_id: 1, first_name: 'A', last_name: 'B', is_present: true, has_meal: false }
+    ]);
+
+    component.removeStudent(1);
+    expect(mockApi.deleteAttendance).not.toHaveBeenCalled();
+    expect(component.records().length).toBe(1);
   });
 
   it('should save attendances bulk successfully', () => {

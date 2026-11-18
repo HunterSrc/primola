@@ -1,13 +1,13 @@
 import { Component, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
 
 @Component({
   selector: 'app-login',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, RouterLink],
   template: `
     <div class="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-[#1e2a5e] flex items-center justify-center p-4">
       <div class="max-w-md w-full bg-white/95 backdrop-blur-md rounded-3xl shadow-2xl p-8 border border-white/20">
@@ -47,7 +47,7 @@ import { AuthService } from '../../core/services/auth.service';
                 [(ngModel)]="email"
                 name="email"
                 required
-                placeholder="admin@primola.it"
+                placeholder="nome@primola.it"
                 class="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50/50 text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#3857F1] focus:border-transparent transition text-sm"
               />
             </div>
@@ -87,16 +87,17 @@ import { AuthService } from '../../core/services/auth.service';
           </button>
         </form>
 
-        <!-- Dev / Test Quick Fill -->
-        <div class="mt-6 pt-5 border-t border-slate-100 flex items-center justify-between">
-          <button
-            type="button"
-            (click)="prefillAdmin()"
-            class="text-xs text-[#3857F1] hover:text-blue-700 font-medium hover:underline flex items-center space-x-1"
-          >
-            <span>⚡ Precompila credenziali Admin</span>
-          </button>
-          <span class="text-xs text-slate-400">JWT 60m • Auto-refresh</span>
+        <!-- Link Registrazione Autonoma (Sign Up) -->
+        <div class="mt-6 pt-5 border-t border-slate-100 text-center">
+          <p class="text-xs text-slate-500">
+            Non hai ancora un account?
+            <a
+              routerLink="/register"
+              class="font-semibold text-[#3857F1] hover:text-blue-700 hover:underline transition-colors ml-1"
+            >
+              Registrati
+            </a>
+          </p>
         </div>
 
       </div>
@@ -107,16 +108,10 @@ export class LoginComponent {
   private authService = inject(AuthService);
   private router = inject(Router);
 
-  email = 'admin@primola.it';
-  password = 'AdminPrimola2026!';
+  email = '';
+  password = '';
   isLoading = signal(false);
   errorMessage = signal<string | null>(null);
-
-  prefillAdmin() {
-    this.email = 'admin@primola.it';
-    this.password = 'AdminPrimola2026!';
-    this.errorMessage.set(null);
-  }
 
   onSubmit() {
     if (!this.email || !this.password) return;

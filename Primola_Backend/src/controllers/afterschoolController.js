@@ -1,6 +1,7 @@
 const afterschoolRepository = require('../repositories/afterschoolRepository');
 const userRepository = require('../repositories/userRepository');
 const { sendSuccess, sendError } = require('../utils/responseFormat');
+const { getItalianHoliday, isItalianHoliday } = require('../utils/holidays');
 
 /**
  * Controller per la commessa speciale dopo scuola.
@@ -171,24 +172,30 @@ class AfterschoolController {
       }
 
 
-      // 2. Per ciascun giorno recupera studenti previsti e chiusure
+      // 2. Per ciascun giorno recupera studenti previsti, chiusure e festività nazionali
       for (const day of days) {
         day.closure = closuresByDate[day.date] || null;
+        day.holiday = getItalianHoliday(day.date);
         day.shifts = shiftsByDate[day.date] || [];
         day.total_teacher_hours = Number(day.shifts.reduce((acc, sh) => acc + (sh.hours || 0), 0).toFixed(2));
 
         const students = await afterschoolRepository.getStudentsForDate(day.date);
-        day.students = students.map(st => ({
+        let mappedStudents = students.map(st => ({
           student_id: st.student_id,
           first_name: st.first_name,
           last_name: st.last_name,
           school: st.scuola || '',
           is_present: !!st.is_present,
-          has_meal: !!st.canteen_used || !!st.has_meal_plan,
+          has_meal: !!st.canteen_used,
           canteen_used: !!st.canteen_used,
           already_registered: !!st.already_registered
         }));
 
+        if (day.closure || isItalianHoliday(day.date)) {
+          mappedStudents = mappedStudents.filter(st => st.already_registered === true);
+        }
+
+        day.students = mappedStudents;
         day.expected_students_count = day.students.length;
         day.meals_count = day.students.filter(st => st.has_meal).length;
       }
@@ -301,7 +308,7 @@ class AfterschoolController {
 
   /**
    * POST /api/afterschool/closures
-   * Solo ADMIN
+   * ADMIN e OFFICE
    */
   async createClosure(req, res) {
     try {
@@ -325,7 +332,7 @@ class AfterschoolController {
 
   /**
    * DELETE /api/afterschool/closures/:id
-   * Solo ADMIN
+   * ADMIN e OFFICE
    */
   async deleteClosure(req, res) {
     try {

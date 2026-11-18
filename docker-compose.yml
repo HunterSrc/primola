@@ -8,21 +8,57 @@ services:
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-primola}
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres_secure_pwd}
-    ports:
-      - "5432:5432"
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-primola_secure_pwd}
     volumes:
-      # Persistenza permanente dei dati PostgreSQL
       - primola_pgdata:/var/lib/postgresql/data
-      # Inizializzazione automatica dello schema e dei dati seed al primo avvio
-      - ./Primola_Backend/db/db_schema.sql:/docker-entrypoint-initdb.d/01_schema.sql:ro
-      - ./Primola_Backend/db/db_seed.sql:/docker-entrypoint-initdb.d/02_seed.sql:ro
+      - ./Primola_Backend/db/init_full_db.sql:/docker-entrypoint-initdb.d/init.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-primola}"]
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - primola_network
+
+  primola_backend:
+    build:
+      context: ./Primola_Backend
+      dockerfile: Dockerfile
+    container_name: primola_backend
+    restart: unless-stopped
+    depends_on:
+      primola_postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-primola_secure_pwd}@primola_postgres:5432/${POSTGRES_DB:-primola}
+      JWT_SECRET: ${JWT_SECRET:-primola_super_jwt_secret_prod_key_2026}
+    volumes:
+      - ./Primola_Backend/src:/app/src:ro
+    networks:
+      - primola_network
+
+  primola_frontend:
+    build:
+      context: ./primola_frontend
+      dockerfile: Dockerfile
+    container_name: primola_frontend
+    restart: unless-stopped
+    depends_on:
+      - primola_backend
+    ports:
+      - "${PRIMOLA_WEB_PORT:-8082}:80"
+    volumes:
+      - ./primola_frontend/dist/primola_frontend/browser:/usr/share/nginx/html:ro
+      - ./primola_frontend/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    networks:
+      - primola_network
 
 volumes:
   primola_pgdata:
-    driver: local
+    name: primola_pgdata
+
+networks:
+  primola_network:
+    name: primola_network

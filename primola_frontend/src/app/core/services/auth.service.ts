@@ -2,7 +2,7 @@ import { Injectable, signal, computed } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { Observable, tap, catchError, throwError } from 'rxjs';
-import { User, UserRole, UserGroup, ApiResponse, AuthResponseData } from '../models';
+import { User, UserRole, UserGroup, ApiResponse, AuthResponseData, RegisterRequest } from '../models';
 
 const STORAGE_KEY = 'primola_user';
 const ACCESS_TOKEN_KEY = 'jwt_token';
@@ -79,6 +79,10 @@ export class AuthService {
     );
   }
 
+  register(data: RegisterRequest): Observable<ApiResponse<{ message: string; userId: string; email: string; status: string }>> {
+    return this.http.post<ApiResponse<{ message: string; userId: string; email: string; status: string }>>(`${this.apiUrl}/register`, data);
+  }
+
   refreshToken(): Observable<ApiResponse<AuthResponseData>> {
     const refreshToken = this.getRefreshToken();
     if (!refreshToken) {
@@ -114,6 +118,7 @@ export class AuthService {
       first_name: firstName,
       last_name: lastName,
       phone: rawUser.phone,
+      status: rawUser.status || 'APPROVED',
       groups: groups,
       role: rawUser.role || groups[0],
       token: data.accessToken

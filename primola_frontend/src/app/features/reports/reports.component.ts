@@ -28,7 +28,7 @@ import { AppDatePipe } from '../../shared/pipes/app-date.pipe';
           <p class="text-xs sm:text-sm text-slate-500">Rendicontazione mensile ore e compensi docenti doposcuola e corsi terminati</p>
         </div>
 
-        <div class="flex items-center space-x-1.5 sm:space-x-2 bg-slate-100 p-1 sm:p-1.5 rounded-xl border border-slate-200 overflow-x-auto w-full md:w-auto">
+        <div class="flex items-center gap-1.5 sm:gap-2 bg-slate-100 p-1 sm:p-1.5 rounded-xl border border-slate-200 flex-wrap sm:flex-nowrap shrink-0 max-w-full">
           <button
             type="button"
             (click)="activeTab.set('OPERATIONAL')"
@@ -36,7 +36,7 @@ import { AppDatePipe } from '../../shared/pipes/app-date.pipe';
             [class.shadow-sm]="activeTab() === 'OPERATIONAL'"
             [class.text-indigo-700]="activeTab() === 'OPERATIONAL'"
             [class.font-bold]="activeTab() === 'OPERATIONAL'"
-            class="flex-1 md:flex-initial px-3.5 sm:px-4 py-2 text-xs md:text-sm rounded-lg text-slate-600 transition-all cursor-pointer whitespace-nowrap text-center"
+            class="flex-1 sm:flex-initial px-3 sm:px-4 py-2 text-xs md:text-sm rounded-lg text-slate-600 transition-all cursor-pointer whitespace-nowrap text-center"
           >
             Rendicontazione Mensile Ore
           </button>
@@ -48,7 +48,7 @@ import { AppDatePipe } from '../../shared/pipes/app-date.pipe';
             [class.shadow-sm]="activeTab() === 'PROJECTS'"
             [class.text-indigo-700]="activeTab() === 'PROJECTS'"
             [class.font-bold]="activeTab() === 'PROJECTS'"
-            class="flex-1 md:flex-initial px-3.5 sm:px-4 py-2 text-xs md:text-sm rounded-lg text-slate-600 transition-all cursor-pointer whitespace-nowrap text-center"
+            class="flex-1 sm:flex-initial px-3 sm:px-4 py-2 text-xs md:text-sm rounded-lg text-slate-600 transition-all cursor-pointer whitespace-nowrap text-center"
           >
             Riepilogo Generale Commesse
           </button>

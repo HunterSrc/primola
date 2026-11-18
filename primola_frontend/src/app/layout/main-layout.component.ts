@@ -212,7 +212,7 @@ import { AuthService } from '../core/services/auth.service';
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                   </svg>
                 </div>
-                <span class="text-sm">Rendicontazione Ore Corsi</span>
+                <span class="text-sm">Rendicontazione Operativa</span>
               </a>
             }
 
@@ -285,7 +285,7 @@ import { AuthService } from '../core/services/auth.service';
                   </svg>
                 </div>
                 <div class="flex items-center justify-between flex-1">
-                  <span class="text-sm">Riepiloghi Admin</span>
+                  <span class="text-sm">Riepiloghi & Bilancio Admin</span>
                   <span class="text-[10px] bg-amber-500/20 text-amber-300 font-bold px-2 py-0.5 rounded-full border border-amber-500/30">ADMIN</span>
                 </div>
               </a>

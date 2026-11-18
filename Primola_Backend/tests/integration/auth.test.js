@@ -60,6 +60,119 @@ describe('Auth API Integration Tests', () => {
     });
   });
 
+  describe('POST /api/auth/register & Workflow Approvazione Admin', () => {
+    const testDocente = {
+      email: 'nuovo.docente@primola.it',
+      password: 'DocentePassword2026!',
+      first_name: 'Paolo',
+      last_name: 'Verdi',
+      phone: '+39 340 1234567'
+    };
+
+    let adminToken;
+    let registeredUserId;
+
+    beforeAll(async () => {
+      const adminLogin = await request(app)
+        .post('/api/auth/login')
+        .send({
+          email: 'admin@primola.it',
+          password: 'AdminPrimola2026!'
+        });
+      adminToken = adminLogin.body.data.accessToken;
+    });
+
+    it('dovrebbe registrare con successo un nuovo utente con stato PENDING e ruolo TEACHER', async () => {
+      const res = await request(app)
+        .post('/api/auth/register')
+        .send(testDocente);
+
+      expect(res.status).toBe(201);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.status).toBe('PENDING');
+      expect(res.body.data.userId).toBeDefined();
+      registeredUserId = res.body.data.userId;
+    });
+
+    it('dovrebbe rifiutare registrazione con email duplicata', async () => {
+      const res = await request(app)
+        .post('/api/auth/register')
+        .send(testDocente);
+
+      expect(res.status).toBe(409);
+      expect(res.body.success).toBe(false);
+      expect(res.body.error).toContain('già registrato');
+    });
+
+    it('dovrebbe validare campi obbligatori per la registrazione', async () => {
+      const res = await request(app)
+        .post('/api/auth/register')
+        .send({ email: 'mancante@primola.it' });
+
+      expect(res.status).toBe(400);
+      expect(res.body.success).toBe(false);
+    });
+
+    it('dovrebbe bloccare il login con 403 se l\'utente è in stato PENDING', async () => {
+      const res = await request(app)
+        .post('/api/auth/login')
+        .send({
+          email: testDocente.email,
+          password: testDocente.password
+        });
+
+      expect(res.status).toBe(403);
+      expect(res.body.success).toBe(false);
+      expect(res.body.error).toContain('attesa di approvazione');
+    });
+
+    it('amministratore dovrebbe poter approvare l\'utente via PATCH /api/users/:id/status', async () => {
+      const res = await request(app)
+        .patch(`/api/users/${registeredUserId}/status`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ status: 'APPROVED' });
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.status).toBe('APPROVED');
+      expect(res.body.data.groups).toContain('TEACHER');
+    });
+
+    it('dovrebbe consentire il login dopo che l\'amministratore ha approvato l\'account', async () => {
+      const res = await request(app)
+        .post('/api/auth/login')
+        .send({
+          email: testDocente.email,
+          password: testDocente.password
+        });
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.user.role).toBe('TEACHER');
+      expect(res.body.data.user.groups).toContain('TEACHER');
+    });
+
+    it('dovrebbe bloccare con 403 se l\'amministratore imposta lo stato su REJECTED', async () => {
+      const statusRes = await request(app)
+        .patch(`/api/users/${registeredUserId}/status`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ status: 'REJECTED' });
+
+      expect(statusRes.status).toBe(200);
+      expect(statusRes.body.data.status).toBe('REJECTED');
+
+      const loginRes = await request(app)
+        .post('/api/auth/login')
+        .send({
+          email: testDocente.email,
+          password: testDocente.password
+        });
+
+      expect(loginRes.status).toBe(403);
+      expect(loginRes.body.error).toContain('disabilitato o respinto');
+    });
+  });
+
   describe('POST /api/auth/refresh', () => {
     let validRefreshToken;
 

@@ -160,17 +160,11 @@ class AfterschoolRepository {
         s.cognome AS last_name,
         s.scuola,
         s.giorni_abbonamento,
-        s.pasti_settimanali,
-        s.giorni_mensa,
         COALESCE(a.is_present, false) AS is_present,
         COALESCE(a.canteen_used, false) AS canteen_used,
         COALESCE(a.notes, '') AS notes,
         (a.id IS NOT NULL) AS already_registered,
-        (
-          COALESCE(a.canteen_used, false) = true
-          OR EXTRACT(ISODOW FROM $1::date) = ANY(s.giorni_mensa)
-          OR (s.pasti_settimanali > 0 AND EXTRACT(ISODOW FROM $1::date) = ANY(s.giorni_abbonamento))
-        ) AS has_meal_plan
+        COALESCE(a.canteen_used, false) AS has_meal_plan
       FROM students s
       LEFT JOIN attendances a ON s.id = a.student_id AND a.date = $1
       WHERE EXTRACT(ISODOW FROM $1::date) = ANY(s.giorni_abbonamento)

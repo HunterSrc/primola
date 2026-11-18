@@ -33,6 +33,7 @@ class UserController {
         first_name: u.first_name,
         last_name: u.last_name,
         phone: u.phone,
+        status: u.status || 'APPROVED',
         groups: u.groups,
         created_at: u.created_at,
         updated_at: u.updated_at
@@ -82,6 +83,7 @@ class UserController {
         first_name: user.first_name,
         last_name: user.last_name,
         phone: user.phone,
+        status: user.status || 'APPROVED',
         groups: user.groups,
         created_at: user.created_at,
         updated_at: user.updated_at,
@@ -170,16 +172,19 @@ class UserController {
         return sendError(res, 403, 'Accesso negato alla modifica di questo utente.');
       }
 
-      const { email, password, first_name, last_name, phone, groups } = req.body;
+      const { email, password, first_name, last_name, phone, groups, status } = req.body;
 
-      // Se l'utente tenta di modificare i gruppi e non è ADMIN
+      // Se l'utente tenta di modificare i gruppi o lo stato e non è ADMIN
       if (groups !== undefined && !isAdmin) {
         return sendError(res, 403, 'Solo gli amministratori possono modificare i gruppi degli utenti.');
+      }
+      if (status !== undefined && !isAdmin) {
+        return sendError(res, 403, 'Solo gli amministratori possono modificare lo stato degli utenti.');
       }
 
       const updatedUser = await userRepository.update(
         id,
-        { email, password, first_name, last_name, phone, groups },
+        { email, password, first_name, last_name, phone, groups, status },
         isAdmin
       );
 
@@ -193,12 +198,53 @@ class UserController {
         first_name: updatedUser.first_name,
         last_name: updatedUser.last_name,
         phone: updatedUser.phone,
+        status: updatedUser.status || 'APPROVED',
         groups: updatedUser.groups,
         updated_at: updatedUser.updated_at
       });
     } catch (error) {
       console.error('Errore in updateUser:', error);
       return sendError(res, 500, 'Errore durante l\'aggiornamento dell\'utente.');
+    }
+  }
+
+  /**
+   * PATCH /api/users/:id/status
+   * Solo ADMIN
+   */
+  async updateStatus(req, res) {
+    try {
+      const userGroups = req.user.groups || [];
+      if (!userGroups.includes('ADMIN')) {
+        return sendError(res, 403, 'Solo gli amministratori possono modificare lo stato di un account.');
+      }
+
+      const { id } = req.params;
+      const { status } = req.body;
+
+      const validStatuses = ['PENDING', 'APPROVED', 'REJECTED'];
+      if (!status || !validStatuses.includes(status)) {
+        return sendError(res, 400, 'Stato non valido. Valori ammessi: PENDING, APPROVED, REJECTED.');
+      }
+
+      const updatedUser = await userRepository.updateStatus(id, status);
+      if (!updatedUser) {
+        return sendError(res, 404, 'Utente non trovato.');
+      }
+
+      return sendSuccess(res, 200, {
+        id: updatedUser.id,
+        email: updatedUser.email,
+        first_name: updatedUser.first_name,
+        last_name: updatedUser.last_name,
+        phone: updatedUser.phone,
+        status: updatedUser.status,
+        groups: updatedUser.groups,
+        updated_at: updatedUser.updated_at
+      });
+    } catch (error) {
+      console.error('Errore in updateStatus:', error);
+      return sendError(res, 500, 'Errore durante l\'aggiornamento dello stato dell\'utente.');
     }
   }
 

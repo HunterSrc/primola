@@ -48,6 +48,13 @@ const login = async (req, res) => {
       return sendError(res, 401, 'Credenziali non valide.');
     }
 
+    if (user.status === 'PENDING') {
+      return sendError(res, 403, 'Il tuo account è in attesa di approvazione da parte di un amministratore.');
+    }
+    if (user.status === 'REJECTED') {
+      return sendError(res, 403, 'Il tuo account è stato disabilitato o respinto dall\'amministratore.');
+    }
+
     const { accessToken, refreshToken, groups } = generateTokens(user);
 
     return sendSuccess(res, 200, {
@@ -59,6 +66,7 @@ const login = async (req, res) => {
         phone: user.phone,
         nome: user.nome,
         cognome: user.cognome,
+        status: user.status || 'APPROVED',
         groups: groups,
         role: groups[0]
       },
@@ -68,6 +76,62 @@ const login = async (req, res) => {
   } catch (error) {
     console.error('Errore nel login:', error);
     return sendError(res, 500, 'Errore interno del server durante il login.');
+  }
+};
+
+const register = async (req, res) => {
+  try {
+    const { email, password, first_name, last_name, phone, nome, cognome } = req.body;
+
+    const fn = (first_name || nome || '').trim();
+    const ln = (last_name || cognome || '').trim();
+    const normalizedEmail = (email || '').toLowerCase().trim();
+
+    if (!normalizedEmail) {
+      return sendError(res, 400, 'L\'indirizzo email è obbligatorio.');
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(normalizedEmail)) {
+      return sendError(res, 400, 'Inserisci un indirizzo email valido.');
+    }
+
+    if (!fn) {
+      return sendError(res, 400, 'Il nome è obbligatorio.');
+    }
+    if (!ln) {
+      return sendError(res, 400, 'Il cognome è obbligatorio.');
+    }
+
+    if (!password || password.length < 6) {
+      return sendError(res, 400, 'La password deve contenere almeno 6 caratteri.');
+    }
+
+    const existingUser = await userRepository.findByEmail(normalizedEmail);
+    if (existingUser) {
+      return sendError(res, 409, 'Un utente con questo indirizzo email è già registrato.');
+    }
+
+    const newUser = await userRepository.create({
+      email: normalizedEmail,
+      password,
+      first_name: fn,
+      last_name: ln,
+      phone: phone ? phone.trim() : null,
+      role: 'TEACHER',
+      groups: ['TEACHER'],
+      status: 'PENDING'
+    });
+
+    return sendSuccess(res, 201, {
+      message: 'Registrazione completata con successo. Il tuo account è in attesa di approvazione da parte di un amministratore.',
+      userId: newUser.id,
+      email: newUser.email,
+      status: 'PENDING'
+    });
+  } catch (error) {
+    console.error('Errore nella registrazione utente:', error);
+    return sendError(res, 500, 'Errore interno del server durante la registrazione.');
   }
 };
 
@@ -94,6 +158,13 @@ const refresh = async (req, res) => {
       return sendError(res, 401, 'Utente non più valido.');
     }
 
+    if (user.status === 'PENDING') {
+      return sendError(res, 403, 'Il tuo account è in attesa di approvazione da parte di un amministratore.');
+    }
+    if (user.status === 'REJECTED') {
+      return sendError(res, 403, 'Il tuo account è stato disabilitato o respinto dall\'amministratore.');
+    }
+
     const tokens = generateTokens(user);
 
     return sendSuccess(res, 200, {
@@ -107,6 +178,7 @@ const refresh = async (req, res) => {
         phone: user.phone,
         nome: user.nome,
         cognome: user.cognome,
+        status: user.status || 'APPROVED',
         groups: tokens.groups,
         role: tokens.groups[0]
       }
@@ -132,6 +204,7 @@ const getMe = async (req, res) => {
       phone: user.phone,
       nome: user.nome,
       cognome: user.cognome,
+      status: user.status || 'APPROVED',
       groups: user.groups,
       role: user.groups[0]
     });
@@ -143,6 +216,7 @@ const getMe = async (req, res) => {
 
 module.exports = {
   login,
+  register,
   refresh,
   getMe
 };

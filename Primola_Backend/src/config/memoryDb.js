@@ -114,6 +114,7 @@ function createMemoryPostgres() {
       nome VARCHAR(100),
       cognome VARCHAR(100),
       role VARCHAR(50) DEFAULT 'ADMIN',
+      status VARCHAR(20) DEFAULT 'APPROVED',
       created_at TIMESTAMP DEFAULT NOW(),
       updated_at TIMESTAMP DEFAULT NOW()
     );
@@ -191,12 +192,12 @@ function createMemoryPostgres() {
       ('11111111-1111-1111-1111-111111111106', 'Una tantum', 'ONE_OFF', 1, NULL, 6);
 
     INSERT INTO afterschool_tariffs (id, package_id, price, valid_from, valid_to, notes) VALUES
-      ('22222222-2222-2222-2222-222222222201', '11111111-1111-1111-1111-111111111101', 48.00, '2026-09-01', '9999-01-01', 'Tariffa base'),
-      ('22222222-2222-2222-2222-222222222202', '11111111-1111-1111-1111-111111111102', 90.00, '2026-09-01', '9999-01-01', 'Tariffa base'),
-      ('22222222-2222-2222-2222-222222222203', '11111111-1111-1111-1111-111111111103', 130.00, '2026-09-01', '9999-01-01', 'Tariffa base'),
-      ('22222222-2222-2222-2222-222222222204', '11111111-1111-1111-1111-111111111104', 170.00, '2026-09-01', '9999-01-01', 'Tariffa base'),
-      ('22222222-2222-2222-2222-222222222205', '11111111-1111-1111-1111-111111111105', 200.00, '2026-09-01', '9999-01-01', 'Tariffa base'),
-      ('22222222-2222-2222-2222-222222222206', '11111111-1111-1111-1111-111111111106', 15.00, '2026-09-01', '9999-01-01', 'Tariffa base');
+      ('22222222-2222-2222-2222-222222222201', '11111111-1111-1111-1111-111111111101', 48.00, '2025-01-01', '9999-01-01', 'Tariffa base'),
+      ('22222222-2222-2222-2222-222222222202', '11111111-1111-1111-1111-111111111102', 90.00, '2025-01-01', '9999-01-01', 'Tariffa base'),
+      ('22222222-2222-2222-2222-222222222203', '11111111-1111-1111-1111-111111111103', 130.00, '2025-01-01', '9999-01-01', 'Tariffa base'),
+      ('22222222-2222-2222-2222-222222222204', '11111111-1111-1111-1111-111111111104', 170.00, '2025-01-01', '9999-01-01', 'Tariffa base'),
+      ('22222222-2222-2222-2222-222222222205', '11111111-1111-1111-1111-111111111105', 200.00, '2025-01-01', '9999-01-01', 'Tariffa base'),
+      ('22222222-2222-2222-2222-222222222206', '11111111-1111-1111-1111-111111111106', 15.00, '2025-01-01', '9999-01-01', 'Tariffa base');
 
     CREATE TABLE IF NOT EXISTS student_monthly_tariffs (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -292,34 +293,126 @@ function createMemoryPostgres() {
       ('OFFICE', 'Segreteria'),
       ('TEACHER', 'Docente');
 
-    -- Seed utente Admin (password: AdminPrimola2026!)
+    -- Seed utenti (password: AdminPrimola2026!)
     INSERT INTO users (id, email, password_hash, first_name, last_name, phone, nome, cognome, role)
-    VALUES (
-      '00000000-0000-0000-0000-000000000001',
-      'admin@primola.it',
-      '$2b$10$Y3cwx2Jk1TCDIJGfYdit/OZt02TDzjIBrZcV9irHdH0bBBgHh8NL2',
-      'Amministratore',
-      'Primola',
-      '+39 051 000000',
-      'Amministratore',
-      'Primola',
-      'ADMIN'
-    );
+    VALUES
+      (
+        '00000000-0000-0000-0000-000000000001',
+        'admin@primola.it',
+        '$2b$10$Y3cwx2Jk1TCDIJGfYdit/OZt02TDzjIBrZcV9irHdH0bBBgHh8NL2',
+        'Amministratore',
+        'Primola',
+        '+39 051 000000',
+        'Amministratore',
+        'Primola',
+        'ADMIN'
+      ),
+      (
+        '00000000-0000-0000-0000-000000000010',
+        'office@primola.it',
+        '$2b$10$Y3cwx2Jk1TCDIJGfYdit/OZt02TDzjIBrZcV9irHdH0bBBgHh8NL2',
+        'Segreteria',
+        'Primola',
+        '+39 051 000001',
+        'Segreteria',
+        'Primola',
+        'OFFICE'
+      ),
+      (
+        '00000000-0000-0000-0000-000000000011',
+        'teacher@primola.it',
+        '$2b$10$Y3cwx2Jk1TCDIJGfYdit/OZt02TDzjIBrZcV9irHdH0bBBgHh8NL2',
+        'Marco',
+        'Neri',
+        '+39 333 1000001',
+        'Marco',
+        'Neri',
+        'TEACHER'
+      ),
+      (
+        '00000000-0000-0000-0000-000000000012',
+        'giulia.docente@primola.it',
+        '$2b$10$Y3cwx2Jk1TCDIJGfYdit/OZt02TDzjIBrZcV9irHdH0bBBgHh8NL2',
+        'Giulia',
+        'Moretti',
+        '+39 333 1000002',
+        'Giulia',
+        'Moretti',
+        'TEACHER'
+      );
 
     INSERT INTO user_groups (user_id, group_name)
-    VALUES ('00000000-0000-0000-0000-000000000001', 'ADMIN');
+    VALUES
+      ('00000000-0000-0000-0000-000000000001', 'ADMIN'),
+      ('00000000-0000-0000-0000-000000000010', 'OFFICE'),
+      ('00000000-0000-0000-0000-000000000011', 'TEACHER'),
+      ('00000000-0000-0000-0000-000000000012', 'TEACHER');
 
     INSERT INTO students (id, nome, cognome, scuola, data_nascita, luogo_nascita, residenza, giorni_abbonamento, giorni_mensa, pasti_settimanali)
     VALUES 
-      ('33333333-3333-3333-3333-333333333333', 'Mario', 'Rossi', 'Scuola Rodari', '2016-04-12', 'Roma', 'Via Garibaldi 10', '{1,2,3,4,5}', '{1,2,3,4,5}', 5),
-      ('44444444-4444-4444-4444-444444444444', 'Luigi', 'Bianchi', 'Scuola Collodi', '2015-11-20', 'Milano', 'Corso Como 5', '{1,2,3,4,5}', '{1,3,5}', 3),
-      ('55555555-5555-5555-5555-555555555555', 'Sofia', 'Ferrari', 'Istituto Manzoni', '2017-02-15', 'Bologna', 'Piazza Maggiore 3', '{1,2,3,4,5}', '{2,4}', 2);
+      ('33333333-3333-3333-3333-333333333333', 'Mario', 'Rossi', 'Scuola Rodari', '2016-04-12', 'Roma', 'Via Garibaldi 10', '{1,2,3,4,5}', '{}', 0),
+      ('44444444-4444-4444-4444-444444444444', 'Luigi', 'Bianchi', 'Scuola Collodi', '2015-11-20', 'Milano', 'Corso Como 5', '{1,3,5}', '{}', 0),
+      ('55555555-5555-5555-5555-555555555555', 'Sofia', 'Ferrari', 'Istituto Manzoni', '2017-02-15', 'Bologna', 'Piazza Maggiore 3', '{2,4}', '{}', 0),
+      ('66666666-6666-6666-6666-666666666666', 'Emma', 'Conti', 'Scuola Rodari', '2016-09-08', 'Bologna', 'Via Indipendenza 22', '{1,2,3,4}', '{}', 0),
+      ('77777777-7777-7777-7777-777777777777', 'Leonardo', 'Verdi', 'Scuola Collodi', '2015-06-30', 'Modena', 'Via Emilia 45', '{1,2,3,4,5}', '{}', 0);
 
     INSERT INTO tutors (id, student_id, is_main_contact, nome, cognome, telefono, email, residenza)
     VALUES 
       ('11111111-0000-0000-0000-000000000001', '33333333-3333-3333-3333-333333333333', true, 'Giuseppe', 'Rossi', '+39 340 1122334', 'giuseppe.rossi@example.com', 'Via Garibaldi 10'),
       ('11111111-0000-0000-0000-000000000002', '44444444-4444-4444-4444-444444444444', true, 'Francesco', 'Bianchi', '+39 347 5566778', 'francesco.bianchi@example.com', 'Corso Como 5'),
-      ('11111111-0000-0000-0000-000000000003', '55555555-5555-5555-5555-555555555555', true, 'Elena', 'Ferrari', '+39 338 9988776', 'elena.ferrari@example.com', 'Piazza Maggiore 3');
+      ('11111111-0000-0000-0000-000000000003', '55555555-5555-5555-5555-555555555555', true, 'Elena', 'Ferrari', '+39 338 9988776', 'elena.ferrari@example.com', 'Piazza Maggiore 3'),
+      ('11111111-0000-0000-0000-000000000004', '66666666-6666-6666-6666-666666666666', true, 'Laura', 'Conti', '+39 349 2233445', 'laura.conti@example.com', 'Via Indipendenza 22'),
+      ('11111111-0000-0000-0000-000000000005', '77777777-7777-7777-7777-777777777777', true, 'Marco', 'Verdi', '+39 348 7788990', 'marco.verdi@example.com', 'Via Emilia 45');
+
+    -- Seed assegnazioni docenti doposcuola e turni (novembre 2026, fuori dai test ottobre 2026)
+    INSERT INTO afterschool_assignments (user_id, hourly_rate, notes)
+    VALUES
+      ('00000000-0000-0000-0000-000000000011', 22.00, 'Coordinatore doposcuola primaria'),
+      ('00000000-0000-0000-0000-000000000012', 20.00, 'Supporto compiti e laboratori');
+
+    INSERT INTO teacher_shifts (user_id, shift_date, start_time, end_time, notes)
+    VALUES
+      ('00000000-0000-0000-0000-000000000011', '2026-11-16', '14:00', '17:30', 'Doposcuola lunedì'),
+      ('00000000-0000-0000-0000-000000000012', '2026-11-17', '14:30', '17:30', 'Doposcuola martedì'),
+      ('00000000-0000-0000-0000-000000000011', '2026-11-18', '14:00', '17:30', 'Doposcuola mercoledì'),
+      ('00000000-0000-0000-0000-000000000012', '2026-11-19', '14:30', '17:30', 'Doposcuola giovedì'),
+      ('00000000-0000-0000-0000-000000000011', '2026-11-20', '14:00', '17:00', 'Doposcuola venerdì');
+
+    -- Seed presenze e mensa di esempio (novembre 2026)
+    INSERT INTO attendances (student_id, date, is_present, canteen_used, notes)
+    VALUES
+      ('33333333-3333-3333-3333-333333333333', '2026-11-16', true, true, ''),
+      ('44444444-4444-4444-4444-444444444444', '2026-11-16', true, false, ''),
+      ('66666666-6666-6666-6666-666666666666', '2026-11-16', true, true, ''),
+      ('33333333-3333-3333-3333-333333333333', '2026-11-17', true, true, ''),
+      ('55555555-5555-5555-5555-555555555555', '2026-11-17', true, true, '');
+
+    -- Seed pacchetti assegnati, saldi e spese (novembre 2026)
+    INSERT INTO student_monthly_tariffs (student_id, year, month, package_id, tariff_id, amount_paid, covered_days, notes)
+    VALUES
+      ('33333333-3333-3333-3333-333333333333', 2026, 11, '11111111-1111-1111-1111-111111111105', '22222222-2222-2222-2222-222222222205', 200.00, 20, 'Abbonamento 5 giorni'),
+      ('44444444-4444-4444-4444-444444444444', 2026, 11, '11111111-1111-1111-1111-111111111103', '22222222-2222-2222-2222-222222222203', 130.00, 12, 'Abbonamento 3 giorni');
+
+    INSERT INTO student_monthly_settlements (student_id, year, month, extra_paid, meals_paid, meals_paid_at, payment_method, notes)
+    VALUES
+      ('33333333-3333-3333-3333-333333333333', 2026, 11, false, true, NOW(), 'BONIFICO', 'Pasti novembre saldati');
+
+    INSERT INTO afterschool_expenses (expense_date, category, amount, description, created_by)
+    VALUES
+      ('2026-11-10', 'MENSA', 180.00, 'Fornitura pasti mensa prima quindicina', '00000000-0000-0000-0000-000000000001'),
+      ('2026-11-12', 'ALTRO', 45.00, 'Materiale didattico e cancelleria', '00000000-0000-0000-0000-000000000001');
+
+    INSERT INTO closure_days (date, title, notes)
+    VALUES
+      ('2026-12-07', 'Ponte Immacolata', 'Chiusura straordinaria pre-festiva');
+
+    INSERT INTO projects (id, title, type, enrollment_fee, max_enrolled, actual_enrolled, start_date, end_date, description, location)
+    VALUES
+      ('88888888-8888-8888-8888-888888888888', 'Laboratorio Robotica Creativa', 'CORSO', 120.00, 15, 12, '2026-10-01', '2026-11-30', 'Corso pomeridiano STEM', 'Aula 2');
+
+    INSERT INTO project_teachers (project_id, user_id, hourly_rate, assigned_hours)
+    VALUES
+      ('88888888-8888-8888-8888-888888888888', '00000000-0000-0000-0000-000000000011', 28.00, 20);
   `);
 
   const pg = db.adapters.createPg();

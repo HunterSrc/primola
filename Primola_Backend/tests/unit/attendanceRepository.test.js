@@ -22,14 +22,40 @@ describe('attendanceRepository unit tests', () => {
   });
 
   describe('getExpectedStudents', () => {
-    it('should query expected students for given date', async () => {
-      const mockRows = [{ student_id: 1, first_name: 'Leo' }];
-      db.query = jest.fn().mockResolvedValue({ rows: mockRows });
+    it('should query expected students with LEFT JOIN for normal weekday when no closure exists', async () => {
+      const mockRows = [{ student_id: 1, first_name: 'Leo', canteen_used: false }];
+      db.query = jest.fn()
+        .mockResolvedValueOnce({ rows: [] }) // closure_days check
+        .mockResolvedValueOnce({ rows: mockRows }); // main query
 
       const result = await attendanceRepository.getExpectedStudents('2026-10-22');
 
       expect(result).toEqual(mockRows);
-      expect(db.query).toHaveBeenCalledWith(expect.any(String), ['2026-10-22']);
+      expect(db.query).toHaveBeenNthCalledWith(1, expect.stringContaining('closure_days'), ['2026-10-22']);
+      expect(db.query).toHaveBeenNthCalledWith(2, expect.stringContaining('LEFT JOIN attendances a'), ['2026-10-22']);
+    });
+
+    it('should query ONLY explicitly registered students (INNER JOIN) on closure day', async () => {
+      const mockRows = [{ student_id: 2, first_name: 'Extra', already_registered: true }];
+      db.query = jest.fn()
+        .mockResolvedValueOnce({ rows: [{ '?column?': 1 }] }) // closure_days hit
+        .mockResolvedValueOnce({ rows: mockRows });
+
+      const result = await attendanceRepository.getExpectedStudents('2026-10-28');
+
+      expect(result).toEqual(mockRows);
+      expect(db.query).toHaveBeenNthCalledWith(2, expect.stringContaining('INNER JOIN attendances a'), ['2026-10-28']);
+    });
+
+    it('should query ONLY explicitly registered students (INNER JOIN) on Italian national holiday', async () => {
+      const mockRows = [];
+      db.query = jest.fn().mockResolvedValueOnce({ rows: mockRows });
+
+      const result = await attendanceRepository.getExpectedStudents('2026-12-25');
+
+      expect(result).toEqual(mockRows);
+      expect(db.query).toHaveBeenCalledTimes(1);
+      expect(db.query).toHaveBeenCalledWith(expect.stringContaining('INNER JOIN attendances a'), ['2026-12-25']);
     });
 
     it('should throw if query fails', async () => {
@@ -37,6 +63,32 @@ describe('attendanceRepository unit tests', () => {
 
       await expect(attendanceRepository.getExpectedStudents('2026-10-22'))
         .rejects.toThrow('Pool connection error');
+    });
+  });
+
+  describe('deleteAttendance', () => {
+    it('should delete attendance and return deleted row when found', async () => {
+      db.query = jest.fn().mockResolvedValue({ rows: [{ id: 'att-1' }], rowCount: 1 });
+
+      const result = await attendanceRepository.deleteAttendance('stu-1', '2026-10-22');
+
+      expect(result).toEqual({ id: 'att-1' });
+      expect(db.query).toHaveBeenCalledWith(expect.stringContaining('DELETE FROM attendances'), ['stu-1', '2026-10-22']);
+    });
+
+    it('should return null when attendance record does not exist', async () => {
+      db.query = jest.fn().mockResolvedValue({ rows: [], rowCount: 0 });
+
+      const result = await attendanceRepository.deleteAttendance('stu-1', '2026-10-22');
+
+      expect(result).toBeNull();
+    });
+
+    it('should throw if delete query fails', async () => {
+      db.query = jest.fn().mockRejectedValue(new Error('Delete error'));
+
+      await expect(attendanceRepository.deleteAttendance('stu-1', '2026-10-22'))
+        .rejects.toThrow('Delete error');
     });
   });
 

@@ -1,6 +1,7 @@
 import { Routes } from '@angular/router';
 import { MainLayoutComponent } from './layout/main-layout.component';
 import { LoginComponent } from './features/auth/login.component';
+import { RegisterComponent } from './features/auth/register.component';
 import { AttendanceDashboardComponent } from './features/attendance/attendance-dashboard.component';
 import { AnagraficaComponent } from './features/anagrafica/anagrafica.component';
 import { StudentEditComponent } from './features/anagrafica/student-edit.component';
@@ -21,6 +22,11 @@ export const routes: Routes = [
   {
     path: 'login',
     component: LoginComponent,
+    canActivate: [guestGuard]
+  },
+  {
+    path: 'register',
+    component: RegisterComponent,
     canActivate: [guestGuard]
   },
   {

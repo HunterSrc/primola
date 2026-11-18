@@ -481,8 +481,8 @@ export class AttendanceDashboardComponent implements OnInit {
       last_name: student.last_name,
       school: student.school || '',
       main_tutor_phone: student.main_tutor_phone,
-      is_present: false,
-      has_meal: (student.weekly_meals ?? 0) > 0
+      is_present: true,
+      has_meal: false
     };
     this.records.update(prev => [...prev, newRecord]);
     this.showStudentModal.set(false);
@@ -491,7 +491,15 @@ export class AttendanceDashboardComponent implements OnInit {
 
   removeStudent(studentId: number | string): void {
     if (!this.canManageStudents()) return;
-    this.records.update(prev => prev.filter(r => r.student_id !== studentId));
+    this.api.deleteAttendance(this.selectedDate(), studentId).subscribe({
+      next: () => {
+        this.records.update(prev => prev.filter(r => r.student_id !== studentId));
+      },
+      error: (err) => {
+        console.error('Errore durante la rimozione dello studente:', err);
+        alert('Errore durante la rimozione dello studente: ' + (err?.error?.error || err.message || 'Errore di rete'));
+      }
+    });
   }
 
   saveBulk(): void {

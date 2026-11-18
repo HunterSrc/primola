@@ -1,6 +1,7 @@
 import { Component, inject, signal, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { RouterLink } from '@angular/router';
 import { ApiService } from '../../core/services/api.service';
 import { DailyReport, MensaReport, MonthlyReport, MonthlyStudentSummary, FinancialMonthlyReport, SystemSettings } from '../../core/models';
 import { AppDatePipe } from '../../shared/pipes/app-date.pipe';
@@ -8,7 +9,7 @@ import { AppDatePipe } from '../../shared/pipes/app-date.pipe';
 @Component({
   selector: 'app-admin-dashboard',
   standalone: true,
-  imports: [CommonModule, FormsModule, AppDatePipe],
+  imports: [CommonModule, FormsModule, RouterLink, AppDatePipe],
   template: `
     <div class="p-3 sm:p-6 md:p-8 max-w-7xl mx-auto space-y-4 sm:space-y-6 pb-6 md:pb-0">
 
@@ -22,14 +23,14 @@ import { AppDatePipe } from '../../shared/pipes/app-date.pipe';
           <p class="text-xs sm:text-sm text-slate-500">Statistiche presenze, bilancio entrate/uscite, rendicontazione mensa e docenti</p>
         </div>
 
-        <div class="flex items-center space-x-1.5 sm:space-x-2 bg-slate-100 p-1 sm:p-1.5 rounded-xl border border-slate-200 overflow-x-auto w-full md:w-auto">
+        <div class="flex items-center gap-1.5 sm:gap-2 bg-slate-100 p-1 sm:p-1.5 rounded-xl border border-slate-200 flex-wrap sm:flex-nowrap shrink-0 max-w-full">
           <button
             (click)="setSection('ATTENDANCES')"
             [class.bg-white]="activeSection() === 'ATTENDANCES'"
             [class.shadow-sm]="activeSection() === 'ATTENDANCES'"
             [class.text-emerald-700]="activeSection() === 'ATTENDANCES'"
             [class.font-bold]="activeSection() === 'ATTENDANCES'"
-            class="flex-1 md:flex-initial px-3 sm:px-4 py-2 text-xs md:text-sm rounded-lg text-slate-600 transition-all cursor-pointer whitespace-nowrap text-center"
+            class="flex-1 sm:flex-initial px-3 sm:px-3.5 py-1.5 sm:py-2 text-xs md:text-sm rounded-lg text-slate-600 transition-all cursor-pointer whitespace-nowrap text-center"
           >
             Giornaliero
           </button>
@@ -40,7 +41,7 @@ import { AppDatePipe } from '../../shared/pipes/app-date.pipe';
             [class.shadow-sm]="activeSection() === 'MONTHLY'"
             [class.text-emerald-700]="activeSection() === 'MONTHLY'"
             [class.font-bold]="activeSection() === 'MONTHLY'"
-            class="flex-1 md:flex-initial px-3 sm:px-4 py-2 text-xs md:text-sm rounded-lg text-slate-600 transition-all cursor-pointer whitespace-nowrap text-center"
+            class="flex-1 sm:flex-initial px-3 sm:px-3.5 py-1.5 sm:py-2 text-xs md:text-sm rounded-lg text-slate-600 transition-all cursor-pointer whitespace-nowrap text-center"
           >
             Mensile
           </button>
@@ -51,7 +52,7 @@ import { AppDatePipe } from '../../shared/pipes/app-date.pipe';
             [class.shadow-sm]="activeSection() === 'MENSA'"
             [class.text-emerald-700]="activeSection() === 'MENSA'"
             [class.font-bold]="activeSection() === 'MENSA'"
-            class="flex-1 md:flex-initial px-3 sm:px-4 py-2 text-xs md:text-sm rounded-lg text-slate-600 transition-all cursor-pointer whitespace-nowrap text-center"
+            class="flex-1 sm:flex-initial px-3 sm:px-3.5 py-1.5 sm:py-2 text-xs md:text-sm rounded-lg text-slate-600 transition-all cursor-pointer whitespace-nowrap text-center"
           >
             Mensa
           </button>
@@ -62,7 +63,7 @@ import { AppDatePipe } from '../../shared/pipes/app-date.pipe';
             [class.shadow-sm]="activeSection() === 'FINANCIAL'"
             [class.text-emerald-700]="activeSection() === 'FINANCIAL'"
             [class.font-bold]="activeSection() === 'FINANCIAL'"
-            class="flex-1 md:flex-initial px-3 sm:px-4 py-2 text-xs md:text-sm rounded-lg text-slate-600 transition-all cursor-pointer whitespace-nowrap text-center"
+            class="flex-1 sm:flex-initial px-3 sm:px-3.5 py-1.5 sm:py-2 text-xs md:text-sm rounded-lg text-slate-600 transition-all cursor-pointer whitespace-nowrap text-center"
           >
             Bilancio & Statistiche
           </button>
@@ -522,15 +523,11 @@ import { AppDatePipe } from '../../shared/pipes/app-date.pipe';
                         <span class="text-sm font-extrabold text-rose-700">{{ stu.days_absent }} gg</span>
                       </div>
 
-                      <div class="p-2 rounded-xl bg-slate-50 border border-slate-200 text-left">
-                        <label class="block text-[10px] font-semibold text-slate-600 uppercase mb-1">Pagate</label>
-                        <input
-                          type="number"
-                          min="0"
-                          [(ngModel)]="stu.presenze_pagate"
-                          (change)="saveStudentPlan(stu)"
-                          class="w-full px-2 py-1 bg-white border border-slate-300 rounded text-xs font-bold text-slate-800 text-center"
-                        />
+                      <div class="p-2 rounded-xl bg-blue-50 border border-blue-100">
+                        <span class="block text-[10px] font-semibold text-blue-800 uppercase">Giorni Coperti (Pacchetti)</span>
+                        <span class="inline-block mt-0.5 px-2.5 py-0.5 rounded-full text-xs font-extrabold bg-white text-blue-800 border border-blue-200">
+                          {{ stu.presenze_pagate }} gg
+                        </span>
                       </div>
 
                       <div class="p-2 rounded-xl bg-indigo-50 border border-indigo-100">
@@ -565,7 +562,7 @@ import { AppDatePipe } from '../../shared/pipes/app-date.pipe';
                       <th class="py-3 px-4 sm:px-6 text-center">Presente</th>
                       <th class="py-3 px-4 sm:px-6 text-center">Assenze</th>
                       <th class="py-3 px-4 sm:px-6 text-center">Pasti</th>
-                      <th class="py-3 px-4 sm:px-6 text-center w-36">Presenze Pagate</th>
+                      <th class="py-3 px-4 sm:px-6 text-center">Giorni Coperti (Pacchetti)</th>
                       <th class="py-3 px-4 sm:px-6 text-center">Eccedenza</th>
                     </tr>
                   </thead>
@@ -586,13 +583,9 @@ import { AppDatePipe } from '../../shared/pipes/app-date.pipe';
                           {{ stu.meals_count }}
                         </td>
                         <td class="py-3 px-4 sm:px-6 text-center">
-                          <input
-                            type="number"
-                            min="0"
-                            [(ngModel)]="stu.presenze_pagate"
-                            (change)="saveStudentPlan(stu)"
-                            class="w-20 px-2 py-1 text-center bg-slate-50 border border-slate-300 rounded-lg text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                          />
+                          <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-50 text-blue-800 border border-blue-200">
+                            {{ stu.presenze_pagate }} gg
+                          </span>
                         </td>
                         <td class="py-3 px-4 sm:px-6 text-center">
                           <span
@@ -656,7 +649,7 @@ import { AppDatePipe } from '../../shared/pipes/app-date.pipe';
 
           @if (mensaReport(); as mensa) {
             <!-- KPI Raggruppamento Mensa -->
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
               <div class="bg-gradient-to-r from-amber-500 to-orange-500 rounded-2xl p-4 sm:p-5 text-white shadow-md shadow-orange-500/15">
                 <p class="text-amber-100 text-[10px] sm:text-xs font-semibold uppercase tracking-wider">Totale Consegnati</p>
                 <h2 class="text-2xl sm:text-4xl font-extrabold mt-1">{{ mensa.total_meals }}</h2>
@@ -674,12 +667,6 @@ import { AppDatePipe } from '../../shared/pipes/app-date.pipe';
                 <p class="text-2xl sm:text-3xl font-extrabold text-purple-600 mt-1">{{ mensa.delivered_extra }}</p>
                 <p class="text-[11px] text-purple-500 mt-1">fuori abbonamento</p>
               </div>
-
-              <div class="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-2xs border-l-4 border-l-indigo-500">
-                <p class="text-[10px] sm:text-xs font-semibold text-indigo-600 uppercase">Pasti Previsti Stimati</p>
-                <p class="text-2xl sm:text-3xl font-extrabold text-indigo-700 mt-1">{{ mensa.expected_meals }}</p>
-                <p class="text-[11px] text-slate-400 mt-1">su base presenze mensili</p>
-              </div>
             </div>
 
             <!-- Riepilogo Pasti per Studente -->
@@ -689,12 +676,10 @@ import { AppDatePipe } from '../../shared/pipes/app-date.pipe';
                   Dettaglio Mensile Pasti per Studente ({{ mensa.students_breakdown.length }})
                 </div>
                 <div class="overflow-x-auto">
-                  <table class="w-full text-left border-collapse min-w-[520px]">
+                  <table class="w-full text-left border-collapse min-w-[460px]">
                     <thead>
                       <tr class="bg-slate-50 text-slate-600 text-xs font-semibold uppercase tracking-wider border-b border-slate-200">
                         <th class="py-3 px-4 sm:px-6">Studente</th>
-                        <th class="py-3 px-4 sm:px-6 text-center">Diritto Sett.</th>
-                        <th class="py-3 px-4 sm:px-6 text-center">Previsti Mese</th>
                         <th class="py-3 px-4 sm:px-6 text-center">Consegnati Reg.</th>
                         <th class="py-3 px-4 sm:px-6 text-center">Consegnati Extra</th>
                         <th class="py-3 px-4 sm:px-6 text-center">Totale</th>
@@ -706,12 +691,6 @@ import { AppDatePipe } from '../../shared/pipes/app-date.pipe';
                           <td class="py-3 px-4 sm:px-6">
                             <p class="font-semibold text-slate-800">{{ stu.last_name }} {{ stu.first_name }}</p>
                             <p class="text-[11px] text-slate-400">{{ stu.school || 'Non spec.' }}</p>
-                          </td>
-                          <td class="py-3 px-4 sm:px-6 text-center font-medium text-slate-600">
-                            {{ stu.weekly_meals }} / sett.
-                          </td>
-                          <td class="py-3 px-4 sm:px-6 text-center font-bold text-indigo-700">
-                            {{ stu.expected_meals }}
                           </td>
                           <td class="py-3 px-4 sm:px-6 text-center font-bold text-emerald-700">
                             {{ stu.delivered_regular }}
@@ -828,8 +807,13 @@ import { AppDatePipe } from '../../shared/pipes/app-date.pipe';
                   € {{ fin.summary.total_actual_revenues | number:'1.2-2' }}
                 </p>
                 <p class="text-[10px] sm:text-[11px] text-slate-400 mt-0.5">
-                  Previste: € {{ fin.summary.total_expected_revenues | number:'1.2-2' }}
+                  Maturate / Previste: € {{ fin.summary.total_expected_revenues | number:'1.2-2' }}
                 </p>
+                @if ((fin.summary.total_pending_revenues ?? fin.doposcuola.revenues.pending ?? 0) > 0) {
+                  <p class="text-[10px] sm:text-[11px] text-amber-600 font-semibold mt-0.5">
+                    Da Incassare: € {{ (fin.summary.total_pending_revenues ?? fin.doposcuola.revenues.pending ?? 0) | number:'1.2-2' }}
+                  </p>
+                }
               </div>
 
               <div class="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-2xs">
@@ -871,7 +855,7 @@ import { AppDatePipe } from '../../shared/pipes/app-date.pipe';
                   <h3 class="font-bold text-base sm:text-lg text-slate-800">Doposcuola & Mensa</h3>
                 </div>
                 <span class="text-xs bg-indigo-50 text-indigo-700 font-bold px-2.5 py-1 rounded-full border border-indigo-100">
-                  Quota giornaliera: € {{ fin.rates.doposcuola_daily_fee | number:'1.2-2' }} • Pasto: € {{ fin.rates.meal_fee_student | number:'1.2-2' }}
+                  Tariffa Una Tantum: € {{ (fin.rates.one_off_fee ?? fin.rates.doposcuola_daily_fee ?? 0) | number:'1.2-2' }} • Pasto: € {{ fin.rates.meal_fee_student | number:'1.2-2' }}
                 </span>
               </div>
 
@@ -880,12 +864,18 @@ import { AppDatePipe } from '../../shared/pipes/app-date.pipe';
                   <span class="text-xs font-semibold text-slate-500 uppercase block">Entrate Doposcuola</span>
                   <p class="text-xl font-bold text-emerald-600 mt-1">
                     € {{ fin.doposcuola.revenues.actual | number:'1.2-2' }}
+                    <span class="text-[11px] font-semibold text-emerald-700 ml-1">Incassato</span>
                   </p>
-                  <p class="text-xs text-slate-400 mt-0.5">
-                    Previste: € {{ fin.doposcuola.revenues.expected | number:'1.2-2' }}
-                  </p>
+                  <div class="mt-1 space-y-0.5 text-xs">
+                    <p class="text-slate-500">
+                      Maturato / Previsto: <span class="font-semibold text-slate-700">€ {{ fin.doposcuola.revenues.expected | number:'1.2-2' }}</span>
+                    </p>
+                    <p class="text-amber-700 font-semibold">
+                      Da Incassare: € {{ (fin.doposcuola.revenues.pending ?? 0) | number:'1.2-2' }}
+                    </p>
+                  </div>
                   <div class="mt-2 text-[11px] text-slate-500 pt-1 border-t border-slate-200/60">
-                    {{ fin.doposcuola.revenues.actual_days }} presenze • {{ fin.doposcuola.revenues.actual_meals }} pasti incassati
+                    {{ fin.doposcuola.revenues.actual_days }} presenze • {{ fin.doposcuola.revenues.actual_meals }} pasti erogati
                   </div>
                 </div>
 
@@ -1061,14 +1051,16 @@ import { AppDatePipe } from '../../shared/pipes/app-date.pipe';
             </div>
 
             <div class="space-y-3 text-xs sm:text-sm">
-              <div>
-                <label class="block font-semibold text-slate-700 mb-1">Quota Giornaliera Doposcuola (€ / studente / giorno)</label>
-                <input
-                  type="number"
-                  step="0.5"
-                  [(ngModel)]="editSettings.doposcuola_daily_fee"
-                  class="w-full px-3 py-2 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 font-semibold"
-                />
+              <div class="p-3 bg-indigo-50/80 border border-indigo-200/80 rounded-xl text-xs text-indigo-900 space-y-1">
+                <p class="font-semibold">📦 Tariffe Pacchetti &amp; Una Tantum Doposcuola</p>
+                <p class="text-indigo-700">
+                  Le tariffe mensili dei pacchetti doposcuola e la tariffa una tantum sono gestite nella sezione
+                  <a
+                    routerLink="/admin/afterschool-packages"
+                    (click)="closeSettingsModal()"
+                    class="font-bold underline hover:text-indigo-950"
+                  >Tariffe Doposcuola</a>.
+                </p>
               </div>
 
               <div>
@@ -1082,7 +1074,7 @@ import { AppDatePipe } from '../../shared/pipes/app-date.pipe';
               </div>
 
               <div class="p-3 bg-amber-50/80 border border-amber-200/80 rounded-xl text-xs text-amber-800">
-                💡 I costi di riferimento della mensa sono ora calcolati automaticamente dal totale delle note spese inserite nella sezione <strong>Gestione Mensa & Spese</strong>.
+                💡 I costi di riferimento della mensa sono ora calcolati automaticamente dal totale delle note spese inserite nella sezione <strong>Gestione Mensa &amp; Spese</strong>.
               </div>
             </div>
 
@@ -1129,7 +1121,6 @@ export class AdminDashboardComponent implements OnInit {
   financialMonth = new Date().getMonth() + 1;
 
   editSettings: SystemSettings = {
-    doposcuola_daily_fee: 12.00,
     meal_fee_student: 5.50
   };
 
@@ -1186,33 +1177,8 @@ export class AdminDashboardComponent implements OnInit {
 
   getEccedenza(stu: MonthlyStudentSummary): number {
     const present = Number(stu.days_present) || 0;
-    const absent = Number(stu.days_absent) || 0;
     const paid = Number(stu.presenze_pagate) || 0;
-    return (present + absent) - paid;
-  }
-
-  saveStudentPlan(stu: MonthlyStudentSummary): void {
-    const paid = Number(stu.presenze_pagate) || 0;
-    stu.presenze_pagate = paid;
-    stu.eccedenza = this.getEccedenza(stu);
-
-    this.api.saveMonthlyPlans({
-      year: this.selectedYear,
-      month: this.selectedMonth,
-      plans: [
-        {
-          student_id: stu.student_id,
-          presenze_pagate: paid
-        }
-      ]
-    }).subscribe({
-      next: () => {
-        // Updated successfully
-      },
-      error: (err) => {
-        console.error('Errore salvataggio piano mensile studente', err);
-      }
-    });
+    return Math.max(0, present - paid);
   }
 
   ngOnInit(): void {
@@ -1257,7 +1223,9 @@ export class AdminDashboardComponent implements OnInit {
     this.api.getSystemSettings().subscribe({
       next: (res) => {
         if (res.settings) {
-          this.editSettings = { ...res.settings };
+          this.editSettings = {
+            meal_fee_student: Number(res.settings.meal_fee_student ?? 5.50)
+          };
         }
       },
       error: (err) => console.error('Errore caricamento impostazioni:', err)
@@ -1274,7 +1242,7 @@ export class AdminDashboardComponent implements OnInit {
 
   saveSettings(): void {
     this.savingSettings.set(true);
-    this.api.updateSystemSettings(this.editSettings).subscribe({
+    this.api.updateSystemSettings({ meal_fee_student: this.editSettings.meal_fee_student }).subscribe({
       next: () => {
         this.savingSettings.set(false);
         this.closeSettingsModal();

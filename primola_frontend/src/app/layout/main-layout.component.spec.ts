@@ -8,13 +8,18 @@ import { ActivatedRoute } from '@angular/router';
 describe('MainLayoutComponent', () => {
   let component: MainLayoutComponent;
   let mockAuthService: any;
+  let fixture: any;
 
   beforeEach(() => {
     mockAuthService = {
       currentUser: signal({ id: 1, name: 'Admin Test', role: 'ADMIN', token: 'xyz' }),
       role: signal('ADMIN'),
       isAdmin: signal(true),
-      isStaff: signal(false),
+      isOffice: signal(false),
+      isTeacher: signal(false),
+      isStaff: signal(true),
+      canManageUsers: signal(true),
+      canManageStudents: signal(true),
       logout: vi.fn()
     };
 
@@ -26,13 +31,19 @@ describe('MainLayoutComponent', () => {
       ]
     });
 
-    const fixture = TestBed.createComponent(MainLayoutComponent);
+    fixture = TestBed.createComponent(MainLayoutComponent);
     component = fixture.componentInstance;
+    fixture.detectChanges();
   });
 
-  it('should instantiate successfully', () => {
+  it('should instantiate successfully and display updated sidebar labels (D8)', () => {
     expect(component).toBeTruthy();
     expect(component.authService.isAdmin()!).toBe(true);
     expect(component.authService.currentUser()?.name).toBe('Admin Test');
+
+    const text = fixture.nativeElement.textContent;
+    expect(text).toContain('Rendicontazione Operativa');
+    expect(text).toContain('Riepiloghi & Bilancio Admin');
+    expect(text).not.toContain('Rendicontazione Ore Corsi');
   });
 });

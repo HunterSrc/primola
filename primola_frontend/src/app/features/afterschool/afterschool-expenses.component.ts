@@ -110,7 +110,7 @@ import { AppDatePipe } from '../../shared/pipes/app-date.pipe';
             {{ mensaReport()?.total_meals ?? 0 }} pasti
           </p>
           <p class="text-[11px] text-amber-100 mt-0.5">
-            Previsti da abbonamento: {{ mensaReport()?.expected_meals ?? 0 }} pasti
+            Conteggio cumulativo mensile a consuntivo
           </p>
         </div>
       </div>
@@ -258,13 +258,11 @@ import { AppDatePipe } from '../../shared/pipes/app-date.pipe';
           </div>
 
           <div class="overflow-x-auto border border-slate-200 rounded-xl">
-            <table class="w-full text-left border-collapse text-xs sm:text-sm min-w-[500px]">
+            <table class="w-full text-left border-collapse text-xs sm:text-sm min-w-[400px]">
               <thead>
                 <tr class="bg-slate-50 text-slate-600 font-semibold uppercase text-[11px] border-b border-slate-200">
                   <th class="py-3 px-4">Alunno</th>
                   <th class="py-3 px-4">Scuola</th>
-                  <th class="py-3 px-4 text-center">Diritto Sett.</th>
-                  <th class="py-3 px-4 text-center">Previsti Mese</th>
                   <th class="py-3 px-4 text-center">Pasti Consumati</th>
                 </tr>
               </thead>
@@ -273,8 +271,6 @@ import { AppDatePipe } from '../../shared/pipes/app-date.pipe';
                   <tr class="hover:bg-slate-50/60 transition-colors">
                     <td class="py-3 px-4 font-semibold text-slate-800">{{ s.last_name }} {{ s.first_name }}</td>
                     <td class="py-3 px-4 text-slate-500 text-xs">{{ s.school || 'Non specificata' }}</td>
-                    <td class="py-3 px-4 text-center text-slate-500">{{ s.weekly_meals }} / sett.</td>
-                    <td class="py-3 px-4 text-center text-indigo-700 font-semibold">{{ s.expected_meals }}</td>
                     <td class="py-3 px-4 text-center">
                       <span
                         class="inline-block px-3 py-1 rounded-full text-xs font-bold"
@@ -289,7 +285,7 @@ import { AppDatePipe } from '../../shared/pipes/app-date.pipe';
                   </tr>
                 } @empty {
                   <tr>
-                    <td colspan="5" class="py-8 text-center text-slate-400">Nessun alunno trovato.</td>
+                    <td colspan="3" class="py-8 text-center text-slate-400">Nessun alunno trovato.</td>
                   </tr>
                 }
               </tbody>

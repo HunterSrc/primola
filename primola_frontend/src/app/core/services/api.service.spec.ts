@@ -13,7 +13,8 @@ describe('ApiService', () => {
     mockHttp = {
       get: vi.fn(),
       post: vi.fn(),
-      put: vi.fn()
+      put: vi.fn(),
+      delete: vi.fn()
     };
 
     TestBed.configureTestingModule({
@@ -277,6 +278,30 @@ describe('ApiService', () => {
       service.saveAttendancesBulk('2026-10-22', records).subscribe(res => { result = res; });
 
       expect(result?.count).toBe(1);
+      expect(warnSpy).toHaveBeenCalled();
+      warnSpy.mockRestore();
+    });
+  });
+
+  describe('deleteAttendance', () => {
+    it('should call DELETE /api/attendances/:date/:studentId and return result', () => {
+      mockHttp.delete.mockReturnValue(of({ success: true, data: { deleted: true } }));
+
+      let result: any;
+      service.deleteAttendance('2026-10-22', 42).subscribe(res => { result = res; });
+
+      expect(mockHttp.delete).toHaveBeenCalledWith('/api/attendances/2026-10-22/42');
+      expect(result).toEqual({ deleted: true });
+    });
+
+    it('should fallback safely when deleteAttendance fails offline', () => {
+      mockHttp.delete.mockReturnValue(throwError(() => new Error('Offline')));
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      let result: any;
+      service.deleteAttendance('2026-10-22', 42).subscribe(res => { result = res; });
+
+      expect(result).toEqual({ success: true });
       expect(warnSpy).toHaveBeenCalled();
       warnSpy.mockRestore();
     });

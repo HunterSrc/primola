@@ -5,6 +5,49 @@ const { verifyToken } = require('../middlewares/authMiddleware');
 
 /**
  * @swagger
+ * /api/auth/register:
+ *   post:
+ *     summary: Registrazione autonoma nuovo utente (Sign Up)
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *               - password
+ *               - first_name
+ *               - last_name
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 example: docente@primola.it
+ *               password:
+ *                 type: string
+ *                 example: PasswordSicura123!
+ *               first_name:
+ *                 type: string
+ *                 example: Mario
+ *               last_name:
+ *                 type: string
+ *                 example: Rossi
+ *               phone:
+ *                 type: string
+ *                 example: "+39 333 1234567"
+ *     responses:
+ *       201:
+ *         description: Registrazione completata in attesa di approvazione
+ *       400:
+ *         description: Dati mancanti o non validi
+ *       409:
+ *         description: Email già registrata
+ */
+router.post('/register', authController.register);
+
+/**
+ * @swagger
  * /api/auth/login:
  *   post:
  *     summary: Autenticazione utente (Email & Password)

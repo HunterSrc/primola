@@ -1,5 +1,6 @@
 const reportController = require('../../src/controllers/reportController');
 const db = require('../../src/config/database');
+const { getItalianHoliday, isItalianHoliday } = require('../../src/utils/holidays');
 
 jest.mock('../../src/config/database');
 
@@ -91,6 +92,24 @@ describe('reportController unit tests', () => {
           statistics: { totalExpected: 0, present: 0, extraPresent: 0, absent: 0, excused: 0, totalInserted: 0 },
           extraStudents: [],
           allAttendances: []
+        })
+      }));
+    });
+
+    it('should force totalExpected to 0 on Italian national holidays', async () => {
+      mockReq.query.date = '2026-12-25';
+
+      mockClient.query
+        .mockResolvedValueOnce({ rows: [{ total_expected: '5', total_present: '0', total_absent: '0' }] })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [] });
+
+      await reportController.getDailyReport(mockReq, mockRes, nextFn);
+
+      expect(mockRes.status).toHaveBeenCalledWith(200);
+      expect(mockRes.json).toHaveBeenCalledWith(expect.objectContaining({
+        data: expect.objectContaining({
+          statistics: expect.objectContaining({ totalExpected: 0 })
         })
       }));
     });
@@ -285,7 +304,17 @@ describe('reportController unit tests', () => {
               days_present: '18',
               days_absent: '2',
               meals_count: '18',
-              presenze_pagate: 16
+              covered_days: '16'
+            },
+            {
+              student_id: 2,
+              first_name: 'Luigi',
+              last_name: 'Bianchi',
+              scuola: 'Collodi',
+              days_present: '10',
+              days_absent: '1',
+              meals_count: '10',
+              covered_days: '16'
             }
           ]
         });
@@ -313,7 +342,15 @@ describe('reportController unit tests', () => {
               days_present: 18,
               days_absent: 2,
               presenze_pagate: 16,
-              eccedenza: 4 // (18 + 2) - 16 = 4
+              covered_days: 16,
+              eccedenza: 2 // Math.max(0, 18 - 16) = 2
+            }),
+            expect.objectContaining({
+              student_id: 2,
+              days_present: 10,
+              presenze_pagate: 16,
+              covered_days: 16,
+              eccedenza: 0 // Math.max(0, 10 - 16) = 0
             })
           ])
         })
@@ -389,6 +426,34 @@ describe('reportController unit tests', () => {
       expect(mockClient.query).toHaveBeenCalledWith('ROLLBACK');
       expect(nextFn).toHaveBeenCalledWith(err);
       expect(mockClient.release).toHaveBeenCalled();
+    });
+  });
+
+  describe('Italian holidays utility (Butcher-Meeus + fixed)', () => {
+    it('detects all 10 fixed Italian national holidays', () => {
+      const fixed = [
+        '2026-01-01', '2026-01-06', '2026-04-25', '2026-05-01', '2026-06-02',
+        '2026-08-15', '2026-11-01', '2026-12-08', '2026-12-25', '2026-12-26'
+      ];
+      for (const d of fixed) {
+        expect(isItalianHoliday(d)).toBe(true);
+        expect(getItalianHoliday(d)).toEqual(expect.objectContaining({ isHoliday: true, name: expect.any(String) }));
+      }
+    });
+
+    it('detects Easter Sunday and Easter Monday using Butcher-Meeus algorithm', () => {
+      expect(getItalianHoliday('2026-04-05')).toEqual({ name: 'Pasqua', isHoliday: true });
+      expect(getItalianHoliday('2026-04-06')).toEqual({ name: "Lunedì dell'Angelo (Pasquetta)", isHoliday: true });
+      expect(getItalianHoliday('2025-04-20')).toEqual({ name: 'Pasqua', isHoliday: true });
+      expect(getItalianHoliday('2025-04-21')).toEqual({ name: "Lunedì dell'Angelo (Pasquetta)", isHoliday: true });
+    });
+
+    it('returns null / false for non-holidays and invalid inputs', () => {
+      expect(isItalianHoliday('2026-10-22')).toBe(false);
+      expect(getItalianHoliday('2026-10-22')).toBeNull();
+      expect(getItalianHoliday('')).toBeNull();
+      expect(getItalianHoliday(null)).toBeNull();
+      expect(getItalianHoliday('invalid')).toBeNull();
     });
   });
 });

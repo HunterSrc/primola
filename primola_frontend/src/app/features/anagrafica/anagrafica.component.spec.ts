@@ -97,7 +97,11 @@ describe('AnagraficaComponent', () => {
     expect(component.studentForm.valid).toBe(true);
 
     component.onSubmit();
-    expect(mockApi.createStudent).toHaveBeenCalled();
+    expect(mockApi.createStudent).toHaveBeenCalledWith(expect.objectContaining({
+      first_name: 'Nuovo',
+      last_name: 'Studente',
+      weekly_meals: 0
+    }));
     expect(component.isSubmitting()).toBe(false);
     expect(component.successMessage()).toContain('Nuovo Studente');
     expect(component.tutors.length).toBe(1);

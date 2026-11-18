@@ -4,7 +4,7 @@ import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angula
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { ApiService } from '../../core/services/api.service';
 import { AuthService } from '../../core/services/auth.service';
-import { User, UserGroup, ProjectTeacher, AfterschoolAssignment } from '../../core/models';
+import { User, UserGroup, UserStatus, ProjectTeacher, AfterschoolAssignment } from '../../core/models';
 
 @Component({
   selector: 'app-user-form',
@@ -132,6 +132,31 @@ import { User, UserGroup, ProjectTeacher, AfterschoolAssignment } from '../../co
                   {{ grp }}
                 </span>
               }
+            </div>
+          </div>
+        }
+
+        <!-- Sezione Stato Account (Visibile solo ad ADMIN in modifica) -->
+        @if (authService.isAdmin() && isEditMode()) {
+          <div class="border-t border-slate-100 pt-6">
+            <h2 class="text-sm font-bold uppercase tracking-wider text-slate-400 mb-2">Stato Account</h2>
+            <p class="text-xs text-slate-500 mb-3">Definisci se l'utente è autorizzato ad accedere al gestionale:</p>
+            <div class="flex flex-wrap gap-3">
+              <label class="flex items-center gap-2 p-3 rounded-xl border cursor-pointer text-xs font-semibold"
+                     [ngClass]="userStatus() === 'APPROVED' ? 'border-emerald-500 bg-emerald-50/50 text-emerald-800' : 'border-slate-200 text-slate-700'">
+                <input type="radio" name="accountStatus" [checked]="userStatus() === 'APPROVED'" (change)="userStatus.set('APPROVED')" class="text-emerald-600 focus:ring-emerald-500">
+                <span>Attivo / Approvato</span>
+              </label>
+              <label class="flex items-center gap-2 p-3 rounded-xl border cursor-pointer text-xs font-semibold"
+                     [ngClass]="userStatus() === 'PENDING' ? 'border-amber-500 bg-amber-50/50 text-amber-800' : 'border-slate-200 text-slate-700'">
+                <input type="radio" name="accountStatus" [checked]="userStatus() === 'PENDING'" (change)="userStatus.set('PENDING')" class="text-amber-600 focus:ring-amber-500">
+                <span>In attesa di approvazione</span>
+              </label>
+              <label class="flex items-center gap-2 p-3 rounded-xl border cursor-pointer text-xs font-semibold"
+                     [ngClass]="userStatus() === 'REJECTED' ? 'border-rose-500 bg-rose-50/50 text-rose-800' : 'border-slate-200 text-slate-700'">
+                <input type="radio" name="accountStatus" [checked]="userStatus() === 'REJECTED'" (change)="userStatus.set('REJECTED')" class="text-rose-600 focus:ring-rose-500">
+                <span>Rifiutato / Disabilitato</span>
+              </label>
             </div>
           </div>
         }
@@ -313,6 +338,7 @@ export class UserFormComponent implements OnInit {
   isEditMode = signal(false);
   userId = signal<string | null>(null);
   userGroups = signal<UserGroup[]>(['TEACHER']);
+  userStatus = signal<UserStatus>('APPROVED');
   assignedProjects = signal<any[]>([]);
   saving = signal(false);
   errorMessage = signal<string | null>(null);
@@ -360,6 +386,10 @@ export class UserFormComponent implements OnInit {
 
         if (user.groups && user.groups.length > 0) {
           this.userGroups.set(user.groups);
+        }
+
+        if (user.status) {
+          this.userStatus.set(user.status);
         }
 
         if (user.projects) {
@@ -430,6 +460,9 @@ export class UserFormComponent implements OnInit {
 
     if (this.authService.isAdmin()) {
       payload.groups = this.userGroups();
+      if (this.isEditMode()) {
+        payload.status = this.userStatus();
+      }
     }
 
     if (this.isEditMode()) {

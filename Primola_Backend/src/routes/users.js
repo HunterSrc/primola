@@ -21,6 +21,9 @@ router.post('/', userController.createUser);
 // Aggiornamento utente (ADMIN: tutto; OFFICE: no ruoli; TEACHER: solo se stesso e solo anagrafica)
 router.put('/:id', userController.updateUser);
 
+// Aggiornamento rapido stato account (solo ADMIN)
+router.patch('/:id/status', userController.updateStatus);
+
 // Eliminazione utente (solo ADMIN)
 router.delete('/:id', userController.deleteUser);
 

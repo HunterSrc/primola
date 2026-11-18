@@ -68,8 +68,8 @@ import { getItalianHoliday, ItalianHoliday } from '../../core/utils/holidays.uti
             </button>
           </div>
 
-          <!-- Gestione Chiusure (Solo ADMIN) -->
-          @if (isAdmin()) {
+          <!-- Gestione Chiusure (Office / Admin) -->
+          @if (canEdit()) {
             <button
               (click)="openClosuresModal()"
               title="Gestione date di chiusura straordinarie"
@@ -216,7 +216,7 @@ import { getItalianHoliday, ItalianHoliday } from '../../core/utils/holidays.uti
                       {{ holiday ? holiday.name : (day.closure?.title || 'Chiusura doposcuola') }}
                     </span>
                   </div>
-                  @if (isClosure && isAdmin()) {
+                  @if (isClosure && canEdit()) {
                     <button
                       (click)="confirmDeleteClosure(day.closure!.id, day.closure!.title)"
                       title="Rimuovi chiusura"
@@ -555,8 +555,8 @@ import { getItalianHoliday, ItalianHoliday } from '../../core/utils/holidays.uti
         </div>
       }
 
-      <!-- Modal Gestione Chiusure Straordinarie (Solo Admin) -->
-      @if (showClosuresModal() && isAdmin()) {
+      <!-- Modal Gestione Chiusure Straordinarie (Office / Admin) -->
+      @if (showClosuresModal() && canEdit()) {
         <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4">
           <div class="bg-white rounded-2xl sm:rounded-3xl max-w-lg w-full p-5 sm:p-7 shadow-2xl border border-slate-100 space-y-4 animate-fade-in">
             <div class="flex items-center justify-between pb-3 border-b border-slate-100">
@@ -564,7 +564,7 @@ import { getItalianHoliday, ItalianHoliday } from '../../core/utils/holidays.uti
                 <span class="p-2 rounded-xl bg-rose-50 text-rose-600 font-bold">🚫</span>
                 <div>
                   <h3 class="text-lg font-extrabold text-slate-900">Date di Chiusura Straordinarie</h3>
-                  <p class="text-xs text-slate-500">Pannello amministratore per sospensione attività doposcuola</p>
+                  <p class="text-xs text-slate-500">Gestione date di chiusura per sospensione attività doposcuola</p>
                 </div>
               </div>
               <button (click)="closeClosuresModal()" class="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold">&times;</button>
@@ -742,11 +742,6 @@ import { getItalianHoliday, ItalianHoliday } from '../../core/utils/holidays.uti
                           <span class="text-[10px] text-slate-400 ml-1.5 font-normal">({{ st.school }})</span>
                         }
                       </div>
-                      <div class="shrink-0 text-[10px]">
-                        @if ((st.weekly_meals ?? 0) > 0) {
-                          <span class="px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 font-semibold">Pasti previsti</span>
-                        }
-                      </div>
                     </button>
                   } @empty {
                     <div class="p-3 text-center text-xs text-slate-400">
@@ -853,7 +848,7 @@ export class AfterschoolCalendarComponent implements OnInit {
 
   addStudentForm = {
     is_present: true,
-    has_meal: true
+    has_meal: false
   };
 
   readonly availableStudentsForModal = computed(() => {
@@ -865,7 +860,7 @@ export class AfterschoolCalendarComponent implements OnInit {
     return all.filter(s => {
       if (existingIds.has(String(s.id))) return false;
       if (!query) return true;
-      const full = `${s.first_name || ''} ${s.last_name || ''} ${s.school || ''} ${s.fiscal_code || ''}`.toLowerCase();
+      const full = `${s.first_name || ''} ${s.last_name || ''} ${s.school || ''}`.toLowerCase();
       return full.includes(query);
     });
   });
@@ -942,11 +937,8 @@ export class AfterschoolCalendarComponent implements OnInit {
   loadTeachers(): void {
     this.api.getUsers().subscribe({
       next: (users) => {
-        const teachers = users.filter(u => {
-          const groups = u.groups || [];
-          return groups.includes('TEACHER') || groups.includes('ADMIN') || groups.includes('OFFICE');
-        });
-        this.teachersList.set(teachers.length > 0 ? teachers : users);
+        const teachers = users.filter(u => (u.groups || []).includes('TEACHER') || u.role === 'TEACHER' || u.role === 'STAFF');
+        this.teachersList.set(teachers);
       },
       error: (err) => console.error('Errore fetch docenti per turni:', err)
     });
@@ -1085,7 +1077,7 @@ export class AfterschoolCalendarComponent implements OnInit {
     });
   }
 
-  // ================= METODI CHIUSURE (SOLO ADMIN) =================
+  // ================= METODI CHIUSURE (OFFICE / ADMIN) =================
   openClosuresModal(): void {
     this.closureFormError.set(null);
     this.closureForm = {
@@ -1165,7 +1157,7 @@ export class AfterschoolCalendarComponent implements OnInit {
     this.addStudentError.set(null);
     this.addStudentForm = {
       is_present: true,
-      has_meal: true
+      has_meal: false
     };
     this.showAddStudentModal.set(true);
 
@@ -1187,7 +1179,7 @@ export class AfterschoolCalendarComponent implements OnInit {
   selectStudentToAdd(student: Student): void {
     this.selectedStudentToAdd.set(student);
     this.addStudentForm.is_present = true;
-    this.addStudentForm.has_meal = (student.weekly_meals ?? 0) > 0;
+    this.addStudentForm.has_meal = false;
   }
 
   closeAddStudentModal(): void {

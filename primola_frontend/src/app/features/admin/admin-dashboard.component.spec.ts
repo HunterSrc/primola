@@ -91,14 +91,15 @@ describe('AdminDashboardComponent', () => {
       getDailyReport: vi.fn().mockReturnValue(of(mockDailyReport)),
       getMonthlyReport: vi.fn().mockReturnValue(of(mockMonthlyReport)),
       getMensaReport: vi.fn().mockReturnValue(of(mockMensaReport)),
-      saveMonthlyPlans: vi.fn().mockReturnValue(of({ success: true })),
-      getSystemSettings: vi.fn().mockReturnValue(of({ list: [], settings: { doposcuola_daily_fee: 12, meal_fee_student: 5.5, meal_cost_provider: 4.8 } })),
+      getSystemSettings: vi.fn().mockReturnValue(of({ list: [], settings: { meal_fee_student: 5.5 } })),
+      updateSystemSettings: vi.fn().mockReturnValue(of({ success: true })),
       getFinancialMonthlyReport: vi.fn().mockReturnValue(of({
         year: 2026,
         month: 10,
-        doposcuola: { revenues: { actual: 100, expected: 120 }, expenses: { actual: 80, expected: 90 }, margin: { actual: 20, expected: 30 }, total_meals: 15, teachers: [] },
+        rates: { one_off_fee: 15, meal_fee_student: 5.5 },
+        doposcuola: { revenues: { actual: 100, expected: 120, pending: 20, expected_days: 10, actual_days: 8, expected_meals: 15, actual_meals: 15 }, expenses: { actual: 80, expected: 90 }, margin: { actual: 20, expected: 30 }, total_meals: 15, teachers: [] },
         courses: { revenues: { actual: 200, expected: 250 }, expenses: { actual: 150, expected: 180 }, margin: { actual: 50, expected: 70 }, teachers: [] },
-        summary: { total_actual_revenues: 300, total_expected_revenues: 370, total_actual_expenses: 230, total_expected_expenses: 270, total_actual_margin: 70, total_expected_margin: 100, total_meals_issued: 15 }
+        summary: { total_actual_revenues: 300, total_expected_revenues: 370, total_pending_revenues: 20, total_actual_expenses: 230, total_expected_expenses: 270, total_actual_margin: 70, total_expected_margin: 100, total_meals_issued: 15 }
       }))
     };
 
@@ -159,7 +160,7 @@ describe('AdminDashboardComponent', () => {
     expect(component.filteredAttendances().length).toBe(1);
   });
 
-  it('should calculate eccedenza correctly and save student plan', () => {
+  it('should calculate eccedenza as max(0, days_present - presenze_pagate)', () => {
     const stu: any = {
       student_id: 1,
       days_present: 18,
@@ -169,16 +170,23 @@ describe('AdminDashboardComponent', () => {
     expect(component.getEccedenza(stu)).toBe(0);
 
     stu.presenze_pagate = 15;
-    expect(component.getEccedenza(stu)).toBe(5);
+    expect(component.getEccedenza(stu)).toBe(3);
 
-    component.selectedYear = 2026;
-    component.selectedMonth = 10;
-    component.saveStudentPlan(stu);
-    expect(mockApi.saveMonthlyPlans).toHaveBeenCalledWith({
-      year: 2026,
-      month: 10,
-      plans: [{ student_id: 1, presenze_pagate: 15 }]
-    });
-    expect(stu.eccedenza).toBe(5);
+    stu.presenze_pagate = 25;
+    expect(component.getEccedenza(stu)).toBe(0);
+  });
+
+  it('should load financial report and save meal_fee_student without doposcuola_daily_fee', () => {
+    component.setSection('FINANCIAL');
+    expect(mockApi.getFinancialMonthlyReport).toHaveBeenCalled();
+    expect(component.financialReport()?.doposcuola.revenues.pending).toBe(20);
+
+    component.openSettingsModal();
+    expect(component.showSettingsModal()).toBe(true);
+    component.editSettings.meal_fee_student = 6.0;
+    component.saveSettings();
+
+    expect(mockApi.updateSystemSettings).toHaveBeenCalledWith({ meal_fee_student: 6.0 });
+    expect(component.showSettingsModal()).toBe(false);
   });
 });

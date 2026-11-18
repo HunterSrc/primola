@@ -1,5 +1,14 @@
 const db = require('../config/database');
 const { sendSuccess, sendError } = require('../utils/responseFormat');
+const { isItalianHoliday } = require('../utils/holidays');
+
+const formatDateStr = (val) => {
+  if (val === undefined) return undefined;
+  if (val === null) return null;
+  if (typeof val === 'string') return val.slice(0, 10);
+  if (val instanceof Date) return val.toISOString().slice(0, 10);
+  return String(val).slice(0, 10);
+};
 
 exports.getDailyReport = async (req, res, next) => {
   const date = req.query.date;
@@ -13,7 +22,7 @@ exports.getDailyReport = async (req, res, next) => {
   try {
     const statsQuery = `
       SELECT 
-        (SELECT COUNT(*) FROM students WHERE EXTRACT(ISODOW FROM $1::date) = ANY(giorni_abbonamento)) AS total_expected,
+        (SELECT COUNT(*) FROM students WHERE EXTRACT(ISODOW FROM $1::date) = ANY(giorni_abbonamento) AND NOT EXISTS (SELECT 1 FROM closure_days WHERE date = $1)) AS total_expected,
         COUNT(CASE WHEN is_present = true THEN 1 END) AS total_present,
         COUNT(CASE WHEN is_present = false THEN 1 END) AS total_absent
       FROM attendances
@@ -32,12 +41,11 @@ exports.getDailyReport = async (req, res, next) => {
         COALESCE(t.email, '') AS tutor_email
       FROM attendances a
       JOIN students s ON a.student_id = s.id
-      LEFT JOIN tutors t ON t.id = (
-        SELECT id FROM tutors
-        WHERE student_id = s.id
-        ORDER BY is_main_contact DESC, created_at ASC
-        LIMIT 1
-      )
+      LEFT JOIN (
+        SELECT DISTINCT ON (student_id) student_id, nome, cognome, telefono, email
+        FROM tutors
+        ORDER BY student_id, is_main_contact DESC, created_at ASC
+      ) t ON t.student_id = s.id
       WHERE a.date = $1 
         AND a.is_present = false;
     `;
@@ -60,12 +68,11 @@ exports.getDailyReport = async (req, res, next) => {
         t.telefono AS tutor_phone
       FROM attendances a
       JOIN students s ON a.student_id = s.id
-      LEFT JOIN tutors t ON t.id = (
-        SELECT id FROM tutors
-        WHERE student_id = s.id
-        ORDER BY is_main_contact DESC, created_at ASC
-        LIMIT 1
-      )
+      LEFT JOIN (
+        SELECT DISTINCT ON (student_id) student_id, nome, cognome, telefono, email
+        FROM tutors
+        ORDER BY student_id, is_main_contact DESC, created_at ASC
+      ) t ON t.student_id = s.id
       WHERE a.date = $1
       ORDER BY s.cognome ASC, s.nome ASC;
     `;
@@ -75,11 +82,15 @@ exports.getDailyReport = async (req, res, next) => {
     const allAttendancesResult = await client.query(allAttendancesQuery, [date]);
 
     const statsRow = statsResult.rows[0];
+    const rawTotalExpected = Array.isArray(statsRow?.total_expected)
+      ? statsRow.total_expected[0]
+      : statsRow?.total_expected;
+    const totalExpected = isItalianHoliday(date) ? 0 : parseInt(rawTotalExpected || 0, 10);
 
     const responseData = {
       date: date,
       statistics: {
-        totalExpected: parseInt(statsRow?.total_expected || 0, 10),
+        totalExpected,
         present: parseInt(statsRow?.total_present || 0, 10),
         extraPresent: 0,
         absent: parseInt(statsRow?.total_absent || 0, 10),
@@ -88,7 +99,7 @@ exports.getDailyReport = async (req, res, next) => {
       },
       allAttendances: allAttendancesResult.rows.map(row => ({
         attendance_id: row.attendance_id,
-        date: row.date,
+        date: formatDateStr(row.date),
         student_id: row.student_id,
         first_name: row.first_name,
         last_name: row.last_name,
@@ -293,7 +304,7 @@ exports.getMensaReport = async (req, res, next) => {
       expectedMeals: totalExpected,
       extraMensa: deliveredExtra,
       dailyBreakdown: (dailyResult?.rows || []).map(r => ({
-        date: r.date,
+        date: formatDateStr(r.date),
         regularMensa: parseInt(r.regular_mensa, 10),
         extraMensa: parseInt(r.extra_mensa, 10),
         totalMensa: parseInt(r.total_mensa, 10),
@@ -373,7 +384,7 @@ exports.getMonthlyReport = async (req, res, next) => {
       ORDER BY date ASC;
     `;
 
-    // 3. Frequenza e presenze per studente nel mese con piani presenze pagate
+    // 3. Frequenza e presenze per studente nel mese con giorni coperti da pacchetti assegnati (D2)
     const studentBreakdownQuery = `
       SELECT 
         s.id AS student_id,
@@ -385,11 +396,16 @@ exports.getMonthlyReport = async (req, res, next) => {
         COUNT(CASE WHEN a.is_present = false AND a.id IS NOT NULL THEN 1 END) AS days_absent,
         0 AS days_excused,
         COUNT(CASE WHEN a.canteen_used = true THEN 1 END) AS meals_count,
-        COALESCE(p.presenze_pagate, 0) AS presenze_pagate
+        COALESCE(smt.covered_days, 0) AS covered_days
       FROM students s
       LEFT JOIN attendances a ON a.student_id = s.id AND a.date BETWEEN $1 AND $2
-      LEFT JOIN student_monthly_plans p ON p.student_id = s.id AND p.year = $3 AND p.month = $4
-      GROUP BY s.id, s.nome, s.cognome, s.scuola, p.presenze_pagate
+      LEFT JOIN (
+        SELECT student_id, COALESCE(SUM(covered_days), 0) AS covered_days
+        FROM student_monthly_tariffs
+        WHERE year = $3 AND month = $4
+        GROUP BY student_id
+      ) smt ON smt.student_id = s.id
+      GROUP BY s.id, s.nome, s.cognome, s.scuola, smt.covered_days
       ORDER BY s.cognome ASC, s.nome ASC;
     `;
 
@@ -413,7 +429,7 @@ exports.getMonthlyReport = async (req, res, next) => {
         activeDays: parseInt(tot.active_days || 0, 10)
       },
       dailyTrend: dailyTrendRes.rows.map(r => ({
-        date: r.date,
+        date: formatDateStr(r.date),
         present: parseInt(r.present, 10),
         extra: 0,
         absent: parseInt(r.absent, 10),
@@ -423,8 +439,8 @@ exports.getMonthlyReport = async (req, res, next) => {
       studentsSummary: studentRes.rows.map(r => {
         const daysPresent = parseInt(r.days_present || 0, 10);
         const daysAbsent = parseInt(r.days_absent || 0, 10);
-        const presenzePagate = parseInt(r.presenze_pagate || 0, 10);
-        const eccedenza = (daysPresent + daysAbsent) - presenzePagate;
+        const presenzePagate = parseInt(r.covered_days ?? r.presenze_pagate ?? 0, 10);
+        const eccedenza = Math.max(0, daysPresent - presenzePagate);
 
         return {
           student_id: r.student_id,
@@ -438,6 +454,7 @@ exports.getMonthlyReport = async (req, res, next) => {
           days_excused: 0,
           meals_count: parseInt(r.meals_count || 0, 10),
           presenze_pagate: presenzePagate,
+          covered_days: presenzePagate,
           eccedenza: eccedenza
         };
       })
@@ -599,17 +616,18 @@ exports.getFinancialMonthlyReport = async (req, res, next) => {
   try {
     const settingsRepository = require('../repositories/settingsRepository');
     const settings = await settingsRepository.getSettingsMap();
-    const doposcuolaFee = Number(settings.doposcuola_daily_fee || 12.00);
-    const mealFee = Number(settings.meal_fee_student || 5.50);
+    const mealFee = settings.meal_fee_student !== undefined && settings.meal_fee_student !== null
+      ? Number(settings.meal_fee_student)
+      : 5.50;
 
     // 1. Chiusure straordinarie del mese
     const closuresRes = await client.query(
       `SELECT date FROM closure_days WHERE date BETWEEN $1 AND $2`,
       [fromDate, toDate]
     );
-    const closureDates = new Set(closuresRes.rows.map(r => String(r.date).slice(0, 10)));
+    const closureDates = new Set(closuresRes.rows.map(r => formatDateStr(r.date)));
 
-    // 2. Studenti e calcolo presenze/pasti attesi
+    // 2. Studenti e calcolo presenze attese (escludendo festività nazionali e chiusure straordinarie)
     const studentsRes = await client.query(
       `SELECT id, nome AS first_name, cognome AS last_name, scuola, giorni_abbonamento, pasti_settimanali 
        FROM students 
@@ -617,41 +635,51 @@ exports.getFinancialMonthlyReport = async (req, res, next) => {
     );
     const students = studentsRes.rows;
 
-    // Calcolo giorni doposcuola previsti nel mese
+    const expectedDaysByStudent = new Map();
     let totalExpectedStudentDays = 0;
-    const startObj = new Date(y, m - 1, 1);
-    const endObj = new Date(y, m - 1, lastDay);
 
     for (const s of students) {
       const subDays = Array.isArray(s.giorni_abbonamento) ? s.giorni_abbonamento.map(Number) : [];
-      if (subDays.length === 0) continue;
+      if (subDays.length === 0) {
+        expectedDaysByStudent.set(s.id, 0);
+        continue;
+      }
 
       let sDays = 0;
-      for (let d = new Date(startObj); d <= endObj; d.setDate(d.getDate() + 1)) {
-        const dStr = d.toISOString().slice(0, 10);
-        const dow = d.getDay() === 0 ? 7 : d.getDay();
-        if (dow <= 5 && !closureDates.has(dStr) && subDays.includes(dow)) {
+      for (let day = 1; day <= lastDay; day++) {
+        const dStr = `${y}-${String(m).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        const utcDate = new Date(Date.UTC(y, m - 1, day));
+        const jsDow = utcDate.getUTCDay();
+        const dow = jsDow === 0 ? 7 : jsDow;
+        if (dow <= 5 && !closureDates.has(dStr) && !isItalianHoliday(dStr) && subDays.includes(dow)) {
           sDays++;
         }
       }
+      expectedDaysByStudent.set(s.id, sDays);
       totalExpectedStudentDays += sDays;
     }
 
-    // Pasti previsti
-    const { totalExpected: totalExpectedMeals } = computeExpectedMeals(students, fromDate, toDate);
-
-    // 3. Calcolo entrate doposcuola da pacchetti assegnati, extra e pasti
-    // Tariffa una tantum per il mese
-    const oneOffTariffRes = await client.query(
-      `SELECT t.price 
+    // 3. Caricamento tariffe attive dei pacchetti doposcuola (1_DAY_WEEK..5_DAYS_WEEK + ONE_OFF)
+    const activePackagesRes = await client.query(
+      `SELECT p.code, p.days_per_week, t.price, t.valid_from
        FROM afterschool_packages p
        JOIN afterschool_tariffs t ON p.id = t.package_id
-       WHERE p.code = 'ONE_OFF'
+       WHERE (p.is_active = true OR p.code = 'ONE_OFF')
          AND t.valid_from <= $1 AND t.valid_to >= $1
-       ORDER BY t.valid_from DESC LIMIT 1`,
+       ORDER BY t.valid_from DESC`,
       [fromDate]
     );
-    const oneOffFee = oneOffTariffRes.rows.length > 0 ? Number(oneOffTariffRes.rows[0].price) : 15.00;
+    const packagePriceByCode = new Map();
+    const packagePriceByDaysPerWeek = new Map();
+    for (const row of activePackagesRes.rows) {
+      if (row.code && !packagePriceByCode.has(row.code)) {
+        packagePriceByCode.set(row.code, Number(row.price));
+      }
+      if (row.days_per_week !== null && row.days_per_week !== undefined && !packagePriceByDaysPerWeek.has(Number(row.days_per_week))) {
+        packagePriceByDaysPerWeek.set(Number(row.days_per_week), Number(row.price));
+      }
+    }
+    const oneOffFee = packagePriceByCode.has('ONE_OFF') ? packagePriceByCode.get('ONE_OFF') : 15.00;
 
     // Pacchetti assegnati agli studenti nel mese
     const assignedTariffsRes = await client.query(
@@ -661,17 +689,35 @@ exports.getFinancialMonthlyReport = async (req, res, next) => {
       [y, m]
     );
 
-    let totalPackagesRevenue = 0;
-    const coverageByStudent = new Map();
+    const assignedRevenueByStudent = new Map();
+    const assignedCoverageByStudent = new Map();
+    const studentsWithAssignedPackage = new Set();
+
     for (const row of assignedTariffsRes.rows) {
-      totalPackagesRevenue += Number(row.amount_paid || 0);
-      coverageByStudent.set(
+      studentsWithAssignedPackage.add(row.student_id);
+      assignedRevenueByStudent.set(
         row.student_id,
-        (coverageByStudent.get(row.student_id) || 0) + Number(row.covered_days || 0)
+        (assignedRevenueByStudent.get(row.student_id) || 0) + Number(row.amount_paid || 0)
+      );
+      assignedCoverageByStudent.set(
+        row.student_id,
+        (assignedCoverageByStudent.get(row.student_id) || 0) + Number(row.covered_days || 0)
       );
     }
 
-    // Presenze registrate e pasti effettivi
+    // Saldi mensili per extra e pasti
+    const settlementsRes = await client.query(
+      `SELECT student_id, extra_paid, meals_paid
+       FROM student_monthly_settlements
+       WHERE year = $1 AND month = $2`,
+      [y, m]
+    );
+    const settlementByStudent = new Map();
+    for (const row of settlementsRes.rows) {
+      settlementByStudent.set(row.student_id, row);
+    }
+
+    // Presenze registrate e pasti effettivi (D7: mensa cumulativa a consuntivo)
     const attendancesRes = await client.query(
       `SELECT student_id, date, is_present, canteen_used 
        FROM attendances 
@@ -679,40 +725,83 @@ exports.getFinancialMonthlyReport = async (req, res, next) => {
       [fromDate, toDate]
     );
     const attendances = attendancesRes.rows;
+    const totalActualStudentDays = attendances.filter(a => a.is_present).length;
     const actualMealsCount = attendances.filter(a => a.canteen_used).length;
 
-    // Presenze per studente
     const studentPresenceMap = new Map();
+    const studentMealsMap = new Map();
     for (const a of attendances) {
       if (a.is_present) {
         studentPresenceMap.set(a.student_id, (studentPresenceMap.get(a.student_id) || 0) + 1);
       }
-    }
-
-    // Calcolo giorni extra per ciascuno studente (presenze > copertura)
-    let totalExtraDays = 0;
-    for (const s of students) {
-      const pres = studentPresenceMap.get(s.id) || 0;
-      const cov = coverageByStudent.get(s.id) || 0;
-      if (pres > cov) {
-        totalExtraDays += (pres - cov);
+      if (a.canteen_used) {
+        studentMealsMap.set(a.student_id, (studentMealsMap.get(a.student_id) || 0) + 1);
       }
     }
-    const totalExtraRevenue = Number((totalExtraDays * oneOffFee).toFixed(2));
-    const totalMealsRevenue = Number((actualMealsCount * mealFee).toFixed(2));
-    const expectedMealsRevenue = Number((totalExpectedMeals * mealFee).toFixed(2));
 
-    // Se ci sono pacchetti assegnati nel mese usiamo la nuova formula, altrimenti fallback trasparente su giorni*doposcuolaFee
-    let doposcuolaExpectedRevenues = 0;
-    let doposcuolaActualRevenues = 0;
+    // Calcolo entrate doposcuola per studente: Previsto/Maturato vs Incassato vs Pending (D3, D4)
+    let expectedPackagesRevenue = 0;
+    let totalPackagesRevenue = 0;
+    let totalExtraRevenue = 0;
+    let collectedExtraRevenue = 0;
+    let pendingExtraRevenue = 0;
+    let totalMealsRevenue = 0;
+    let collectedMealsRevenue = 0;
+    let pendingMealsRevenue = 0;
 
-    if (assignedTariffsRes.rows.length > 0) {
-      doposcuolaExpectedRevenues = Number((totalPackagesRevenue + expectedMealsRevenue).toFixed(2));
-      doposcuolaActualRevenues = Number((totalPackagesRevenue + totalExtraRevenue + totalMealsRevenue).toFixed(2));
-    } else {
-      doposcuolaExpectedRevenues = Number((totalExpectedStudentDays * doposcuolaFee + totalExpectedMeals * mealFee).toFixed(2));
-      doposcuolaActualRevenues = Number((attendances.filter(a => a.is_present).length * doposcuolaFee + actualMealsCount * mealFee).toFixed(2));
+    for (const s of students) {
+      const hasAssigned = studentsWithAssignedPackage.has(s.id);
+      const subDays = Array.isArray(s.giorni_abbonamento) ? s.giorni_abbonamento.map(Number) : [];
+      const uniqueSubCount = new Set(subDays.filter(d => d >= 1 && d <= 5)).size;
+
+      let studentExpectedPkg = 0;
+      let studentActualPkg = 0;
+      let cov = 0;
+
+      if (hasAssigned) {
+        studentExpectedPkg = assignedRevenueByStudent.get(s.id) || 0;
+        studentActualPkg = studentExpectedPkg;
+        cov = assignedCoverageByStudent.get(s.id) || 0;
+      } else {
+        if (uniqueSubCount >= 1 && uniqueSubCount <= 5) {
+          const codeFallback = uniqueSubCount === 1 ? '1_DAY_WEEK' : `${uniqueSubCount}_DAYS_WEEK`;
+          studentExpectedPkg = packagePriceByDaysPerWeek.get(uniqueSubCount)
+            ?? packagePriceByCode.get(codeFallback)
+            ?? 0;
+        }
+        studentActualPkg = 0;
+        cov = expectedDaysByStudent.get(s.id) || 0;
+      }
+
+      expectedPackagesRevenue += studentExpectedPkg;
+      totalPackagesRevenue += studentActualPkg;
+
+      const pres = studentPresenceMap.get(s.id) || 0;
+      const extraDays = Math.max(0, pres - cov);
+      const extraRev = extraDays * oneOffFee;
+      totalExtraRevenue += extraRev;
+
+      const settlement = settlementByStudent.get(s.id);
+      if (settlement && settlement.extra_paid === true) {
+        collectedExtraRevenue += extraRev;
+      } else {
+        pendingExtraRevenue += extraRev;
+      }
+
+      const studentMealsCount = studentMealsMap.get(s.id) || 0;
+      const mealsRev = studentMealsCount * mealFee;
+      totalMealsRevenue += mealsRev;
+
+      if (settlement && settlement.meals_paid === true) {
+        collectedMealsRevenue += mealsRev;
+      } else {
+        pendingMealsRevenue += mealsRev;
+      }
     }
+
+    const doposcuolaExpectedRevenues = Number((expectedPackagesRevenue + totalExtraRevenue + totalMealsRevenue).toFixed(2));
+    const doposcuolaActualRevenues = Number((totalPackagesRevenue + collectedExtraRevenue + collectedMealsRevenue).toFixed(2));
+    const doposcuolaPendingRevenues = Number((pendingExtraRevenue + pendingMealsRevenue).toFixed(2));
 
     // 4. Turni docenti doposcuola nel mese
     const shiftsRes = await client.query(
@@ -741,7 +830,7 @@ exports.getFinancialMonthlyReport = async (req, res, next) => {
       afterschoolExpectedTeacherCost += cost;
       afterschoolTotalHours += hours;
 
-      const shiftDateStr = String(shift.shift_date).slice(0, 10);
+      const shiftDateStr = formatDateStr(shift.shift_date);
       if (shiftDateStr <= todayStr) {
         afterschoolActualTeacherCost += cost;
       }
@@ -825,8 +914,8 @@ exports.getFinancialMonthlyReport = async (req, res, next) => {
     const coursesTeachersBreakdown = [];
 
     for (const c of coursesRes.rows) {
-      const sDate = c.start_date ? String(c.start_date).slice(0, 10) : null;
-      const eDate = c.end_date ? String(c.end_date).slice(0, 10) : null;
+      const sDate = c.start_date ? formatDateStr(c.start_date) : null;
+      const eDate = c.end_date ? formatDateStr(c.end_date) : null;
 
       const isActiveInMonth = (!sDate || sDate <= toDate) && (!eDate || eDate >= fromDate);
       const isFinishedInMonth = eDate && eDate >= fromDate && eDate <= toDate;
@@ -872,16 +961,18 @@ exports.getFinancialMonthlyReport = async (req, res, next) => {
       from: fromDate,
       to: toDate,
       rates: {
-        doposcuola_daily_fee: doposcuolaFee,
+        one_off_fee: oneOffFee,
+        doposcuola_daily_fee: oneOffFee,
         meal_fee_student: mealFee
       },
       doposcuola: {
         revenues: {
           expected: doposcuolaExpectedRevenues,
           actual: doposcuolaActualRevenues,
+          pending: doposcuolaPendingRevenues,
           expected_days: totalExpectedStudentDays,
           actual_days: totalActualStudentDays,
-          expected_meals: totalExpectedMeals,
+          expected_meals: actualMealsCount,
           actual_meals: actualMealsCount
         },
         expenses: {
@@ -1040,7 +1131,7 @@ exports.getOperationalMonthlyReport = async (req, res, next) => {
       afterschoolTeachersMap[shift.user_id].total_cost += cost;
       afterschoolTeachersMap[shift.user_id].shifts.push({
         id: shift.id,
-        shift_date: String(shift.shift_date).slice(0, 10),
+        shift_date: formatDateStr(shift.shift_date),
         start_time: shift.start_time,
         end_time: shift.end_time,
         hours: Number(hours.toFixed(2)),
@@ -1090,8 +1181,8 @@ exports.getOperationalMonthlyReport = async (req, res, next) => {
           title: row.title,
           type: row.type,
           location: row.location || '',
-          start_date: row.start_date ? String(row.start_date).slice(0, 10) : null,
-          end_date: row.end_date ? String(row.end_date).slice(0, 10) : null,
+          start_date: row.start_date ? formatDateStr(row.start_date) : null,
+          end_date: row.end_date ? formatDateStr(row.end_date) : null,
           total_hours: 0,
           total_cost: 0,
           teachers: []

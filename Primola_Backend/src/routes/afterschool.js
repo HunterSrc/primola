@@ -30,9 +30,9 @@ router.delete('/shifts/:id', requireAdminOrOffice, (req, res) => afterschoolCont
 // Date di chiusura straordinarie:
 // GET aperta a tutti (Admin, Office, Teacher)
 router.get('/closures', requireRole(['ADMIN', 'OFFICE', 'TEACHER', 'STAFF']), (req, res) => afterschoolController.listClosures(req, res));
-// POST e DELETE riservate SOLO ad ADMIN
-router.post('/closures', requireRole(['ADMIN']), (req, res) => afterschoolController.createClosure(req, res));
-router.delete('/closures/:id', requireRole(['ADMIN']), (req, res) => afterschoolController.deleteClosure(req, res));
+// POST e DELETE riservate ad ADMIN e OFFICE
+router.post('/closures', requireAdminOrOffice, (req, res) => afterschoolController.createClosure(req, res));
+router.delete('/closures/:id', requireAdminOrOffice, (req, res) => afterschoolController.deleteClosure(req, res));
 
 // Note spese doposcuola (Mensa / Altro) - SOLO ADMIN e OFFICE
 router.get('/expenses', requireAdminOrOffice, (req, res) => afterschoolController.listExpenses(req, res));

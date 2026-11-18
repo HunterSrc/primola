@@ -1,11 +1,34 @@
 const db = require('../config/database');
+const { isItalianHoliday } = require('../utils/holidays');
 
 /**
- * Recupera gli studenti registrati per una data (presenze registrate o inserite).
+ * Recupera gli studenti attesi o già registrati per una data.
+ * - Nei giorni festivi nazionali o di chiusura straordinaria, restituisce SOLO gli studenti
+ *   già esplicitamente registrati in attendances per quella data.
+ * - Nei giorni normali, restituisce gli studenti con abbonamento attivo per quel giorno della settimana
+ *   oppure già presenti in attendances per quella data.
  */
 const getExpectedStudents = async (dateStr) => {
   try {
-    const query = `
+    let isClosedOrHoliday = isItalianHoliday(dateStr);
+
+    if (!isClosedOrHoliday) {
+      const closureRes = await db.query(
+        'SELECT 1 FROM closure_days WHERE date = $1',
+        [dateStr]
+      );
+      isClosedOrHoliday = !!(closureRes && closureRes.rows && closureRes.rows.length > 0);
+    }
+
+    const tutorJoin = `
+      LEFT JOIN (
+        SELECT DISTINCT ON (student_id) student_id, telefono
+        FROM tutors
+        ORDER BY student_id, is_main_contact DESC, created_at ASC
+      ) t ON t.student_id = s.id
+    `;
+
+    const selectFields = `
       SELECT 
         s.id AS student_id,
         s.nome AS first_name,
@@ -18,21 +41,51 @@ const getExpectedStudents = async (dateStr) => {
         (a.id IS NOT NULL)                      AS already_registered,
         t.telefono                              AS main_tutor_phone
       FROM students s
-      JOIN attendances a
-        ON s.id = a.student_id AND a.date = $1
-      LEFT JOIN tutors t
-        ON t.id = (
-          SELECT id FROM tutors
-          WHERE student_id = s.id
-          ORDER BY is_main_contact DESC, created_at ASC
-          LIMIT 1
-        )
-      ORDER BY s.cognome ASC, s.nome ASC;
     `;
+
+    const query = isClosedOrHoliday
+      ? `
+        ${selectFields}
+        INNER JOIN attendances a
+          ON s.id = a.student_id AND a.date = $1
+        ${tutorJoin}
+        ORDER BY s.cognome ASC, s.nome ASC;
+      `
+      : `
+        ${selectFields}
+        LEFT JOIN attendances a
+          ON s.id = a.student_id AND a.date = $1
+        ${tutorJoin}
+        WHERE EXTRACT(ISODOW FROM $1::date) = ANY(s.giorni_abbonamento)
+           OR a.id IS NOT NULL
+        ORDER BY s.cognome ASC, s.nome ASC;
+      `;
+
     const result = await db.query(query, [dateStr]);
     return result.rows;
   } catch (error) {
     console.error('❌ Errore durante il fetch delle presenze del giorno:', error.message);
+    throw error;
+  }
+};
+
+/**
+ * Rimuove definitivamente la presenza registrata di uno studente per una data.
+ */
+const deleteAttendance = async (studentId, dateStr) => {
+  try {
+    const query = `
+      DELETE FROM attendances
+      WHERE student_id = $1 AND date = $2
+      RETURNING id;
+    `;
+    const result = await db.query(query, [studentId, dateStr]);
+    if (result.rows && result.rows.length > 0) {
+      return result.rows[0];
+    }
+    return result.rowCount > 0 ? { id: null } : null;
+  } catch (error) {
+    console.error('❌ Errore durante l\'eliminazione della presenza:', error.message);
     throw error;
   }
 };
@@ -85,5 +138,6 @@ const bulkUpsertAttendances = async (attendancesList) => {
 
 module.exports = {
   getExpectedStudents,
-  bulkUpsertAttendances
+  bulkUpsertAttendances,
+  deleteAttendance
 };

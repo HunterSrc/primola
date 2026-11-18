@@ -65,3 +65,25 @@ exports.bulkUpsert = async (req, res, next) => {
     next(error);
   }
 };
+
+exports.removeAttendance = async (req, res, next) => {
+  const { date, studentId } = req.params;
+
+  if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    return sendError(res, 400, "Parametro 'date' mancante o formato non valido (richiesto YYYY-MM-DD).");
+  }
+
+  if (!studentId) {
+    return sendError(res, 400, "Parametro 'studentId' mancante.");
+  }
+
+  try {
+    const deleted = await attendanceRepository.deleteAttendance(studentId, date);
+    return sendSuccess(res, 200, {
+      message: deleted ? 'Presenza rimossa con successo.' : 'Nessuna presenza salvata da rimuovere per questa data.',
+      removed: !!deleted
+    });
+  } catch (error) {
+    next(error);
+  }
+};

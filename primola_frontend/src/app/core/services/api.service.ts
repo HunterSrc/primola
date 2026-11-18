@@ -254,6 +254,16 @@ export class ApiService {
     );
   }
 
+  deleteAttendance(date: string, studentId: number | string): Observable<any> {
+    return this.http.delete<ApiResponse<any>>(`${this.baseUrl}/attendances/${date}/${studentId}`).pipe(
+      map(res => res.data ?? { success: res.success }),
+      catchError(err => {
+        console.warn('Backend unavailable, simulating mock delete attendance', err);
+        return of({ success: true });
+      })
+    );
+  }
+
   // Report
   getDailyReport(date: string): Observable<DailyReport> {
     const params = new HttpParams().set('date', date);
@@ -404,7 +414,7 @@ export class ApiService {
             const daysPresent = s.days_present ?? 0;
             const daysAbsent = s.days_absent ?? 0;
             const presenzePagate = s.presenze_pagate ?? 0;
-            const eccedenza = s.eccedenza ?? ((daysPresent + daysAbsent) - presenzePagate);
+            const eccedenza = s.eccedenza ?? Math.max(0, daysPresent - presenzePagate);
             return {
               student_id: s.student_id,
               first_name: s.first_name,
@@ -454,7 +464,7 @@ export class ApiService {
         sub_mer: true,
         sub_gio: true,
         sub_ven: true,
-        weekly_meals: 5,
+        weekly_meals: 0,
         main_tutor_name: 'Marco Bianchi',
         main_tutor_phone: '+39 340 1234567'
       }
@@ -463,7 +473,7 @@ export class ApiService {
 
   private getMockExpectedAttendances(): AttendanceRecord[] {
     return [
-      { student_id: 1, first_name: 'Leonardo', last_name: 'Bianchi', school: 'Scuola Primaria Rodari', is_present: true, has_meal: true }
+      { student_id: 1, first_name: 'Leonardo', last_name: 'Bianchi', school: 'Scuola Primaria Rodari', is_present: true, has_meal: false }
     ];
   }
 
@@ -517,7 +527,7 @@ export class ApiService {
           days_absent: 2,
           meals_count: 15,
           presenze_pagate: 16,
-          eccedenza: 1 // (15 + 2) - 16 = 1
+          eccedenza: 0 // Math.max(0, 15 - 16) = 0
         }
       ]
     };
@@ -544,6 +554,12 @@ export class ApiService {
 
   updateUser(id: string | number, userData: Partial<User> & { password?: string }): Observable<User> {
     return this.http.put<ApiResponse<User>>(`${this.baseUrl}/users/${id}`, userData).pipe(
+      map(res => res.data)
+    );
+  }
+
+  updateUserStatus(id: string | number, status: 'PENDING' | 'APPROVED' | 'REJECTED'): Observable<User> {
+    return this.http.patch<ApiResponse<User>>(`${this.baseUrl}/users/${id}/status`, { status }).pipe(
       map(res => res.data)
     );
   }
