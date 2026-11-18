@@ -88,7 +88,7 @@ export type AccordionSection = 'doposcuola' | 'corsi' | 'admin' | null;
             </div>
             <div class="flex items-center justify-between px-1">
               <span class="text-[11px] font-semibold text-slate-400">Doposcuola & Presenze</span>
-              <span class="text-[9px] bg-[#3857F1]/20 text-blue-400 font-bold px-1.5 py-0.5 rounded border border-[#3857F1]/30">v2.2</span>
+              <span class="text-[9px] bg-[#3857F1]/20 text-blue-400 font-bold px-1.5 py-0.5 rounded border border-[#3857F1]/30">v2.2.1</span>
             </div>
           </div>
 

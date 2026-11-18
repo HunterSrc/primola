@@ -1,3 +1,8 @@
+## Release v2.2.1 - 2026-11-18
+
+- **fix(afterschool)**: disattivata la presenza preimpostata di default all'aggiunta di uno studente dal calendario (`is_present: false`)
+- **chore(release)**: incremento versione v2.2.1
+
 ## Release v2.2.0 - 2026-11-18
 
 - **feat(payments)**: rimozione previsione settimanale dai pagamenti mantenendo pendenze mese precedente (D13)

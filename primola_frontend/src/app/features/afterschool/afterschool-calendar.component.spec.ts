@@ -133,13 +133,13 @@ describe('AfterschoolCalendarComponent', () => {
     expect(available[0].id).toBe(2);
   });
 
-  it('should keep addStudentForm.has_meal false by default even if student has weekly_meals > 0 (D7)', () => {
+  it('should keep addStudentForm.is_present and has_meal false by default even if student has weekly_meals > 0 (D7)', () => {
     component.openAddStudentModal(mockSchedule.days[0]);
-    expect(component.addStudentForm.is_present).toBe(true);
+    expect(component.addStudentForm.is_present).toBe(false);
     expect(component.addStudentForm.has_meal).toBe(false);
 
     component.selectStudentToAdd(mockStudents[0]);
-    expect(component.addStudentForm.is_present).toBe(true);
+    expect(component.addStudentForm.is_present).toBe(false);
     expect(component.addStudentForm.has_meal).toBe(false);
   });
 

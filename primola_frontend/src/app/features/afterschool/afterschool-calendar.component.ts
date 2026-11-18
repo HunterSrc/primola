@@ -968,7 +968,7 @@ export class AfterschoolCalendarComponent implements OnInit {
   readonly addStudentError = signal<string | null>(null);
 
   addStudentForm = {
-    is_present: true,
+    is_present: false,
     has_meal: false
   };
 
@@ -1406,7 +1406,7 @@ export class AfterschoolCalendarComponent implements OnInit {
     this.studentSearchQuery.set('');
     this.addStudentError.set(null);
     this.addStudentForm = {
-      is_present: true,
+      is_present: false,
       has_meal: false
     };
     this.showAddStudentModal.set(true);
@@ -1428,7 +1428,7 @@ export class AfterschoolCalendarComponent implements OnInit {
 
   selectStudentToAdd(student: Student): void {
     this.selectedStudentToAdd.set(student);
-    this.addStudentForm.is_present = true;
+    this.addStudentForm.is_present = false;
     this.addStudentForm.has_meal = false;
   }
 
