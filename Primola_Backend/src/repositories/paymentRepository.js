@@ -1,4 +1,5 @@
 const db = require('../config/database');
+const mealTariffRepo = require('./mealTariffRepository');
 
 const formatDateOnly = (val) => {
   if (!val) return null;
@@ -48,10 +49,8 @@ class PaymentRepository {
     );
     const prevOneOffFee = prevOneOffRes.rows.length > 0 ? Number(prevOneOffRes.rows[0].price) : oneOffFee;
 
-    const settingsRes = await db.query(
-      `SELECT key, value FROM system_settings WHERE key = 'meal_fee_student'`
-    );
-    const mealFee = settingsRes.rows.length > 0 ? Number(settingsRes.rows[0].value) : 5.50;
+    const allMealTariffs = await mealTariffRepo.findAll();
+    const mealFee = mealTariffRepo.resolveTariffForDate(allMealTariffs, toDate, 5.50);
 
     // 1b. Chiusure straordinarie del mese
     const closuresRes = await db.query(
@@ -110,7 +109,7 @@ class PaymentRepository {
       });
     }
 
-    // 4. Presenze e Pasti nel mese da attendances
+    // 4. Presenze e Pasti nel mese da attendances (pasti prezzati per singola data)
     const attendancesRes = await db.query(
       `SELECT student_id,
               COUNT(CASE WHEN is_present = true THEN 1 END) AS days_present,
@@ -120,11 +119,27 @@ class PaymentRepository {
        GROUP BY student_id`,
       [fromDate, toDate]
     );
+    const mealDatesRes = await db.query(
+      `SELECT student_id, date
+       FROM attendances
+       WHERE date BETWEEN $1 AND $2 AND canteen_used = true`,
+      [fromDate, toDate]
+    );
+    const mealsTotalByStudent = new Map();
+    for (const mRow of mealDatesRes.rows) {
+      const unitPrice = mealTariffRepo.resolveTariffForDate(allMealTariffs, mRow.date, mealFee);
+      mealsTotalByStudent.set(
+        mRow.student_id,
+        Number(((mealsTotalByStudent.get(mRow.student_id) || 0) + unitPrice).toFixed(2))
+      );
+    }
+
     const attendancesByStudent = new Map();
     for (const att of attendancesRes.rows) {
       attendancesByStudent.set(att.student_id, {
         days_present: Number(att.days_present || 0),
-        meals_count: Number(att.meals_count || 0)
+        meals_count: Number(att.meals_count || 0),
+        meals_total: mealsTotalByStudent.get(att.student_id) || 0
       });
     }
 
@@ -162,11 +177,27 @@ class PaymentRepository {
        GROUP BY student_id`,
       [prevFromDate, prevToDate]
     );
+    const prevMealDatesRes = await db.query(
+      `SELECT student_id, date
+       FROM attendances
+       WHERE date BETWEEN $1 AND $2 AND canteen_used = true`,
+      [prevFromDate, prevToDate]
+    );
+    const prevMealsTotalByStudent = new Map();
+    for (const mRow of prevMealDatesRes.rows) {
+      const unitPrice = mealTariffRepo.resolveTariffForDate(allMealTariffs, mRow.date, mealFee);
+      prevMealsTotalByStudent.set(
+        mRow.student_id,
+        Number(((prevMealsTotalByStudent.get(mRow.student_id) || 0) + unitPrice).toFixed(2))
+      );
+    }
+
     const prevAttendancesByStudent = new Map();
     for (const att of prevAttendancesRes.rows) {
       prevAttendancesByStudent.set(att.student_id, {
         days_present: Number(att.days_present || 0),
-        meals_count: Number(att.meals_count || 0)
+        meals_count: Number(att.meals_count || 0),
+        meals_total: prevMealsTotalByStudent.get(att.student_id) || 0
       });
     }
 
@@ -193,13 +224,14 @@ class PaymentRepository {
       const totalPaidPackages = assigned.reduce((acc, p) => acc + p.amount_paid, 0);
       const totalCoveredDays = assigned.reduce((acc, p) => acc + p.covered_days, 0);
 
-      const att = attendancesByStudent.get(stu.id) || { days_present: 0, meals_count: 0 };
+      const att = attendancesByStudent.get(stu.id) || { days_present: 0, meals_count: 0, meals_total: 0 };
       const daysPresent = att.days_present;
       const mealsCount = att.meals_count;
 
       const extraDaysCount = Math.max(0, daysPresent - totalCoveredDays);
       const extraDaysTotal = Number((extraDaysCount * oneOffFee).toFixed(2));
-      const mealsTotal = Number((mealsCount * mealFee).toFixed(2));
+      const mealsTotal = Number((att.meals_total || 0).toFixed(2));
+      const studentMealUnitFee = mealsCount > 0 ? Number((mealsTotal / mealsCount).toFixed(2)) : mealFee;
 
       const settlement = settlementsByStudent.get(stu.id) || {};
       const extraPaid = !!settlement.extra_paid;
@@ -210,11 +242,11 @@ class PaymentRepository {
 
       // Calcolo pendenza mese precedente
       const prevCoveredDays = prevCoveredByStudent.get(stu.id) || 0;
-      const prevAtt = prevAttendancesByStudent.get(stu.id) || { days_present: 0, meals_count: 0 };
+      const prevAtt = prevAttendancesByStudent.get(stu.id) || { days_present: 0, meals_count: 0, meals_total: 0 };
       const prevExtraDaysCount = Math.max(0, prevAtt.days_present - prevCoveredDays);
       const prevExtraDaysTotal = Number((prevExtraDaysCount * prevOneOffFee).toFixed(2));
       const prevMealsCount = prevAtt.meals_count;
-      const prevMealsTotal = Number((prevMealsCount * mealFee).toFixed(2));
+      const prevMealsTotal = Number((prevAtt.meals_total || 0).toFixed(2));
       const prevSettlement = prevSettlementsByStudent.get(stu.id) || {};
       const prevExtraPaid = !!prevSettlement.extra_paid;
       const prevMealsPaid = !!prevSettlement.meals_paid;
@@ -250,7 +282,7 @@ class PaymentRepository {
         extra_paid: extraPaid,
         extra_paid_at: extraPaidAt,
         meals_count: mealsCount,
-        meal_unit_fee: mealFee,
+        meal_unit_fee: studentMealUnitFee,
         meals_total: mealsTotal,
         meals_paid: mealsPaid,
         meals_paid_at: mealsPaidAt,

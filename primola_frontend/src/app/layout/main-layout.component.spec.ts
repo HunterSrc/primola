@@ -86,6 +86,14 @@ describe('MainLayoutComponent', () => {
     expect(component.openSection()).toBeNull();
   });
 
+  it('should toggle desktop sidebar collapsed state', () => {
+    expect(component.desktopSidebarCollapsed()).toBe(false);
+    component.toggleDesktopSidebar();
+    expect(component.desktopSidebarCollapsed()).toBe(true);
+    component.toggleDesktopSidebar();
+    expect(component.desktopSidebarCollapsed()).toBe(false);
+  });
+
   it('should detect sections based on URLs correctly', () => {
     expect(component.detectSectionFromUrl('/dashboard')).toBe('doposcuola');
     expect(component.detectSectionFromUrl('/afterschool-calendar')).toBe('doposcuola');

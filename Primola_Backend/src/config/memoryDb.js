@@ -180,6 +180,16 @@ function createMemoryPostgres() {
       updated_at TIMESTAMP DEFAULT NOW()
     );
 
+    CREATE TABLE IF NOT EXISTS meal_tariffs (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      price NUMERIC(10, 2) NOT NULL DEFAULT 5.50,
+      valid_from DATE NOT NULL,
+      valid_to DATE NOT NULL DEFAULT '9999-01-01',
+      notes TEXT,
+      created_at TIMESTAMP DEFAULT NOW(),
+      updated_at TIMESTAMP DEFAULT NOW()
+    );
+
     CREATE TABLE IF NOT EXISTS student_monthly_tariffs (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       student_id UUID NOT NULL,
@@ -441,6 +451,12 @@ function createMemoryPostgres() {
         ('33333333-3333-3333-3333-333333333333', 2026, 11, false, true, NOW(), 'BONIFICO', 'Pasti novembre saldati');
     `);
   }
+
+  db.public.none(`
+    INSERT INTO meal_tariffs (id, price, valid_from, valid_to, notes)
+    VALUES ('88888888-8888-8888-8888-888888888801', 5.50, '2025-01-01', '9999-01-01', 'Tariffa mensa iniziale')
+    ON CONFLICT DO NOTHING;
+  `);
 
     const pg = db.adapters.createPg();
   memPool = new pg.Pool();

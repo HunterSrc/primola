@@ -245,6 +245,25 @@ CREATE INDEX IF NOT EXISTS idx_afterschool_tariffs_package ON afterschool_tariff
 CREATE INDEX IF NOT EXISTS idx_afterschool_tariffs_dates ON afterschool_tariffs(valid_from, valid_to);
 
 -- ==========================================
+-- TABELLA: meal_tariffs
+-- ==========================================
+CREATE TABLE IF NOT EXISTS meal_tariffs (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    price NUMERIC(10,2) NOT NULL DEFAULT 5.50,
+    valid_from DATE NOT NULL,
+    valid_to DATE NOT NULL DEFAULT '9999-01-01',
+    notes TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE TRIGGER tg_meal_tariffs_updated_at
+BEFORE UPDATE ON meal_tariffs
+FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+CREATE INDEX IF NOT EXISTS idx_meal_tariffs_dates ON meal_tariffs(valid_from, valid_to);
+
+-- ==========================================
 -- TABELLE: student_monthly_tariffs & student_monthly_settlements
 -- ==========================================
 CREATE TABLE IF NOT EXISTS student_monthly_tariffs (

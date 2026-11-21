@@ -59,12 +59,18 @@ export type AccordionSection = 'doposcuola' | 'corsi' | 'admin' | null;
         ></div>
       }
 
-      <!-- Sidebar Unificata: Desktop fissa a sinistra / Mobile Drawer off-canvas -->
+      <!-- Sidebar Unificata: Desktop collassabile a sinistra / Mobile Drawer off-canvas -->
       <aside
-        class="fixed md:static inset-y-0 left-0 w-72 md:w-72 h-full md:h-screen bg-gradient-to-b from-slate-900 via-slate-900 to-slate-950 text-white flex flex-col justify-between shrink-0 shadow-2xl border-r border-slate-800/80 z-50 overflow-y-auto transition-transform duration-300 ease-in-out"
+        class="fixed md:static inset-y-0 left-0 w-72 h-full md:h-screen bg-gradient-to-b from-slate-900 via-slate-900 to-slate-950 text-white flex flex-col justify-between shrink-0 shadow-2xl border-r border-slate-800/80 z-50 overflow-y-auto transition-all duration-300 ease-in-out"
         [class.-translate-x-full]="!mobileMenuOpen()"
         [class.translate-x-0]="mobileMenuOpen()"
-        [class.md:translate-x-0]="true"
+        [class.md:translate-x-0]="!desktopSidebarCollapsed()"
+        [class.md:w-72]="!desktopSidebarCollapsed()"
+        [class.md:w-0]="desktopSidebarCollapsed()"
+        [class.md:overflow-hidden]="desktopSidebarCollapsed()"
+        [class.md:border-r-0]="desktopSidebarCollapsed()"
+        [class.md:opacity-0]="desktopSidebarCollapsed()"
+        [class.md:pointer-events-none]="desktopSidebarCollapsed()"
       >
         <div>
           <!-- Header Logo & Brand Primola -->
@@ -79,6 +85,21 @@ export type AccordionSection = 'doposcuola' | 'corsi' | 'admin' | null;
               >
                 <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div class="hidden md:flex items-center justify-between mb-2.5">
+              <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Navigazione</span>
+              <button
+                type="button"
+                (click)="toggleDesktopSidebar()"
+                title="Comprimi barra laterale"
+                aria-label="Comprimi barra laterale"
+                class="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
                 </svg>
               </button>
             </div>
@@ -463,7 +484,23 @@ export type AccordionSection = 'doposcuola' | 'corsi' | 'admin' | null;
       </aside>
 
       <!-- Main Content Area: Senza interferenza di barre fisse in basso -->
-      <main class="flex-1 overflow-y-auto pb-safe md:pb-6">
+      <main class="flex-1 overflow-y-auto pb-safe md:pb-6 min-w-0">
+        @if (desktopSidebarCollapsed()) {
+          <div class="hidden md:flex items-center px-4 pt-3 -mb-2">
+            <button
+              type="button"
+              (click)="toggleDesktopSidebar()"
+              title="Espandi barra laterale"
+              aria-label="Espandi barra laterale"
+              class="inline-flex items-center space-x-2 px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold rounded-xl shadow-sm transition-all cursor-pointer"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7" />
+              </svg>
+              <span>Mostra Menu</span>
+            </button>
+          </div>
+        }
         <router-outlet />
       </main>
 
@@ -474,7 +511,30 @@ export class MainLayoutComponent {
   readonly authService = inject(AuthService);
   readonly router = inject(Router, { optional: true });
   readonly mobileMenuOpen = signal<boolean>(false);
+  readonly desktopSidebarCollapsed = signal<boolean>(this.readInitialSidebarState());
   readonly openSection = signal<AccordionSection>('doposcuola');
+
+  private readInitialSidebarState(): boolean {
+    try {
+      return typeof localStorage !== 'undefined' && localStorage.getItem('primola_sidebar_collapsed') === 'true';
+    } catch {
+      return false;
+    }
+  }
+
+  toggleDesktopSidebar(): void {
+    this.desktopSidebarCollapsed.update(v => {
+      const next = !v;
+      try {
+        if (typeof localStorage !== 'undefined') {
+          localStorage.setItem('primola_sidebar_collapsed', String(next));
+        }
+      } catch {
+        // Ignore storage errors
+      }
+      return next;
+    });
+  }
 
   constructor() {
     if (this.router) {

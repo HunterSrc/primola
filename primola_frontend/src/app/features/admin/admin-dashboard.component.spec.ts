@@ -39,8 +39,6 @@ describe('AdminDashboardComponent', () => {
 
   beforeEach(() => {
     mockApi = {
-      getSystemSettings: vi.fn().mockReturnValue(of({ list: [], settings: { meal_fee_student: 5.5 } })),
-      updateSystemSettings: vi.fn().mockReturnValue(of({ success: true })),
       getFinancialMonthlyReport: vi.fn().mockReturnValue(of(mockFinancialReport))
     };
 
@@ -54,10 +52,9 @@ describe('AdminDashboardComponent', () => {
     component = TestBed.inject(AdminDashboardComponent);
   });
 
-  it('should initialize and load financial report and settings', () => {
+  it('should initialize and load financial report', () => {
     component.ngOnInit();
     expect(mockApi.getFinancialMonthlyReport).toHaveBeenCalledWith(component.financialYear, component.financialMonth);
-    expect(mockApi.getSystemSettings).toHaveBeenCalled();
     expect(component.financialReport()?.doposcuola.revenues.pending).toBe(20);
     expect(component.loadingFinancial()).toBe(false);
   });
@@ -67,16 +64,5 @@ describe('AdminDashboardComponent', () => {
     component.financialMonth = 5;
     component.loadFinancialReport();
     expect(mockApi.getFinancialMonthlyReport).toHaveBeenCalledWith(2025, 5);
-  });
-
-  it('should save meal_fee_student without doposcuola_daily_fee', () => {
-    component.openSettingsModal();
-    expect(component.showSettingsModal()).toBe(true);
-    component.editSettings.meal_fee_student = 6.0;
-    component.saveSettings();
-
-    expect(mockApi.updateSystemSettings).toHaveBeenCalledWith({ meal_fee_student: 6.0 });
-    expect(component.showSettingsModal()).toBe(false);
-    expect(mockApi.getFinancialMonthlyReport).toHaveBeenCalled();
   });
 });

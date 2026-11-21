@@ -601,6 +601,30 @@ export interface TransitionTariffPayload {
   notes?: string | null;
 }
 
+export interface MealTariff {
+  id: string;
+  price: number;
+  valid_from: string;
+  valid_to: string;
+  notes?: string | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface MealTariffsResponse {
+  active: MealTariff | null;
+  history: MealTariff[];
+}
+
+export interface TransitionMealTariffPayload {
+  old_tariff_id?: string | null;
+  old_valid_to?: string;
+  new_price: number;
+  new_valid_from: string;
+  new_valid_to?: string;
+  notes?: string | null;
+}
+
 export * from './payment.model';
 
 

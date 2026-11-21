@@ -10,6 +10,11 @@ router.use(requireRole(['ADMIN']));
 // Lista pacchetti e tariffa attiva
 router.get('/', packageController.getAllPackages);
 
+// Gestione storico tariffa mensa (prima delle route parametriche /:id)
+router.get('/meal-tariffs', packageController.getMealTariffs);
+router.post('/meal-tariffs/transition', packageController.transitionMealTariff);
+router.put('/meal-tariffs/:tariffId', packageController.updateMealTariff);
+
 // Storico tariffe pacchetto
 router.get('/:id/tariffs', packageController.getPackageTariffs);
 

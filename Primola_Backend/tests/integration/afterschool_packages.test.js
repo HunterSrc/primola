@@ -143,4 +143,54 @@ describe('Afterschool Packages and Tariffs API Tests', () => {
     expect(res.status).toBe(400);
     expect(res.body.success).toBe(false);
   });
+
+  it('GET / POST / PUT /api/afterschool-packages/meal-tariffs manages meal tariff history and mid-month billing', async () => {
+    const initialRes = await request(app)
+      .get('/api/afterschool-packages/meal-tariffs')
+      .set('Authorization', `Bearer ${adminToken}`);
+    expect(initialRes.status).toBe(200);
+    expect(initialRes.body.data.active).toBeTruthy();
+    expect(initialRes.body.data.history.length).toBeGreaterThanOrEqual(1);
+
+    const activeTariff = initialRes.body.data.active;
+
+    // Transizione inframensile a metà novembre 2026: fino al 2026-11-10 -> 5.50, dal 2026-11-11 -> 6.50
+    const transRes = await request(app)
+      .post('/api/afterschool-packages/meal-tariffs/transition')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({
+        old_tariff_id: activeTariff.id,
+        old_valid_to: '2026-11-10',
+        new_price: 6.50,
+        new_valid_from: '2026-11-11',
+        notes: 'Adeguamento mensa metà novembre'
+      });
+
+    expect(transRes.status).toBe(200);
+    expect(transRes.body.data.oldTariff.valid_to).toBe('2026-11-10');
+    expect(Number(transRes.body.data.newTariff.price)).toBe(6.50);
+    expect(transRes.body.data.newTariff.valid_from).toBe('2026-11-11');
+
+    // Modifica note su tariffa storica
+    const updRes = await request(app)
+      .put(`/api/afterschool-packages/meal-tariffs/${transRes.body.data.newTariff.id}`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ notes: 'Adeguamento confermato' });
+    expect(updRes.status).toBe(200);
+    expect(updRes.body.data.notes).toBe('Adeguamento confermato');
+
+    // Verifica calcolo pagamenti su novembre 2026:
+    // Nel seed ci sono pasti il 2026-11-02 (5.50) e il 2026-11-03 (5.50) e il 2026-11-12 (6.50) o simili
+    const billingRes = await request(app)
+      .get('/api/payments/monthly?year=2026&month=11')
+      .set('Authorization', `Bearer ${adminToken}`);
+    expect(billingRes.status).toBe(200);
+    expect(billingRes.body.data.unit_rates.meal_fee_student).toBe(6.50);
+
+    // Ripristina stato originale per non impattare altri test se eseguiti in parallelo
+    await request(app)
+      .put(`/api/afterschool-packages/meal-tariffs/${transRes.body.data.newTariff.id}`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ price: 5.50 });
+  });
 });

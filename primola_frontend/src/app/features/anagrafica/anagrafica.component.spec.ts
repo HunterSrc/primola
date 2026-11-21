@@ -43,7 +43,7 @@ describe('AnagraficaComponent', () => {
     component.ngOnInit();
     expect(component.students().length).toBe(2);
     expect(component.tutors.length).toBe(1);
-    expect(component.activeTab()).toBe('NEW');
+    expect(component.activeTab()).toBe('LIST');
     expect(component.studentForm.value.sub_lun).toBe(false);
     expect(component.studentForm.value.sub_mar).toBe(false);
     expect(component.studentForm.value.sub_mer).toBe(false);

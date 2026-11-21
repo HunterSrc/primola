@@ -69,6 +69,13 @@ describe('Financial & Operational Reports API Tests', () => {
       expect(res.body.success).toBe(true);
       expect(res.body.data.settings.doposcuola_daily_fee).toBe(14.50);
       expect(res.body.data.settings.meal_fee_student).toBe(6.00);
+
+      // Aggiorna la tariffa mensa storicizzata a 6.00 per i test del report finanziario
+      const mealRes = await request(app)
+        .put('/api/afterschool-packages/meal-tariffs/88888888-8888-8888-8888-888888888801')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ price: 6.00 });
+      expect(mealRes.status).toBe(200);
     });
 
     it('OFFICE cannot update system settings', async () => {

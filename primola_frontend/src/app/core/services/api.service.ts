@@ -23,6 +23,9 @@ import {
   AfterschoolTariff,
   CreateAfterschoolPackagePayload,
   TransitionTariffPayload,
+  MealTariff,
+  MealTariffsResponse,
+  TransitionMealTariffPayload,
   AfterschoolExpense,
   AfterschoolExpenseCategory,
   AfterschoolExpensesSummary,
@@ -774,6 +777,32 @@ export class ApiService {
   transitionAfterschoolTariff(packageId: string, payload: TransitionTariffPayload): Observable<{ oldTariff: AfterschoolTariff; newTariff: AfterschoolTariff }> {
     return this.http.post<ApiResponse<{ oldTariff: AfterschoolTariff; newTariff: AfterschoolTariff }>>(
       `${this.baseUrl}/afterschool-packages/${packageId}/transition-tariff`,
+      payload
+    ).pipe(
+      map(res => res.data)
+    );
+  }
+
+  // ================= STORICO TARIFFA MENSA =================
+  getMealTariffs(referenceDate?: string): Observable<MealTariffsResponse> {
+    let params = new HttpParams();
+    if (referenceDate) {
+      params = params.set('reference_date', referenceDate);
+    }
+    return this.http.get<ApiResponse<MealTariffsResponse>>(`${this.baseUrl}/afterschool-packages/meal-tariffs`, { params }).pipe(
+      map(res => res.data || { active: null, history: [] })
+    );
+  }
+
+  updateMealTariff(tariffId: string, payload: Partial<MealTariff>): Observable<MealTariff> {
+    return this.http.put<ApiResponse<MealTariff>>(`${this.baseUrl}/afterschool-packages/meal-tariffs/${tariffId}`, payload).pipe(
+      map(res => res.data)
+    );
+  }
+
+  transitionMealTariff(payload: TransitionMealTariffPayload): Observable<{ oldTariff: MealTariff | null; newTariff: MealTariff }> {
+    return this.http.post<ApiResponse<{ oldTariff: MealTariff | null; newTariff: MealTariff }>>(
+      `${this.baseUrl}/afterschool-packages/meal-tariffs/transition`,
       payload
     ).pipe(
       map(res => res.data)

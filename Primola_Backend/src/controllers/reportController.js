@@ -614,11 +614,12 @@ exports.getFinancialMonthlyReport = async (req, res, next) => {
 
   const client = await db.getPool().connect();
   try {
-    const settingsRepository = require('../repositories/settingsRepository');
-    const settings = await settingsRepository.getSettingsMap();
-    const mealFee = settings.meal_fee_student !== undefined && settings.meal_fee_student !== null
-      ? Number(settings.meal_fee_student)
-      : 5.50;
+    const mealTariffRepository = require('../repositories/mealTariffRepository');
+    const mealTariffsRes = await client.query(
+      `SELECT id, price, valid_from, valid_to FROM meal_tariffs ORDER BY valid_from DESC, valid_to DESC`
+    );
+    const mealTariffs = mealTariffsRes.rows;
+    const mealFee = mealTariffRepository.resolveTariffForDate(mealTariffs, toDate, 5.50);
 
     // 1. Chiusure straordinarie del mese
     const closuresRes = await client.query(
@@ -714,13 +715,17 @@ exports.getFinancialMonthlyReport = async (req, res, next) => {
     const actualMealsCount = attendances.filter(a => a.canteen_used).length;
 
     const studentPresenceMap = new Map();
-    const studentMealsMap = new Map();
+    const studentMealsRevMap = new Map();
     for (const a of attendances) {
       if (a.is_present) {
         studentPresenceMap.set(a.student_id, (studentPresenceMap.get(a.student_id) || 0) + 1);
       }
       if (a.canteen_used) {
-        studentMealsMap.set(a.student_id, (studentMealsMap.get(a.student_id) || 0) + 1);
+        const unitMealPrice = mealTariffRepository.resolveTariffForDate(mealTariffs, a.date, mealFee);
+        studentMealsRevMap.set(
+          a.student_id,
+          Number(((studentMealsRevMap.get(a.student_id) || 0) + unitMealPrice).toFixed(2))
+        );
       }
     }
 
@@ -766,8 +771,7 @@ exports.getFinancialMonthlyReport = async (req, res, next) => {
         pendingExtraRevenue += extraRev;
       }
 
-      const studentMealsCount = studentMealsMap.get(s.id) || 0;
-      const mealsRev = studentMealsCount * mealFee;
+      const mealsRev = studentMealsRevMap.get(s.id) || 0;
       totalMealsRevenue += mealsRev;
 
       if (settlement && settlement.meals_paid === true) {

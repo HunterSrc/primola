@@ -1,4 +1,5 @@
 const packageRepo = require('../repositories/afterschoolPackageRepository');
+const mealTariffRepo = require('../repositories/mealTariffRepository');
 const { sendSuccess, sendError } = require('../utils/responseFormat');
 
 class AfterschoolPackageController {
@@ -154,6 +155,113 @@ class AfterschoolPackageController {
       }
 
       const result = await packageRepo.transitionTariff(id, {
+        oldTariffId,
+        oldTariffValidTo,
+        newPrice,
+        newTariffValidFrom,
+        newTariffValidTo: newTariffValidTo || '9999-01-01',
+        notes
+      });
+
+      return sendSuccess(res, 200, result);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * GET /api/afterschool-packages/meal-tariffs
+   * Recupera tariffa mensa attiva e storico completo
+   */
+  async getMealTariffs(req, res, next) {
+    try {
+      const { reference_date } = req.query;
+      const [active, history] = await Promise.all([
+        mealTariffRepo.findActiveTariff(reference_date),
+        mealTariffRepo.findAll()
+      ]);
+      return sendSuccess(res, 200, { active, history });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * PUT /api/afterschool-packages/meal-tariffs/:tariffId
+   * Aggiorna una singola voce storica della tariffa mensa
+   */
+  async updateMealTariff(req, res, next) {
+    try {
+      const { tariffId } = req.params;
+      const { price, valid_from, valid_to, notes } = req.body;
+
+      if (price !== undefined && Number(price) < 0) {
+        return sendError(res, 400, 'Il prezzo deve essere >= 0');
+      }
+
+      if (valid_from && valid_to && valid_from > valid_to) {
+        return sendError(res, 400, 'La data di inizio validità non può essere successiva alla fine validità');
+      }
+
+      const updated = await mealTariffRepo.updateTariff(tariffId, {
+        price,
+        valid_from,
+        valid_to,
+        notes
+      });
+
+      if (!updated) {
+        return sendError(res, 404, 'Tariffa mensa non trovata');
+      }
+
+      return sendSuccess(res, 200, updated);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * POST /api/afterschool-packages/meal-tariffs/transition
+   * Transizione tariffa mensa (chiude vecchia e attiva nuova)
+   */
+  async transitionMealTariff(req, res, next) {
+    try {
+      const {
+        old_tariff_id,
+        old_valid_to,
+        new_price,
+        new_valid_from,
+        new_valid_to,
+        notes
+      } = req.body;
+
+      const oldTariffId = old_tariff_id;
+      const oldTariffValidTo = old_valid_to;
+      const newPrice = new_price;
+      const newTariffValidFrom = new_valid_from;
+      const newTariffValidTo = new_valid_to;
+
+      if (newPrice === undefined || !newTariffValidFrom) {
+        return sendError(res, 400, 'new_price e new_valid_from sono obbligatori');
+      }
+
+      if (Number(newPrice) < 0) {
+        return sendError(res, 400, 'Il prezzo deve essere >= 0');
+      }
+
+      if (oldTariffId && !oldTariffValidTo) {
+        return sendError(res, 400, 'old_valid_to è obbligatorio quando old_tariff_id è specificato');
+      }
+
+      if (oldTariffValidTo && newTariffValidFrom && oldTariffValidTo >= newTariffValidFrom) {
+        return sendError(
+          res,
+          400,
+          'La data di fine della vecchia tariffa deve essere precedente alla data di inizio della nuova tariffa'
+        );
+      }
+
+      const result = await mealTariffRepo.transitionTariff({
         oldTariffId,
         oldTariffValidTo,
         newPrice,

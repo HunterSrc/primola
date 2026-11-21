@@ -21,20 +21,6 @@ import { Student, Tutor } from '../../core/models';
 
         <div class="flex items-center space-x-2 bg-slate-100 p-1.5 rounded-xl border border-slate-200 w-full sm:w-auto">
           <button
-            (click)="activeTab.set('NEW')"
-            [class.bg-white]="activeTab() === 'NEW'"
-            [class.shadow-sm]="activeTab() === 'NEW'"
-            [class.text-emerald-700]="activeTab() === 'NEW'"
-            [class.font-bold]="activeTab() === 'NEW'"
-            class="min-h-[44px] flex-1 sm:flex-initial px-3 sm:px-4 py-2 text-xs md:text-sm rounded-lg text-slate-600 transition-all flex items-center justify-center space-x-1.5 sm:space-x-2 cursor-pointer"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
-            </svg>
-            <span>Nuovo Studente</span>
-          </button>
-
-          <button
             (click)="activeTab.set('LIST')"
             [class.bg-white]="activeTab() === 'LIST'"
             [class.shadow-sm]="activeTab() === 'LIST'"
@@ -46,6 +32,20 @@ import { Student, Tutor } from '../../core/models';
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
             </svg>
             <span>Lista ({{ students().length }})</span>
+          </button>
+
+          <button
+            (click)="activeTab.set('NEW')"
+            [class.bg-white]="activeTab() === 'NEW'"
+            [class.shadow-sm]="activeTab() === 'NEW'"
+            [class.text-emerald-700]="activeTab() === 'NEW'"
+            [class.font-bold]="activeTab() === 'NEW'"
+            class="min-h-[44px] flex-1 sm:flex-initial px-3 sm:px-4 py-2 text-xs md:text-sm rounded-lg text-slate-600 transition-all flex items-center justify-center space-x-1.5 sm:space-x-2 cursor-pointer"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+            </svg>
+            <span>Nuovo Studente</span>
           </button>
         </div>
       </div>
@@ -323,7 +323,7 @@ export class AnagraficaComponent implements OnInit {
   private api = inject(ApiService);
   private router = inject(Router);
 
-  readonly activeTab = signal<'NEW' | 'LIST'>('NEW');
+  readonly activeTab = signal<'NEW' | 'LIST'>('LIST');
   readonly students = signal<Student[]>([]);
   readonly isSubmitting = signal<boolean>(false);
   readonly successMessage = signal<string | null>(null);

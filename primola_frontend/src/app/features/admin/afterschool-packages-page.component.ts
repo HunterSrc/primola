@@ -1,11 +1,12 @@
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AfterschoolPackagesTableComponent } from './components/afterschool-packages-table.component';
+import { MealTariffsSectionComponent } from './components/meal-tariffs-section.component';
 
 @Component({
   selector: 'app-afterschool-packages-page',
   standalone: true,
-  imports: [CommonModule, AfterschoolPackagesTableComponent],
+  imports: [CommonModule, AfterschoolPackagesTableComponent, MealTariffsSectionComponent],
   template: `
     <div class="p-3 sm:p-6 md:p-8 max-w-7xl mx-auto space-y-4 sm:space-y-6 pb-6 md:pb-0">
       <!-- Breadcrumb & Header Pagina -->
@@ -16,10 +17,13 @@ import { AfterschoolPackagesTableComponent } from './components/afterschool-pack
             <span class="text-[10px] sm:text-xs bg-amber-500/10 text-amber-600 font-bold px-2 py-0.5 rounded-full border border-amber-500/20">ADMIN</span>
           </div>
           <p class="text-xs sm:text-sm text-slate-500 mt-1">
-            Configurazione del catalogo pacchetti, giorni mensili inclusi e transizioni tariffarie a validità temporale
+            Configurazione del catalogo pacchetti, tariffa mensa studenti e transizioni tariffarie a validità temporale
           </p>
         </div>
       </div>
+
+      <!-- Sezione Dedicata Tariffa Mensa -->
+      <app-meal-tariffs-section />
 
       <!-- Tabella Gestione Pacchetti -->
       <app-afterschool-packages-table />
