@@ -1,3 +1,8 @@
+## Release v3.1.0 - 2026-11-21
+
+- **feat(mobile)**: aggiunta vista responsive a card mobile per Elenco Corsi (`/projects`) e lista Studenti Iscritti nel Dettaglio Corso (`/projects/:id`)
+- **chore(release)**: incremento versione Minor v3.1.0
+
 ## Release v3.0.0 - 2026-11-21
 
 - **feat(course-students)**: nuova anagrafica dedicata Studenti Corsi (`/course-students`, `/api/course-students`) con 10 campi completi, gestione tessera e badge/alert automatici per tessere in scadenza (≤ 30 gg) o scadute (migrazione `015_add_course_students_and_installments.sql`)

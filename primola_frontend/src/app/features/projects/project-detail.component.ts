@@ -232,7 +232,65 @@ import { Project, ProjectTeacher, User, CourseStudent, CourseEnrollment, CardSta
           @if (assignedTeachers().length === 0) {
             <p class="text-xs text-slate-400 italic py-4">Nessun docente ancora associato a questa commessa.</p>
           } @else {
-            <div class="overflow-x-auto">
+            <!-- Mobile Cards Iscritti -->
+            <div class="block md:hidden space-y-2.5">
+              @for (e of courseEnrollments(); track e.id) {
+                <div class="p-3.5 rounded-xl border border-slate-200 bg-slate-50/50 space-y-2.5">
+                  <div class="flex items-start justify-between gap-2">
+                    <div class="min-w-0">
+                      <div class="font-bold text-slate-800 text-sm">{{ e.student_cognome }} {{ e.student_nome }}</div>
+                      @if (e.student_email || e.student_telefono) {
+                        <div class="text-[11px] text-slate-500 truncate">
+                          {{ e.student_email || e.student_telefono }}
+                        </div>
+                      }
+                    </div>
+                    <span
+                      class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border shrink-0"
+                      [ngClass]="getCardBadgeClass(e.student_card_status)"
+                    >
+                      {{ getCardLabel(e.student_card_status) }}
+                    </span>
+                  </div>
+
+                  <div class="grid grid-cols-3 gap-2 text-center text-xs pt-2 border-t border-slate-200/70">
+                    <div>
+                      <div class="text-[10px] text-slate-400 uppercase font-semibold">Rate</div>
+                      <div class="font-bold text-slate-700">{{ e.paid_installments_count ?? 0 }}/{{ e.installments_count }}</div>
+                    </div>
+                    <div>
+                      <div class="text-[10px] text-slate-400 uppercase font-semibold">Incassato</div>
+                      <div class="font-bold text-emerald-700">€ {{ e.paid_amount | number:'1.2-2' }}</div>
+                    </div>
+                    <div>
+                      <div class="text-[10px] text-slate-400 uppercase font-semibold">Rimanenza</div>
+                      <div class="font-bold" [ngClass]="e.remaining_amount > 0 ? 'text-amber-700' : 'text-emerald-700'">
+                        € {{ e.remaining_amount | number:'1.2-2' }}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="flex items-center justify-end gap-2 pt-1">
+                    <a
+                      routerLink="/course-payments"
+                      class="px-3 py-1.5 text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-lg"
+                    >
+                      Pagamenti
+                    </a>
+                    <button
+                      type="button"
+                      (click)="removeEnrollment(e)"
+                      class="px-3 py-1.5 text-xs font-semibold text-rose-700 bg-rose-50 hover:bg-rose-100 rounded-lg cursor-pointer"
+                    >
+                      Rimuovi
+                    </button>
+                  </div>
+                </div>
+              }
+            </div>
+
+            <!-- Desktop Table Iscritti -->
+            <div class="hidden md:block overflow-x-auto">
               <table class="w-full text-left border-collapse">
                 <thead>
                   <tr class="bg-slate-50 text-[11px] font-bold text-slate-500 uppercase">
@@ -411,7 +469,65 @@ import { Project, ProjectTeacher, User, CourseStudent, CourseEnrollment, CardSta
           } @else if (courseEnrollments().length === 0) {
             <p class="text-xs text-slate-400 italic py-4">Nessuno studente ancora iscritto a questo corso.</p>
           } @else {
-            <div class="overflow-x-auto">
+            <!-- Mobile Cards Iscritti -->
+            <div class="block md:hidden space-y-2.5">
+              @for (e of courseEnrollments(); track e.id) {
+                <div class="p-3.5 rounded-xl border border-slate-200 bg-slate-50/50 space-y-2.5">
+                  <div class="flex items-start justify-between gap-2">
+                    <div class="min-w-0">
+                      <div class="font-bold text-slate-800 text-sm">{{ e.student_cognome }} {{ e.student_nome }}</div>
+                      @if (e.student_email || e.student_telefono) {
+                        <div class="text-[11px] text-slate-500 truncate">
+                          {{ e.student_email || e.student_telefono }}
+                        </div>
+                      }
+                    </div>
+                    <span
+                      class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border shrink-0"
+                      [ngClass]="getCardBadgeClass(e.student_card_status)"
+                    >
+                      {{ getCardLabel(e.student_card_status) }}
+                    </span>
+                  </div>
+
+                  <div class="grid grid-cols-3 gap-2 text-center text-xs pt-2 border-t border-slate-200/70">
+                    <div>
+                      <div class="text-[10px] text-slate-400 uppercase font-semibold">Rate</div>
+                      <div class="font-bold text-slate-700">{{ e.paid_installments_count ?? 0 }}/{{ e.installments_count }}</div>
+                    </div>
+                    <div>
+                      <div class="text-[10px] text-slate-400 uppercase font-semibold">Incassato</div>
+                      <div class="font-bold text-emerald-700">€ {{ e.paid_amount | number:'1.2-2' }}</div>
+                    </div>
+                    <div>
+                      <div class="text-[10px] text-slate-400 uppercase font-semibold">Rimanenza</div>
+                      <div class="font-bold" [ngClass]="e.remaining_amount > 0 ? 'text-amber-700' : 'text-emerald-700'">
+                        € {{ e.remaining_amount | number:'1.2-2' }}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="flex items-center justify-end gap-2 pt-1">
+                    <a
+                      routerLink="/course-payments"
+                      class="px-3 py-1.5 text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-lg"
+                    >
+                      Pagamenti
+                    </a>
+                    <button
+                      type="button"
+                      (click)="removeEnrollment(e)"
+                      class="px-3 py-1.5 text-xs font-semibold text-rose-700 bg-rose-50 hover:bg-rose-100 rounded-lg cursor-pointer"
+                    >
+                      Rimuovi
+                    </button>
+                  </div>
+                </div>
+              }
+            </div>
+
+            <!-- Desktop Table Iscritti -->
+            <div class="hidden md:block overflow-x-auto">
               <table class="w-full text-left border-collapse">
                 <thead>
                   <tr class="bg-slate-50 text-[11px] font-bold text-slate-500 uppercase">

@@ -154,7 +154,99 @@ import { AppDatePipe } from '../../shared/pipes/app-date.pipe';
           </button>
         </div>
       } @else {
-        <div class="bg-white rounded-2xl shadow-sm border border-slate-200/80 overflow-hidden">
+        <!-- Mobile Cards -->
+        <div class="block md:hidden space-y-3">
+          @for (proj of filteredProjects(); track proj.id) {
+            <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4 space-y-3">
+              <div class="flex items-start justify-between gap-2">
+                <div class="min-w-0">
+                  <span class="inline-block px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-purple-100 text-purple-700 mb-1">
+                    {{ proj.type || 'CORSO' }}
+                  </span>
+                  <a
+                    [routerLink]="['/projects', proj.id]"
+                    class="font-bold text-slate-800 hover:text-[#3857F1] text-base block leading-snug"
+                  >
+                    {{ proj.title }}
+                  </a>
+                </div>
+                <div class="text-right shrink-0">
+                  <div class="font-bold text-slate-800 text-sm">€ {{ (proj.enrollment_fee || 0) | number:'1.2-2' }}</div>
+                  <div class="text-[11px] text-slate-500">
+                    Iscritti: <span class="font-bold text-slate-700">{{ proj.actual_enrolled || 0 }}</span> / {{ proj.max_enrolled || 0 }}
+                  </div>
+                </div>
+              </div>
+
+              @if ((proj.max_enrolled || 0) > 0 && (proj.actual_enrolled || 0) > (proj.max_enrolled || 0)) {
+                <div>
+                  <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-800 border border-amber-200">
+                    Oltre capienza ({{ proj.actual_enrolled }}/{{ proj.max_enrolled }})
+                  </span>
+                </div>
+              }
+
+              <div class="text-xs text-slate-600 space-y-1 pt-2 border-t border-slate-100">
+                <div>
+                  <span class="font-semibold text-slate-500">Date:</span>
+                  @if (proj.start_date || proj.end_date) {
+                    <span class="ml-1 font-medium text-slate-700">
+                      {{ proj.start_date ? (proj.start_date | appDate) : 'Inizio n.d.' }} &rarr; {{ proj.end_date ? (proj.end_date | appDate) : 'Fine n.d.' }}
+                    </span>
+                  } @else {
+                    <span class="ml-1 italic text-slate-400">Non specificate</span>
+                  }
+                </div>
+                @if (proj.location) {
+                  <div><span class="font-semibold text-slate-500">Sede:</span> {{ proj.location }}</div>
+                }
+                @if (proj.teachers && proj.teachers.length > 0) {
+                  <div class="flex flex-wrap gap-1 pt-1">
+                    @for (t of proj.teachers; track t.user_id) {
+                      <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium bg-blue-50 text-[#3857F1] border border-blue-100/80">
+                        {{ t.first_name }} {{ t.last_name }}
+                      </span>
+                    }
+                  </div>
+                }
+              </div>
+
+              <div class="flex items-center justify-between gap-2 pt-2 border-t border-slate-100">
+                @if (authService.canViewCompensation()) {
+                  <div class="text-xs text-slate-600">
+                    <span class="font-semibold">{{ proj.total_assigned_hours || 0 }}h</span> ·
+                    <span class="font-bold text-emerald-600">€ {{ (proj.total_cost || 0) | number:'1.2-2' }}</span>
+                  </div>
+                } @else {
+                  <span></span>
+                }
+                <div class="flex items-center gap-2">
+                  <a
+                    [routerLink]="['/projects', proj.id]"
+                    class="px-3 py-2 text-xs font-semibold text-[#3857F1] bg-blue-50 hover:bg-blue-100 rounded-xl transition-colors"
+                  >
+                    Gestisci &rarr;
+                  </a>
+                  @if (authService.isAdmin()) {
+                    <button
+                      type="button"
+                      (click)="deleteProject(proj)"
+                      class="p-2 text-slate-400 hover:text-rose-600 rounded-xl bg-slate-50 transition-colors"
+                      title="Elimina corso"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                    </button>
+                  }
+                </div>
+              </div>
+            </div>
+          }
+        </div>
+
+        <!-- Desktop Table -->
+        <div class="hidden md:block bg-white rounded-2xl shadow-sm border border-slate-200/80 overflow-hidden">
           <div class="overflow-x-auto">
             <table class="w-full text-left border-collapse text-xs sm:text-sm">
               <thead>
