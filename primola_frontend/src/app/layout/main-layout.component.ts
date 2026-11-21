@@ -239,6 +239,20 @@ export type AccordionSection = 'doposcuola' | 'corsi' | 'admin' | null;
                         </div>
                         <span class="text-sm">Tariffe Docenti Doposcuola</span>
                       </a>
+
+                      <a
+                        routerLink="/afterschool-reports"
+                        (click)="closeMobileMenu()"
+                        routerLinkActive="bg-[#3857F1] text-white shadow-lg shadow-blue-600/30 font-semibold"
+                        class="flex items-center space-x-3 px-3 py-2 rounded-xl text-slate-300 hover:bg-slate-800/80 hover:text-white transition-all group/item"
+                      >
+                        <div class="p-1.5 rounded-lg bg-slate-800/60 group-hover/item:bg-slate-700/60 transition-colors">
+                          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-emerald-400 group-hover/item:scale-110 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                          </svg>
+                        </div>
+                        <span class="text-sm">Rendicontazione Doposcuola</span>
+                      </a>
                     }
                   </div>
                 </div>
@@ -339,7 +353,7 @@ export type AccordionSection = 'doposcuola' | 'corsi' | 'admin' | null;
                       </a>
 
                       <a
-                        routerLink="/reports"
+                        routerLink="/course-reports"
                         (click)="closeMobileMenu()"
                         routerLinkActive="bg-[#3857F1] text-white shadow-lg shadow-blue-600/30 font-semibold"
                         class="flex items-center space-x-3 px-3 py-2 rounded-xl text-slate-300 hover:bg-slate-800/80 hover:text-white transition-all group/item"
@@ -349,7 +363,7 @@ export type AccordionSection = 'doposcuola' | 'corsi' | 'admin' | null;
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                           </svg>
                         </div>
-                        <span class="text-sm">Rendicontazione Operativa</span>
+                        <span class="text-sm">Rendicontazione Corsi</span>
                       </a>
                     </div>
                   </div>
@@ -590,7 +604,7 @@ export class MainLayoutComponent {
       url.includes('/projects') ||
       url.includes('/course-students') ||
       url.includes('/course-payments') ||
-      url.includes('/reports')
+      url.includes('/course-reports')
     ) {
       return 'corsi';
     }

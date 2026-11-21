@@ -8,6 +8,7 @@ describe('AppDatePipe', () => {
     expect(pipe.transform(null)).toBe('-');
     expect(pipe.transform(undefined)).toBe('-');
     expect(pipe.transform('')).toBe('-');
+    expect(pipe.transform({} as any)).toBe('-');
   });
 
   it('should format YYYY-MM-DD string to dd/MM/yyyy by default', () => {
@@ -20,18 +21,33 @@ describe('AppDatePipe', () => {
     expect(pipe.transform(d)).toBe('22/10/2026');
   });
 
+  it('should format timestamp numbers correctly', () => {
+    const d = new Date(2026, 9, 22, 10, 0);
+    expect(pipe.transform(d.getTime())).toBe('22/10/2026');
+    expect(pipe.transform(NaN)).toBe('-');
+  });
+
   it('should format datetime correctly', () => {
     const d = new Date(2026, 9, 22, 14, 30);
     expect(pipe.transform(d, 'datetime')).toBe('22/10/2026 14:30');
   });
 
-  it('should format full date in Italian', () => {
-    const result = pipe.transform('2026-10-22', 'full');
-    expect(result.toLowerCase()).toContain('ottobre');
-    expect(result).toContain('2026');
+  it('should format time correctly', () => {
+    const d = new Date(2026, 9, 22, 14, 30);
+    expect(pipe.transform(d, 'time')).toBe('14:30');
   });
 
-  it('should return original string if date parsing fails', () => {
+  it('should format full and monthYear dates in Italian', () => {
+    const fullResult = pipe.transform('2026-10-22', 'full');
+    expect(fullResult.toLowerCase()).toContain('ottobre');
+    expect(fullResult).toContain('2026');
+
+    const myResult = pipe.transform('2026-10-22', 'monthYear');
+    expect(myResult.toLowerCase()).toContain('ottobre');
+    expect(myResult).toContain('2026');
+  });
+
+  it('should return original string if date parsing fails or "-" for non-strings', () => {
     expect(pipe.transform('invalid-date')).toBe('invalid-date');
   });
 });

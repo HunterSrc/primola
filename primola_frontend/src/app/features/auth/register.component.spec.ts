@@ -109,5 +109,9 @@ describe('RegisterComponent', () => {
     expect(component.isLoading()).toBe(false);
     expect(component.registrationSuccess()).toBe(false);
     expect(component.errorMessage()).toBe('Un utente con questo indirizzo email è già registrato.');
+
+    mockAuthService.register.mockReturnValue(throwError(() => ({})));
+    component.onSubmit();
+    expect(component.errorMessage()).toBe('Errore durante la registrazione. Riprova più tardi.');
   });
 });

@@ -13,7 +13,8 @@ import { ProjectsListComponent } from './features/projects/projects-list.compone
 import { ProjectDetailComponent } from './features/projects/project-detail.component';
 import { AfterschoolListComponent } from './features/afterschool/afterschool-list.component';
 import { AfterschoolExpensesComponent } from './features/afterschool/afterschool-expenses.component';
-import { ReportsComponent } from './features/reports/reports.component';
+import { AfterschoolReportsComponent } from './features/reports/afterschool-reports.component';
+import { CourseReportsComponent } from './features/reports/course-reports.component';
 import { AfterschoolPackagesPageComponent } from './features/admin/afterschool-packages-page.component';
 import { PaymentsDashboardComponent } from './features/payments/payments-dashboard.component';
 import { CourseStudentsComponent } from './features/course-students/course-students.component';
@@ -113,9 +114,19 @@ export const routes: Routes = [
         canActivate: [adminOrOfficeGuard]
       },
       {
-        path: 'reports',
-        component: ReportsComponent,
+        path: 'afterschool-reports',
+        component: AfterschoolReportsComponent,
         canActivate: [reportsGuard]
+      },
+      {
+        path: 'course-reports',
+        component: CourseReportsComponent,
+        canActivate: [reportsGuard]
+      },
+      {
+        path: 'reports',
+        redirectTo: '/afterschool-reports',
+        pathMatch: 'full'
       },
       {
         path: 'admin/afterschool-packages',

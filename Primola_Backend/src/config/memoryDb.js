@@ -504,6 +504,35 @@ function createMemoryPostgres() {
     ON CONFLICT DO NOTHING;
   `);
 
+  if (process.env.NODE_ENV !== 'production') {
+    const now = new Date();
+    const yyyy = now.getFullYear();
+    const mm = String(now.getMonth() + 1).padStart(2, '0');
+    db.public.none(`
+      INSERT INTO users (id, email, password_hash, role, first_name, last_name, nome, cognome, phone)
+      VALUES ('99999999-9999-9999-9999-999999999901', 'docente.test@primola.it', '$2b$10$dummyhashfordevonly000000000000000000000000000000000', 'TEACHER', 'Mario', 'Rossi', 'Mario', 'Rossi', '3331234567')
+      ON CONFLICT DO NOTHING;
+
+      INSERT INTO afterschool_assignments (user_id, hourly_rate)
+      VALUES ('99999999-9999-9999-9999-999999999901', 20.00)
+      ON CONFLICT DO NOTHING;
+
+      INSERT INTO teacher_shifts (id, user_id, shift_date, start_time, end_time, notes)
+      VALUES
+        ('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb1', '99999999-9999-9999-9999-999999999901', '${yyyy}-${mm}-05', '14:00', '18:00', 'Turno doposcuola test 1'),
+        ('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbb2', '99999999-9999-9999-9999-999999999901', '${yyyy}-${mm}-12', '14:00', '18:00', 'Turno doposcuola test 2')
+      ON CONFLICT DO NOTHING;
+
+      INSERT INTO projects (id, title, type, location, start_date, end_date)
+      VALUES ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1', 'Corso Robotica (Test)', 'CORSO', 'Aula 1', '${yyyy}-${mm}-01', '${yyyy}-${mm}-20')
+      ON CONFLICT DO NOTHING;
+
+      INSERT INTO project_teachers (project_id, user_id, assigned_hours, hourly_rate)
+      VALUES ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1', '99999999-9999-9999-9999-999999999901', 20, 25.00)
+      ON CONFLICT DO NOTHING;
+    `);
+  }
+
     const pg = db.adapters.createPg();
   memPool = new pg.Pool();
   return memPool;

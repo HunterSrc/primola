@@ -53,7 +53,8 @@ describe('MainLayoutComponent', () => {
     expect(component.authService.currentUser()?.name).toBe('Admin Test');
 
     const text = fixture.nativeElement.textContent;
-    expect(text).toContain('Rendicontazione Operativa');
+    expect(text).toContain('Rendicontazione Doposcuola');
+    expect(text).toContain('Rendicontazione Corsi');
     expect(text).toContain('Riepiloghi & Bilancio Admin');
     expect(text).not.toContain('Rendicontazione Ore Corsi');
   });
@@ -100,7 +101,8 @@ describe('MainLayoutComponent', () => {
     expect(component.detectSectionFromUrl('/payments')).toBe('doposcuola');
     expect(component.detectSectionFromUrl('/anagrafica')).toBe('doposcuola');
     expect(component.detectSectionFromUrl('/projects')).toBe('corsi');
-    expect(component.detectSectionFromUrl('/reports')).toBe('corsi');
+    expect(component.detectSectionFromUrl('/course-reports')).toBe('corsi');
+    expect(component.detectSectionFromUrl('/afterschool-reports')).toBe('doposcuola');
     expect(component.detectSectionFromUrl('/users')).toBe('admin');
     expect(component.detectSectionFromUrl('/admin/dashboard')).toBe('admin');
     expect(component.detectSectionFromUrl('/afterschool-expenses')).toBe('admin');
@@ -135,5 +137,36 @@ describe('MainLayoutComponent', () => {
 
     component.closeMobileMenu();
     expect(component.mobileMenuOpen()).toBe(false);
+  });
+
+  it('should handle localStorage errors gracefully when reading or saving sidebar state', () => {
+    const getItemSpy = vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+      throw new Error('Access denied');
+    });
+    const setItemSpy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new Error('Access denied');
+    });
+
+    const readMethod = (component as any).readInitialSidebarState.bind(component);
+    expect(readMethod()).toBe(false);
+
+    // Toggle sidebar shouldn't crash when setItem throws
+    component.toggleDesktopSidebar();
+    expect(component.desktopSidebarCollapsed()).toBe(true);
+
+    getItemSpy.mockRestore();
+    setItemSpy.mockRestore();
+
+    // Test syncSectionWithUrl when url is undefined or empty
+    component.syncSectionWithUrl(undefined);
+    component.syncSectionWithUrl('');
+
+    // Test isSectionActive when router has empty url
+    mockRouter.url = '';
+    expect(component.isSectionActive('doposcuola')).toBe(true);
+
+    // Test router events without urlAfterRedirects
+    routerEvents$.next(new NavigationEnd(3, '/projects', ''));
+    expect(component.openSection()).toBe('corsi');
   });
 });

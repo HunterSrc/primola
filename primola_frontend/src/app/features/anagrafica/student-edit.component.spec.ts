@@ -91,6 +91,13 @@ describe('StudentEditComponent', () => {
     expect(component.tutors.at(0).value.first_name).toBe('Pietro');
     expect(component.tutors.at(0).value.email).toBe('pietro.manzoni@esempio.it');
     expect(component.tutors.at(0).value.is_main).toBe(true);
+
+    // Tutor with undefined email
+    component.populateForm({
+      ...mockStudent,
+      tutors: [{ first_name: 'P', last_name: 'M', phone: '1', email: undefined, is_main: false }]
+    } as any);
+    expect(component.tutors.at(0).value.email).toBe('');
   });
 
   it('should redirect to /anagrafica if route has no id', () => {

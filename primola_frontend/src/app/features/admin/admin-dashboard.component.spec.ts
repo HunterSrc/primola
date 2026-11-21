@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { TestBed } from '@angular/core/testing';
 import { AdminDashboardComponent } from './admin-dashboard.component';
 import { ApiService } from '../../core/services/api.service';
-import { of } from 'rxjs';
+import { of, throwError } from 'rxjs';
 
 describe('AdminDashboardComponent', () => {
   let component: AdminDashboardComponent;
@@ -64,5 +64,16 @@ describe('AdminDashboardComponent', () => {
     component.financialMonth = 5;
     component.loadFinancialReport();
     expect(mockApi.getFinancialMonthlyReport).toHaveBeenCalledWith(2025, 5);
+  });
+
+  it('should handle error when financial report loading fails', () => {
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    mockApi.getFinancialMonthlyReport.mockReturnValue(throwError(() => new Error('Finance err')));
+
+    component.loadFinancialReport();
+
+    expect(component.loadingFinancial()).toBe(false);
+    expect(consoleSpy).toHaveBeenCalledWith('Errore caricamento report finanziario:', expect.any(Error));
+    consoleSpy.mockRestore();
   });
 });

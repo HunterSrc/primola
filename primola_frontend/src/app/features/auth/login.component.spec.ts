@@ -73,4 +73,24 @@ describe('LoginComponent', () => {
     expect(component.errorMessage()).toBe('Il tuo account è in attesa di approvazione da parte di un amministratore.');
     expect(component.isLoading()).toBe(false);
   });
+
+  it('should handle res.success false and fallback error message', () => {
+    mockAuthService.loginWithCredentials.mockReturnValue(of({ success: false }));
+    component.email = 'docente@primola.it';
+    component.password = 'pass';
+    component.onSubmit();
+    expect(mockRouter.navigate).not.toHaveBeenCalled();
+
+    mockAuthService.loginWithCredentials.mockReturnValue(throwError(() => ({})));
+    component.onSubmit();
+    expect(component.errorMessage()).toBe('Errore durante il login. Verifica le credenziali.');
+
+    component.email = '';
+    component.password = 'pass';
+    component.onSubmit();
+
+    component.email = 'test@primola.it';
+    component.password = '';
+    component.onSubmit();
+  });
 });

@@ -3,7 +3,7 @@ import { TestBed } from '@angular/core/testing';
 import { ReportsComponent } from './reports.component';
 import { ApiService } from '../../core/services/api.service';
 import { AuthService } from '../../core/services/auth.service';
-import { of } from 'rxjs';
+import { of, throwError } from 'rxjs';
 import { OperationalMonthlyReport, ProjectReportData } from '../../core/models';
 
 describe('ReportsComponent', () => {
@@ -123,6 +123,20 @@ describe('ReportsComponent', () => {
     expect(component.reportData()).toEqual(mockProjectReport);
   });
 
+  it('should handle errors when loading reports', () => {
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    mockApi.getOperationalMonthlyReport.mockReturnValue(throwError(() => new Error('err1')));
+    mockApi.getProjectsReport.mockReturnValue(throwError(() => new Error('err2')));
+
+    component.loadOperationalReport();
+    component.loadProjectsReport();
+
+    expect(component.loadingOperational()).toBe(false);
+    expect(component.loadingProjects()).toBe(false);
+    expect(consoleSpy).toHaveBeenCalledTimes(2);
+    consoleSpy.mockRestore();
+  });
+
   it('should toggle teacher shifts expansion', () => {
     component.ngOnInit();
     expect(component.isShiftsExpanded('t-1')).toBe(false);
@@ -132,5 +146,12 @@ describe('ReportsComponent', () => {
 
     component.toggleTeacherShifts('t-1');
     expect(component.isShiftsExpanded('t-1')).toBe(false);
+  });
+
+  it('should allow setting activeTab and reading lists', () => {
+    component.activeTab.set('PROJECTS');
+    expect(component.activeTab()).toBe('PROJECTS');
+    expect(component.monthsList.length).toBe(12);
+    expect(component.yearsList.length).toBeGreaterThan(0);
   });
 });
