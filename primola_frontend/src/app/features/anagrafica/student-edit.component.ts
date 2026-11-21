@@ -98,6 +98,16 @@ import { Student } from '../../core/models';
                 </div>
 
                 <div>
+                  <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1.5">Classe e Sezione</label>
+                  <input
+                    type="text"
+                    formControlName="class_section"
+                    placeholder="Es. 1°E"
+                    class="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-slate-50/50 text-sm"
+                  />
+                </div>
+
+                <div>
                   <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1.5">Data di Nascita</label>
                   <input
                     type="date"
@@ -123,6 +133,42 @@ import { Student } from '../../core/models';
                     class="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-slate-50/50 text-sm"
                   />
                 </div>
+              </div>
+            </div>
+
+            <!-- Sezione Allergeni e Preferenze Alimentari -->
+            <div class="space-y-4">
+              <h2 class="text-sm sm:text-base font-bold text-slate-700 flex items-center space-x-2 border-b pb-2">
+                <span class="w-2 h-2 rounded-full bg-amber-500"></span>
+                <span>Allergeni e Preferenze Alimentari</span>
+              </h2>
+
+              <div>
+                <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1.5">Note Allergie, Intolleranze o Diete</label>
+                <textarea
+                  formControlName="allergies_notes"
+                  rows="3"
+                  placeholder="Es. Celiachia, allergia alle arachidi, intolleranza al lattosio, dieta vegetariana..."
+                  class="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-slate-50/50 text-sm"
+                ></textarea>
+              </div>
+            </div>
+
+            <!-- Sezione Vaccinazioni e Note Varie -->
+            <div class="space-y-4">
+              <h2 class="text-sm sm:text-base font-bold text-slate-700 flex items-center space-x-2 border-b pb-2">
+                <span class="w-2 h-2 rounded-full bg-sky-500"></span>
+                <span>Vaccinazioni e Note Varie</span>
+              </h2>
+
+              <div>
+                <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1.5">Vaccinazioni e Altre Informazioni</label>
+                <textarea
+                  formControlName="vaccinations_notes"
+                  rows="3"
+                  placeholder="Es. Stato vaccinale, autorizzazioni o altre note utili..."
+                  class="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-slate-50/50 text-sm"
+                ></textarea>
               </div>
             </div>
 
@@ -168,7 +214,7 @@ import { Student } from '../../core/models';
                       }
                     </div>
 
-                    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3">
                       <div>
                         <label class="block text-[11px] font-semibold text-slate-500 uppercase mb-1">Nome *</label>
                         <input
@@ -190,6 +236,15 @@ import { Student } from '../../core/models';
                         <input
                           type="tel"
                           formControlName="phone"
+                          class="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm bg-white focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                        />
+                      </div>
+                      <div>
+                        <label class="block text-[11px] font-semibold text-slate-500 uppercase mb-1">Email</label>
+                        <input
+                          type="email"
+                          formControlName="email"
+                          placeholder="email@esempio.it"
                           class="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm bg-white focus:outline-none focus:ring-1 focus:ring-emerald-500"
                         />
                       </div>
@@ -264,6 +319,9 @@ export class StudentEditComponent implements OnInit {
     first_name: ['', Validators.required],
     last_name: ['', Validators.required],
     school: [''],
+    class_section: [''],
+    allergies_notes: [''],
+    vaccinations_notes: [''],
     birth_date: [''],
     birth_place: [''],
     residence: [''],
@@ -310,6 +368,9 @@ export class StudentEditComponent implements OnInit {
       first_name: student.first_name,
       last_name: student.last_name,
       school: student.school || '',
+      class_section: student.class_section || '',
+      allergies_notes: student.allergies_notes || '',
+      vaccinations_notes: student.vaccinations_notes || '',
       birth_date: student.birth_date || '',
       birth_place: student.birth_place || '',
       residence: student.residence || '',
@@ -323,17 +384,18 @@ export class StudentEditComponent implements OnInit {
 
     this.tutors.clear();
     if (student.tutors && student.tutors.length > 0) {
-      student.tutors.forEach(t => this.addTutorGroup(t.first_name, t.last_name, t.phone, t.is_main, t.relationship));
+      student.tutors.forEach(t => this.addTutorGroup(t.first_name, t.last_name, t.phone, t.email || '', t.is_main, t.relationship));
     } else {
-      this.addTutorGroup('', '', '', true, 'Genitore');
+      this.addTutorGroup('', '', '', '', true, 'Genitore');
     }
   }
 
-  addTutorGroup(firstName = '', lastName = '', phone = '', isMain = false, rel = 'Genitore'): void {
+  addTutorGroup(firstName = '', lastName = '', phone = '', email = '', isMain = false, rel = 'Genitore'): void {
     const group = this.fb.group({
       first_name: [firstName, Validators.required],
       last_name: [lastName, Validators.required],
       phone: [phone, Validators.required],
+      email: [email, Validators.email],
       relationship: [rel],
       is_main: [isMain]
     });
@@ -341,7 +403,7 @@ export class StudentEditComponent implements OnInit {
   }
 
   addTutor(): void {
-    this.addTutorGroup('', '', '', false, 'Genitore');
+    this.addTutorGroup('', '', '', '', false, 'Genitore');
   }
 
   removeTutor(index: number): void {

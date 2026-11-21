@@ -13,8 +13,8 @@ describe('AnagraficaComponent', () => {
   let mockRouter: any;
 
   const mockStudents: Student[] = [
-    { id: 1, first_name: 'Leonardo', last_name: 'Bianchi', school: 'Scuola Rodari' },
-    { id: 2, first_name: 'Sofia', last_name: 'Rossi', school: 'IC Manzoni' }
+    { id: 1, first_name: 'Leonardo', last_name: 'Bianchi', school: 'Scuola Rodari', class_section: '2°A', allergies_notes: 'Celiachia', main_tutor_email: 'bianchi@esempio.it' },
+    { id: 2, first_name: 'Sofia', last_name: 'Rossi', school: 'IC Manzoni', class_section: '1°E' }
   ];
 
   beforeEach(() => {
@@ -79,22 +79,30 @@ describe('AnagraficaComponent', () => {
     component.searchQuery = 'manzoni';
     expect(component.filteredStudents().length).toBe(1);
 
+    component.searchQuery = '1°e';
+    expect(component.filteredStudents().length).toBe(1);
+    expect(component.filteredStudents()[0].first_name).toBe('Sofia');
+
     component.searchQuery = 'nonexistent';
     expect(component.filteredStudents().length).toBe(0);
   });
 
-  it('should submit form when valid and reset form with success feedback', () => {
+  it('should submit form when valid including extra fields and tutor email, and reset form', () => {
     component.ngOnInit();
     component.studentForm.patchValue({
       first_name: 'Nuovo',
       last_name: 'Studente',
-      school: 'Scuola Test'
+      school: 'Scuola Test',
+      class_section: '1°E',
+      allergies_notes: 'Allergia alle arachidi',
+      vaccinations_notes: 'Tutte in regola'
     });
 
     component.tutors.at(0).patchValue({
       first_name: 'Marco',
       last_name: 'Padre',
       phone: '+39 333',
+      email: 'marco.padre@esempio.it',
       relationship: 'Padre',
       is_main: true
     });
@@ -105,11 +113,35 @@ describe('AnagraficaComponent', () => {
     expect(mockApi.createStudent).toHaveBeenCalledWith(expect.objectContaining({
       first_name: 'Nuovo',
       last_name: 'Studente',
-      weekly_meals: 0
+      class_section: '1°E',
+      allergies_notes: 'Allergia alle arachidi',
+      vaccinations_notes: 'Tutte in regola',
+      weekly_meals: 0,
+      tutors: [expect.objectContaining({ email: 'marco.padre@esempio.it' })]
     }));
     expect(component.isSubmitting()).toBe(false);
     expect(component.successMessage()).toContain('Nuovo Studente');
     expect(component.tutors.length).toBe(1);
+  });
+
+  it('should invalidate form when tutor email is malformed', () => {
+    component.ngOnInit();
+    component.studentForm.patchValue({
+      first_name: 'Nuovo',
+      last_name: 'Studente'
+    });
+    component.tutors.at(0).patchValue({
+      first_name: 'Marco',
+      last_name: 'Padre',
+      phone: '+39 333',
+      email: 'not-an-email'
+    });
+
+    expect(component.tutors.at(0).get('email')?.invalid).toBe(true);
+    expect(component.studentForm.invalid).toBe(true);
+
+    component.onSubmit();
+    expect(mockApi.createStudent).not.toHaveBeenCalled();
   });
 
   it('should not submit if form is invalid', () => {

@@ -82,6 +82,39 @@ describe('studentRepository unit tests', () => {
       expect(mockClient.release).toHaveBeenCalled();
     });
 
+    it('should pass classe, allergeni_note, and vaccinazioni_note (and English aliases) on create', async () => {
+      mockClient.query
+        .mockResolvedValueOnce({}) // BEGIN
+        .mockResolvedValueOnce({ rows: [{ id: 31 }] }) // INSERT student
+        .mockResolvedValueOnce({}) // COMMIT
+        .mockResolvedValueOnce({}) // BEGIN
+        .mockResolvedValueOnce({ rows: [{ id: 32 }] }) // INSERT student
+        .mockResolvedValueOnce({}); // COMMIT
+
+      await studentRepository.createStudentWithTutors({
+        first_name: 'Anna',
+        last_name: 'Bianchi',
+        classe: '3A',
+        allergeni_note: 'Arachidi',
+        vaccinazioni_note: 'In regola'
+      }, []);
+
+      const firstInsertCall = mockClient.query.mock.calls[1];
+      expect(firstInsertCall[0]).toContain('classe, allergeni_note, vaccinazioni_note');
+      expect(firstInsertCall[1].slice(8)).toEqual(['3A', 'Arachidi', 'In regola']);
+
+      await studentRepository.createStudentWithTutors({
+        first_name: 'Marco',
+        last_name: 'Neri',
+        class_section: '2B',
+        allergies_notes: 'Lattosio',
+        vaccinations_notes: 'Completa'
+      }, []);
+
+      const secondInsertCall = mockClient.query.mock.calls[4];
+      expect(secondInsertCall[1].slice(8)).toEqual(['2B', 'Lattosio', 'Completa']);
+    });
+
     it('should rollback transaction if student insertion fails', async () => {
       mockClient.query
         .mockResolvedValueOnce({}) // BEGIN
@@ -173,6 +206,38 @@ describe('studentRepository unit tests', () => {
       expect(result.tutors).toEqual([]);
       expect(mockClient.query).toHaveBeenCalledWith('COMMIT');
       expect(mockClient.release).toHaveBeenCalled();
+    });
+
+    it('should pass classe, allergeni_note, and vaccinazioni_note (and English aliases) on update', async () => {
+      const updatedStudent = { id: 's1', nome: 'Anna', cognome: 'Bianchi', classe: '4C' };
+      mockClient.query
+        .mockResolvedValueOnce({}) // BEGIN
+        .mockResolvedValueOnce({ rows: [updatedStudent] }) // UPDATE student
+        .mockResolvedValueOnce({}) // COMMIT
+        .mockResolvedValueOnce({}) // BEGIN
+        .mockResolvedValueOnce({ rows: [updatedStudent] }) // UPDATE student
+        .mockResolvedValueOnce({}); // COMMIT
+
+      await studentRepository.updateStudentWithTutors('s1', {
+        classe: '4C',
+        allergeni_note: 'Glutine',
+        vaccinazioni_note: 'Aggiornate'
+      }, null);
+
+      const firstUpdateCall = mockClient.query.mock.calls[1];
+      expect(firstUpdateCall[0]).toContain('classe = COALESCE($9, classe)');
+      expect(firstUpdateCall[0]).toContain('allergeni_note = COALESCE($10, allergeni_note)');
+      expect(firstUpdateCall[0]).toContain('vaccinazioni_note = COALESCE($11, vaccinazioni_note)');
+      expect(firstUpdateCall[1].slice(8)).toEqual(['4C', 'Glutine', 'Aggiornate', 's1']);
+
+      await studentRepository.updateStudentWithTutors('s1', {
+        class_section: '5A',
+        allergies_notes: 'Nessuna',
+        vaccinations_notes: 'OK'
+      }, null);
+
+      const secondUpdateCall = mockClient.query.mock.calls[4];
+      expect(secondUpdateCall[1].slice(8)).toEqual(['5A', 'Nessuna', 'OK', 's1']);
     });
 
     it('should rollback transaction if error occurs during update', async () => {

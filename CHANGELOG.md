@@ -1,3 +1,10 @@
+## Release v2.3.0 - 2026-11-21
+
+- **feat(anagrafica)**: aggiunto campo email per i genitori/tutori nei form di creazione e modifica studente (con visualizzazione in lista)
+- **feat(anagrafica)**: aggiunto campo libero testuale classe e sezione (es. `1°E`) sulla scheda studente
+- **feat(anagrafica)**: aggiunte sezioni dedicate per allergeni/preferenze alimentari e vaccinazioni/note varie (migrazione `014_add_student_extra_fields.sql`)
+- **chore(release)**: incremento versione v2.3.0
+
 ## Release v2.2.1 - 2026-11-18
 
 - **fix(afterschool)**: disattivata la presenza preimpostata di default all'aggiunta di uno studente dal calendario (`is_present: false`)

@@ -48,6 +48,9 @@ CREATE TABLE students (
     luogo_nascita VARCHAR(150) NOT NULL,
     residenza VARCHAR(200) NOT NULL,
     scuola VARCHAR(150) NOT NULL,
+    classe VARCHAR(50) DEFAULT '',
+    allergeni_note TEXT DEFAULT '',
+    vaccinazioni_note TEXT DEFAULT '',
     -- 1=LunedÃ¬, 2=MartedÃ¬ ... 7=Domenica. Si usa smallint per ottimizzazione
     giorni_abbonamento SMALLINT[] NOT NULL DEFAULT '{}',
     giorni_mensa SMALLINT[] NOT NULL DEFAULT '{}',

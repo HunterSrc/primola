@@ -1,6 +1,6 @@
 {
   "name": "primola-backend",
-  "version": "2.2.1",
+  "version": "2.3.0",
   "description": "Backend API for Primola",
   "main": "src/index.js",
   "scripts": {

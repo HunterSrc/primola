@@ -9,6 +9,9 @@ const getStudentsWithTutors = async () => {
           s.nome AS student_first_name,
           s.cognome AS student_last_name,
           s.scuola,
+          s.classe,
+          s.allergeni_note,
+          s.vaccinazioni_note,
           s.data_nascita,
           s.luogo_nascita,
           s.residenza,
@@ -43,8 +46,8 @@ const createStudentWithTutors = async (studentData, tutorsList) => {
     await client.query('BEGIN');
 
     const insertStudentQuery = `
-      INSERT INTO students (nome, cognome, data_nascita, luogo_nascita, residenza, scuola, giorni_abbonamento, pasti_settimanali)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      INSERT INTO students (nome, cognome, data_nascita, luogo_nascita, residenza, scuola, giorni_abbonamento, pasti_settimanali, classe, allergeni_note, vaccinazioni_note)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
       RETURNING id;
     `;
     const studentRes = await client.query(insertStudentQuery, [
@@ -55,7 +58,10 @@ const createStudentWithTutors = async (studentData, tutorsList) => {
       studentData.residenza || 'N/D',
       studentData.scuola || 'N/D',
       studentData.giorni_abbonamento || [],
-      studentData.pasti_settimanali ?? 0
+      studentData.pasti_settimanali ?? 0,
+      studentData.classe ?? studentData.class_section ?? '',
+      studentData.allergeni_note ?? studentData.allergies_notes ?? '',
+      studentData.vaccinazioni_note ?? studentData.vaccinations_notes ?? ''
     ]);
     const studentId = studentRes.rows[0].id;
 
@@ -109,6 +115,9 @@ const getStudentById = async (studentId) => {
         luogo_nascita,
         residenza,
         scuola,
+        classe,
+        allergeni_note,
+        vaccinazioni_note,
         giorni_abbonamento,
         giorni_mensa,
         pasti_settimanali,
@@ -166,8 +175,11 @@ const updateStudentWithTutors = async (studentId, studentData, tutorsList) => {
         scuola = COALESCE($6, scuola),
         giorni_abbonamento = $7,
         pasti_settimanali = COALESCE($8, pasti_settimanali),
+        classe = COALESCE($9, classe),
+        allergeni_note = COALESCE($10, allergeni_note),
+        vaccinazioni_note = COALESCE($11, vaccinazioni_note),
         updated_at = NOW()
-      WHERE id = $9
+      WHERE id = $12
       RETURNING *;
     `;
     const studentRes = await client.query(updateStudentQuery, [
@@ -179,6 +191,9 @@ const updateStudentWithTutors = async (studentId, studentData, tutorsList) => {
       studentData.scuola,
       studentData.giorni_abbonamento || [],
       studentData.pasti_settimanali ?? 0,
+      studentData.classe ?? studentData.class_section,
+      studentData.allergeni_note ?? studentData.allergies_notes,
+      studentData.vaccinazioni_note ?? studentData.vaccinations_notes,
       studentId
     ]);
 

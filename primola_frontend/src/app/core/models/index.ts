@@ -11,6 +11,9 @@ export interface Student {
   birth_date?: string | null;
   birth_place?: string | null;
   school?: string | null;
+  class_section?: string | null;
+  allergies_notes?: string | null;
+  vaccinations_notes?: string | null;
   residence?: string | null;
   active?: boolean;
   created_at?: string;
@@ -23,6 +26,7 @@ export interface Student {
   weekly_meals?: number;
   main_tutor_name?: string;
   main_tutor_phone?: string;
+  main_tutor_email?: string;
   tutors?: Tutor[];
 }
 

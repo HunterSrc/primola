@@ -43,6 +43,14 @@ router.get('/', verifyToken, requireRole(['ADMIN', 'OFFICE'], 401), studentContr
  *                     type: string
  *                   last_name:
  *                     type: string
+ *                   scuola:
+ *                     type: string
+ *                   classe:
+ *                     type: string
+ *                   allergeni_note:
+ *                     type: string
+ *                   vaccinazioni_note:
+ *                     type: string
  *                   giorni_abbonamento:
  *                     type: array
  *                     items:

@@ -18,6 +18,9 @@ describe('StudentEditComponent', () => {
     first_name: 'Alessandro',
     last_name: 'Manzoni',
     school: 'Liceo Parini',
+    class_section: '3°B',
+    allergies_notes: 'Intolleranza al lattosio',
+    vaccinations_notes: 'Richiamo effettuato',
     birth_date: '2015-05-10',
     birth_place: 'Milano',
     residence: 'Via Manzoni 1',
@@ -32,6 +35,7 @@ describe('StudentEditComponent', () => {
         first_name: 'Pietro',
         last_name: 'Manzoni',
         phone: '+39 340 000',
+        email: 'pietro.manzoni@esempio.it',
         relationship: 'Padre',
         is_main: true
       }
@@ -79,9 +83,13 @@ describe('StudentEditComponent', () => {
     expect(component.editForm.value.first_name).toBe('Alessandro');
     expect(component.editForm.value.last_name).toBe('Manzoni');
     expect(component.editForm.value.school).toBe('Liceo Parini');
+    expect(component.editForm.value.class_section).toBe('3°B');
+    expect(component.editForm.value.allergies_notes).toBe('Intolleranza al lattosio');
+    expect(component.editForm.value.vaccinations_notes).toBe('Richiamo effettuato');
     expect(component.editForm.value.sub_mer).toBe(false);
     expect(component.tutors.length).toBe(1);
     expect(component.tutors.at(0).value.first_name).toBe('Pietro');
+    expect(component.tutors.at(0).value.email).toBe('pietro.manzoni@esempio.it');
     expect(component.tutors.at(0).value.is_main).toBe(true);
   });
 
@@ -213,6 +221,32 @@ describe('StudentEditComponent', () => {
     component.onSubmit();
     expect(mockApi.updateStudent).toHaveBeenCalledWith('s-123', expect.objectContaining({
       weekly_meals: 0
+    }));
+  });
+
+  it('should invalidate editForm when tutor email is invalid and submit updated extra fields when valid', () => {
+    component.ngOnInit();
+    component.tutors.at(0).patchValue({ email: 'invalid-email' });
+    expect(component.tutors.at(0).get('email')?.invalid).toBe(true);
+    expect(component.editForm.invalid).toBe(true);
+
+    component.onSubmit();
+    expect(mockApi.updateStudent).not.toHaveBeenCalled();
+
+    component.tutors.at(0).patchValue({ email: 'nuova.email@esempio.it' });
+    component.editForm.patchValue({
+      class_section: '4°C',
+      allergies_notes: 'Celiachia',
+      vaccinations_notes: 'Aggiornate'
+    });
+    expect(component.editForm.valid).toBe(true);
+
+    component.onSubmit();
+    expect(mockApi.updateStudent).toHaveBeenCalledWith('s-123', expect.objectContaining({
+      class_section: '4°C',
+      allergies_notes: 'Celiachia',
+      vaccinations_notes: 'Aggiornate',
+      tutors: [expect.objectContaining({ email: 'nuova.email@esempio.it' })]
     }));
   });
 });

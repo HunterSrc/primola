@@ -106,6 +106,16 @@ import { Student, Tutor } from '../../core/models';
               </div>
 
               <div>
+                <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Classe e Sezione</label>
+                <input
+                  type="text"
+                  formControlName="class_section"
+                  placeholder="Es. 1°E"
+                  class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                />
+              </div>
+
+              <div>
                 <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Data di Nascita</label>
                 <input
                   type="date"
@@ -116,11 +126,47 @@ import { Student, Tutor } from '../../core/models';
             </div>
           </div>
 
-          <!-- Sezione 2: Tutori e Contatti di Emergenza -->
+          <!-- Sezione 2: Allergeni e Preferenze Alimentari -->
+          <div class="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-slate-200/80 space-y-4">
+            <h2 class="text-base sm:text-lg font-bold text-slate-800 flex items-center space-x-2">
+              <span class="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center text-xs font-bold shrink-0">2</span>
+              <span>Allergeni e Preferenze Alimentari</span>
+            </h2>
+
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Note Allergie, Intolleranze o Diete</label>
+              <textarea
+                formControlName="allergies_notes"
+                rows="3"
+                placeholder="Es. Celiachia, allergia alle arachidi, intolleranza al lattosio, dieta vegetariana..."
+                class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+              ></textarea>
+            </div>
+          </div>
+
+          <!-- Sezione 3: Vaccinazioni e Note Varie -->
+          <div class="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-slate-200/80 space-y-4">
+            <h2 class="text-base sm:text-lg font-bold text-slate-800 flex items-center space-x-2">
+              <span class="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-sky-100 text-sky-700 flex items-center justify-center text-xs font-bold shrink-0">3</span>
+              <span>Vaccinazioni e Note Varie</span>
+            </h2>
+
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Vaccinazioni e Altre Informazioni</label>
+              <textarea
+                formControlName="vaccinations_notes"
+                rows="3"
+                placeholder="Es. Stato vaccinale, autorizzazioni o altre note utili..."
+                class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+              ></textarea>
+            </div>
+          </div>
+
+          <!-- Sezione 4: Tutori e Contatti di Emergenza -->
           <div class="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-slate-200/80 space-y-4">
             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <h2 class="text-base sm:text-lg font-bold text-slate-800 flex items-center space-x-2">
-                <span class="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center text-xs font-bold shrink-0">2</span>
+                <span class="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center text-xs font-bold shrink-0">4</span>
                 <span>Tutori e Contatti di Riferimento</span>
               </h2>
               <button
@@ -154,7 +200,7 @@ import { Student, Tutor } from '../../core/models';
                     }
                   </div>
 
-                  <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+                  <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3">
                     <div>
                       <label class="block text-xs font-medium text-slate-500 mb-1">Nome *</label>
                       <input type="text" formControlName="first_name" placeholder="Nome" class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm" />
@@ -168,6 +214,11 @@ import { Student, Tutor } from '../../core/models';
                     <div>
                       <label class="block text-xs font-medium text-slate-500 mb-1">Telefono *</label>
                       <input type="tel" formControlName="phone" placeholder="+39 340..." class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm" />
+                    </div>
+
+                    <div>
+                      <label class="block text-xs font-medium text-slate-500 mb-1">Email</label>
+                      <input type="email" formControlName="email" placeholder="email@esempio.it" class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm" />
                     </div>
 
                     <div>
@@ -221,8 +272,17 @@ import { Student, Tutor } from '../../core/models';
               >
                 <div class="flex items-start justify-between">
                   <div>
-                    <h3 class="text-sm font-bold text-slate-900">{{ student.last_name }} {{ student.first_name }}</h3>
-                    <p class="text-xs text-slate-500">{{ student.school || 'Scuola non indicata' }}</p>
+                    <div class="flex items-center flex-wrap gap-1.5">
+                      <h3 class="text-sm font-bold text-slate-900">{{ student.last_name }} {{ student.first_name }}</h3>
+                      @if (student.allergies_notes) {
+                        <span [title]="student.allergies_notes" class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-800 border border-amber-200">
+                          Allergie / Diete
+                        </span>
+                      }
+                    </div>
+                    <p class="text-xs text-slate-500">
+                      {{ student.school || 'Scuola non indicata' }}@if (student.class_section) { • {{ student.class_section }}}
+                    </p>
                   </div>
 
                   <span class="min-h-[44px] inline-flex items-center space-x-1 px-3 py-1.5 rounded-lg border border-slate-200 bg-slate-50 text-slate-600 text-xs font-semibold">
@@ -239,7 +299,7 @@ import { Student, Tutor } from '../../core/models';
                     {{ student.main_tutor_name || student.tutors?.[0]?.first_name || 'Nessun tutore' }}
                   </div>
 
-                  <div class="text-right text-xs">
+                  <div class="text-right text-xs flex flex-col items-end">
                     @if (student.main_tutor_phone || student.tutors?.[0]?.phone) {
                       <a
                         [href]="'tel:' + (student.main_tutor_phone || student.tutors?.[0]?.phone)"
@@ -250,6 +310,15 @@ import { Student, Tutor } from '../../core/models';
                       </a>
                     } @else {
                       <span class="text-slate-400">Nessun tel.</span>
+                    }
+                    @if (student.main_tutor_email || student.tutors?.[0]?.email) {
+                      <a
+                        [href]="'mailto:' + (student.main_tutor_email || student.tutors?.[0]?.email)"
+                        (click)="$event.stopPropagation()"
+                        class="px-2 text-slate-500 hover:text-emerald-700 hover:underline truncate max-w-[200px]"
+                      >
+                        {{ student.main_tutor_email || student.tutors?.[0]?.email }}
+                      </a>
                     }
                   </div>
                 </div>
@@ -280,15 +349,31 @@ import { Student, Tutor } from '../../core/models';
                       class="hover:bg-emerald-50/40 transition-colors cursor-pointer group"
                       title="Clicca sulla riga per modificare lo studente"
                     >
-                      <td class="py-4 px-6 font-semibold text-slate-800 flex items-center space-x-2">
-                        <span class="group-hover:text-emerald-700 transition-colors">{{ student.last_name }} {{ student.first_name }}</span>
+                      <td class="py-4 px-6 font-semibold text-slate-800">
+                        <div class="flex items-center space-x-2">
+                          <span class="group-hover:text-emerald-700 transition-colors">{{ student.last_name }} {{ student.first_name }}</span>
+                          @if (student.allergies_notes) {
+                            <span [title]="student.allergies_notes" class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-amber-100 text-amber-800 border border-amber-200">
+                              Allergie / Diete
+                            </span>
+                          }
+                        </div>
                       </td>
                       <td class="py-4 px-6 text-slate-500 text-xs">
-                        {{ student.school || 'Non specificata' }}
+                        {{ student.school || 'Non specificata' }}@if (student.class_section) { • {{ student.class_section }}}
                       </td>
                       <td class="py-4 px-6 text-xs text-slate-600">
                         <p class="font-medium text-slate-800">{{ student.main_tutor_name || student.tutors?.[0]?.first_name || 'Nessuno' }}</p>
                         <p class="text-slate-400">{{ student.main_tutor_phone || student.tutors?.[0]?.phone || '-' }}</p>
+                        @if (student.main_tutor_email || student.tutors?.[0]?.email) {
+                          <a
+                            [href]="'mailto:' + (student.main_tutor_email || student.tutors?.[0]?.email)"
+                            (click)="$event.stopPropagation()"
+                            class="text-emerald-700 hover:underline block"
+                          >
+                            {{ student.main_tutor_email || student.tutors?.[0]?.email }}
+                          </a>
+                        }
                       </td>
                       <td class="py-4 px-6 text-right" (click)="$event.stopPropagation()">
                         <button
@@ -333,6 +418,9 @@ export class AnagraficaComponent implements OnInit {
     first_name: ['', Validators.required],
     last_name: ['', Validators.required],
     school: [''],
+    class_section: [''],
+    allergies_notes: [''],
+    vaccinations_notes: [''],
     birth_date: [''],
     sub_lun: [false],
     sub_mar: [false],
@@ -357,6 +445,7 @@ export class AnagraficaComponent implements OnInit {
       first_name: ['', Validators.required],
       last_name: ['', Validators.required],
       phone: ['', Validators.required],
+      email: ['', Validators.email],
       relationship: ['Genitore'],
       is_main: [isMain]
     });
@@ -381,7 +470,8 @@ export class AnagraficaComponent implements OnInit {
     return this.students().filter(s =>
       s.first_name.toLowerCase().includes(q) ||
       s.last_name.toLowerCase().includes(q) ||
-      (s.school && s.school.toLowerCase().includes(q))
+      (s.school && s.school.toLowerCase().includes(q)) ||
+      (s.class_section && s.class_section.toLowerCase().includes(q))
     );
   }
 
