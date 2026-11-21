@@ -83,7 +83,7 @@ import { FinancialMonthlyReport } from '../../core/models';
                 </p>
                 @if ((fin.summary.total_pending_revenues ?? fin.doposcuola.revenues.pending ?? 0) > 0) {
                   <p class="text-[10px] sm:text-[11px] text-amber-600 font-semibold mt-0.5">
-                    Da Incassare: € {{ (fin.summary.total_pending_revenues ?? fin.doposcuola.revenues.pending ?? 0) | number:'1.2-2' }}
+                    Da Incassare / Rimanenze: <span class="whitespace-nowrap">€ {{ (fin.summary.total_pending_revenues ?? fin.doposcuola.revenues.pending ?? 0) | number:'1.2-2' }}</span>
                   </p>
                 }
               </div>
@@ -103,9 +103,11 @@ import { FinancialMonthlyReport } from '../../core/models';
                 <p class="text-xl sm:text-3xl font-extrabold mt-1" [class.text-emerald-700]="fin.summary.total_actual_margin >= 0" [class.text-rose-700]="fin.summary.total_actual_margin < 0">
                   € {{ fin.summary.total_actual_margin | number:'1.2-2' }}
                 </p>
-                <p class="text-[10px] sm:text-[11px] text-slate-400 mt-0.5">
-                  Previsto: € {{ fin.summary.total_expected_margin | number:'1.2-2' }}
-                </p>
+                @if (fin.courses.revenues.expected !== null && fin.courses.revenues.expected !== undefined) {
+                  <p class="text-[10px] sm:text-[11px] text-slate-400 mt-0.5">
+                    Previsto: € {{ fin.summary.total_expected_margin | number:'1.2-2' }}
+                  </p>
+                }
               </div>
 
               <div class="bg-gradient-to-r from-amber-500 to-orange-500 p-4 sm:p-5 rounded-2xl text-white shadow-md shadow-orange-500/15">
@@ -231,9 +233,10 @@ import { FinancialMonthlyReport } from '../../core/models';
                   <span class="text-xs font-semibold text-slate-500 uppercase block">Entrate Corsi</span>
                   <p class="text-xl font-bold text-emerald-600 mt-1">
                     € {{ fin.courses.revenues.actual | number:'1.2-2' }}
+                    <span class="text-[11px] font-semibold text-emerald-700 ml-1">Incassato nel mese</span>
                   </p>
-                  <p class="text-xs text-slate-400 mt-0.5">
-                    Previste (a capienza max): € {{ fin.courses.revenues.expected | number:'1.2-2' }}
+                  <p class="text-xs text-amber-700 font-semibold mt-1">
+                    Rimanenze da pagare: € {{ (fin.courses.revenues.remaining ?? 0) | number:'1.2-2' }}
                   </p>
                 </div>
 
@@ -251,9 +254,6 @@ import { FinancialMonthlyReport } from '../../core/models';
                   <span class="text-xs font-semibold text-slate-500 uppercase block">Margine Corsi</span>
                   <p class="text-xl font-bold mt-1" [class.text-emerald-700]="fin.courses.margin.actual >= 0" [class.text-rose-700]="fin.courses.margin.actual < 0">
                     € {{ fin.courses.margin.actual | number:'1.2-2' }}
-                  </p>
-                  <p class="text-xs text-slate-400 mt-0.5">
-                    Margine previsto: € {{ fin.courses.margin.expected | number:'1.2-2' }}
                   </p>
                 </div>
               </div>

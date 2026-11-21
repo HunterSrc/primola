@@ -109,7 +109,7 @@ export type AccordionSection = 'doposcuola' | 'corsi' | 'admin' | null;
             </div>
             <div class="flex items-center justify-between px-1">
               <span class="text-[11px] font-semibold text-slate-400">Doposcuola & Presenze</span>
-              <span class="text-[9px] bg-[#3857F1]/20 text-blue-400 font-bold px-1.5 py-0.5 rounded border border-[#3857F1]/30">v2.3.0</span>
+              <span class="text-[9px] bg-[#3857F1]/20 text-blue-400 font-bold px-1.5 py-0.5 rounded border border-[#3857F1]/30">v3.0.0</span>
             </div>
           </div>
 
@@ -308,6 +308,34 @@ export type AccordionSection = 'doposcuola' | 'corsi' | 'admin' | null;
                           </svg>
                         </div>
                         <span class="text-sm">Elenco Corsi</span>
+                      </a>
+
+                      <a
+                        routerLink="/course-students"
+                        (click)="closeMobileMenu()"
+                        routerLinkActive="bg-[#3857F1] text-white shadow-lg shadow-blue-600/30 font-semibold"
+                        class="flex items-center space-x-3 px-3 py-2 rounded-xl text-slate-300 hover:bg-slate-800/80 hover:text-white transition-all group/item"
+                      >
+                        <div class="p-1.5 rounded-lg bg-slate-800/60 group-hover/item:bg-slate-700/60 transition-colors">
+                          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-cyan-400 group-hover/item:scale-110 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                          </svg>
+                        </div>
+                        <span class="text-sm">Studenti Corsi</span>
+                      </a>
+
+                      <a
+                        routerLink="/course-payments"
+                        (click)="closeMobileMenu()"
+                        routerLinkActive="bg-[#3857F1] text-white shadow-lg shadow-blue-600/30 font-semibold"
+                        class="flex items-center space-x-3 px-3 py-2 rounded-xl text-slate-300 hover:bg-slate-800/80 hover:text-white transition-all group/item"
+                      >
+                        <div class="p-1.5 rounded-lg bg-slate-800/60 group-hover/item:bg-slate-700/60 transition-colors">
+                          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-emerald-400 group-hover/item:scale-110 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                          </svg>
+                        </div>
+                        <span class="text-sm">Pagamenti Corsi</span>
                       </a>
 
                       <a
@@ -558,7 +586,12 @@ export class MainLayoutComponent {
   }
 
   detectSectionFromUrl(url: string): AccordionSection {
-    if (url.includes('/projects') || url.includes('/reports')) {
+    if (
+      url.includes('/projects') ||
+      url.includes('/course-students') ||
+      url.includes('/course-payments') ||
+      url.includes('/reports')
+    ) {
       return 'corsi';
     }
     if (url.includes('/users') || url.includes('/admin') || url.includes('/afterschool-expenses')) {

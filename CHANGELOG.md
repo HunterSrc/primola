@@ -1,3 +1,11 @@
+## Release v3.0.0 - 2026-11-21
+
+- **feat(course-students)**: nuova anagrafica dedicata Studenti Corsi (`/course-students`, `/api/course-students`) con 10 campi completi, gestione tessera e badge/alert automatici per tessere in scadenza (≤ 30 gg) o scadute (migrazione `015_add_course_students_and_installments.sql`)
+- **feat(course-payments)**: iscrizioni multi-corso con piano da 1 a 4 rate non vincolate al mese, interfaccia dedicata Pagamenti Corsi (`/course-payments`, `/api/course-enrollments`) con pagamento singola rata, modifica importo, storno e "Salda Tutto" con tutti i metodi di pagamento
+- **feat(projects)**: calcolo automatico di `actual_enrolled` dalle iscrizioni reali, avviso statistico non bloccante per superamento capienza massima (`max_enrolled`), gestione iscritti in scheda corso e fix formattazione/persistenza date di svolgimento
+- **feat(dashboard)**: aggiornamento Dashboard Riepiloghi con incassi corsi basati sulle sole rate pagate nel mese e sostituzione del "Previsto" corsi con le **Rimanenze da pagare**
+- **chore(release)**: incremento versione Major v3.0.0
+
 ## Release v2.3.0 - 2026-11-21
 
 - **feat(anagrafica)**: aggiunto campo email per i genitori/tutori nei form di creazione e modifica studente (con visualizzazione in lista)

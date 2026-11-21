@@ -1,5 +1,39 @@
 const db = require('../config/database');
 
+function formatDateOnly(val) {
+  if (!val) return null;
+  if (typeof val === 'string') {
+    const trimmed = val.trim();
+    if (/^\d{4}-\d{2}-\d{2}/.test(trimmed)) {
+      return trimmed.slice(0, 10);
+    }
+    const parsed = new Date(trimmed);
+    if (!isNaN(parsed.getTime())) {
+      const y = parsed.getFullYear();
+      const m = String(parsed.getMonth() + 1).padStart(2, '0');
+      const d = String(parsed.getDate()).padStart(2, '0');
+      return `${y}-${m}-${d}`;
+    }
+    return null;
+  }
+  if (val instanceof Date && !isNaN(val.getTime())) {
+    const y = val.getFullYear();
+    const m = String(val.getMonth() + 1).padStart(2, '0');
+    const d = String(val.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+  return null;
+}
+
+function normalizeProjectDates(row) {
+  if (!row) return row;
+  return {
+    ...row,
+    start_date: formatDateOnly(row.start_date),
+    end_date: formatDateOnly(row.end_date)
+  };
+}
+
 class ProjectRepository {
   /**
    * Lista tutte le commesse con conteggio docenti assegnati e totali ore
@@ -24,11 +58,18 @@ class ProjectRepository {
       FROM projects p
       LEFT JOIN project_teachers pt ON p.id = pt.project_id
       LEFT JOIN users u ON pt.user_id = u.id
-      GROUP BY p.id
+      GROUP BY p.id, p.title, p.type, p.enrollment_fee, p.max_enrolled, p.actual_enrolled, p.start_date, p.end_date, p.description, p.location, p.created_at, p.updated_at
       ORDER BY p.title ASC
     `;
-    const result = await db.query(query);
-    return result.rows;
+    const [result, countsRes] = await Promise.all([
+      db.query(query),
+      db.query(`SELECT project_id, COUNT(*)::int AS cnt FROM course_enrollments GROUP BY project_id`)
+    ]);
+    const countsMap = new Map(countsRes.rows.map(r => [r.project_id, Number(r.cnt || 0)]));
+    return result.rows.map(row => normalizeProjectDates({
+      ...row,
+      actual_enrolled: countsMap.has(row.id) ? countsMap.get(row.id) : 0
+    }));
   }
 
   /**
@@ -42,7 +83,15 @@ class ProjectRepository {
       WHERE p.id = $1
     `;
     const result = await db.query(query, [id]);
-    return result.rows.length > 0 ? result.rows[0] : null;
+    if (result.rows.length === 0) return null;
+    const countRes = await db.query(
+      `SELECT COUNT(*)::int AS cnt FROM course_enrollments WHERE project_id = $1`,
+      [id]
+    );
+    return normalizeProjectDates({
+      ...result.rows[0],
+      actual_enrolled: Number(countRes.rows[0]?.cnt || 0)
+    });
   }
 
   /**
@@ -65,7 +114,7 @@ class ProjectRepository {
       start_date || null,
       end_date || null
     ]);
-    return result.rows[0];
+    return normalizeProjectDates(result.rows[0]);
   }
 
   /**
@@ -123,7 +172,7 @@ class ProjectRepository {
       RETURNING id, title, description, location, type, enrollment_fee, max_enrolled, actual_enrolled, start_date, end_date, created_at, updated_at
     `;
     const result = await db.query(query, params);
-    return result.rows.length > 0 ? result.rows[0] : null;
+    return result.rows.length > 0 ? normalizeProjectDates(result.rows[0]) : null;
   }
 
   /**

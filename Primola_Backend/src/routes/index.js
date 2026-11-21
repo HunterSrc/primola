@@ -10,6 +10,8 @@ const afterschoolRoutes = require('./afterschool');
 const afterschoolPackagesRoutes = require('./afterschoolPackages');
 const paymentsRoutes = require('./payments');
 const settingsRoutes = require('./settings');
+const courseStudentsRoutes = require('./courseStudents');
+const courseEnrollmentsRoutes = require('./courseEnrollments');
 
 // Endpoint di test
 router.get('/health', (req, res) => res.json({ status: 'ok' }));
@@ -25,5 +27,7 @@ router.use('/afterschool', afterschoolRoutes);
 router.use('/afterschool-packages', afterschoolPackagesRoutes);
 router.use('/payments', paymentsRoutes);
 router.use('/settings', settingsRoutes);
+router.use('/course-students', courseStudentsRoutes);
+router.use('/course-enrollments', courseEnrollmentsRoutes);
 
 module.exports = router;

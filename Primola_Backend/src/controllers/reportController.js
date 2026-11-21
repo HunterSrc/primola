@@ -867,8 +867,7 @@ exports.getFinancialMonthlyReport = async (req, res, next) => {
 
     // 5. Corsi (Projects != 'DOPOSCUOLA')
     const coursesRes = await client.query(
-      `SELECT p.id, p.title, p.type, p.enrollment_fee, p.max_enrolled, 
-              COALESCE(p.actual_enrolled, 0) AS actual_enrolled,
+      `SELECT p.id, p.title, p.type, p.enrollment_fee, p.max_enrolled,
               p.start_date, p.end_date
        FROM projects p
        WHERE p.type != 'DOPOSCUOLA'
@@ -887,9 +886,29 @@ exports.getFinancialMonthlyReport = async (req, res, next) => {
        ORDER BY p.title ASC, COALESCE(u.last_name, u.cognome) ASC`
     );
 
-    // Corsi attivi nel mese
-    let coursesExpectedRevenues = 0;
-    let coursesActualRevenues = 0;
+    const coursesPaidRes = await client.query(
+      `SELECT COALESCE(SUM(ci.amount), 0)::numeric AS actual_revenues
+       FROM course_installments ci
+       JOIN course_enrollments ce ON ce.id = ci.enrollment_id
+       JOIN projects p ON p.id = ce.project_id
+       WHERE p.type != 'DOPOSCUOLA'
+         AND ci.status = 'PAID'
+         AND ci.paid_at >= $1 AND ci.paid_at <= $2`,
+      [fromDate, toDate]
+    );
+
+    const coursesRemainingRes = await client.query(
+      `SELECT COALESCE(SUM(ci.amount), 0)::numeric AS remaining_revenues
+       FROM course_installments ci
+       JOIN course_enrollments ce ON ce.id = ci.enrollment_id
+       JOIN projects p ON p.id = ce.project_id
+       WHERE p.type != 'DOPOSCUOLA'
+         AND ci.status = 'PENDING'`
+    );
+
+    const coursesActualRevenues = Number(Number(coursesPaidRes.rows[0]?.actual_revenues || 0).toFixed(2));
+    const coursesRemainingRevenues = Number(Number(coursesRemainingRes.rows[0]?.remaining_revenues || 0).toFixed(2));
+
     let coursesExpectedExpenses = 0;
     let coursesActualExpenses = 0;
 
@@ -901,11 +920,6 @@ exports.getFinancialMonthlyReport = async (req, res, next) => {
 
       const isActiveInMonth = (!sDate || sDate <= toDate) && (!eDate || eDate >= fromDate);
       const isFinishedInMonth = eDate && eDate >= fromDate && eDate <= toDate;
-
-      if (isActiveInMonth) {
-        coursesExpectedRevenues += Number(c.max_enrolled || 0) * Number(c.enrollment_fee || 0);
-        coursesActualRevenues += Number(c.actual_enrolled || 0) * Number(c.enrollment_fee || 0);
-      }
 
       // Docenti associati a questo corso
       const teachers = projectTeachersRes.rows.filter(pt => pt.project_id === c.id);
@@ -980,25 +994,28 @@ exports.getFinancialMonthlyReport = async (req, res, next) => {
       },
       courses: {
         revenues: {
-          expected: Number(coursesExpectedRevenues.toFixed(2)),
-          actual: Number(coursesActualRevenues.toFixed(2))
+          expected: null,
+          actual: coursesActualRevenues,
+          remaining: coursesRemainingRevenues
         },
         expenses: {
           expected: Number(coursesExpectedExpenses.toFixed(2)),
           actual: Number(coursesActualExpenses.toFixed(2))
         },
         margin: {
-          expected: Number((coursesExpectedRevenues - coursesExpectedExpenses).toFixed(2)),
+          expected: null,
           actual: Number((coursesActualRevenues - coursesActualExpenses).toFixed(2))
         },
         teachers: coursesTeachersBreakdown
       },
       summary: {
-        total_expected_revenues: Number((doposcuolaExpectedRevenues + coursesExpectedRevenues).toFixed(2)),
+        total_expected_revenues: Number(doposcuolaExpectedRevenues.toFixed(2)),
         total_actual_revenues: Number((doposcuolaActualRevenues + coursesActualRevenues).toFixed(2)),
+        total_pending_revenues: Number((doposcuolaPendingRevenues + coursesRemainingRevenues).toFixed(2)),
+        total_courses_remaining: coursesRemainingRevenues,
         total_expected_expenses: Number((doposcuolaExpectedExpenses + coursesExpectedExpenses).toFixed(2)),
         total_actual_expenses: Number((doposcuolaActualExpenses + coursesActualExpenses).toFixed(2)),
-        total_expected_margin: Number(((doposcuolaExpectedRevenues + coursesExpectedRevenues) - (doposcuolaExpectedExpenses + coursesExpectedExpenses)).toFixed(2)),
+        total_expected_margin: Number((doposcuolaExpectedRevenues - (doposcuolaExpectedExpenses + coursesExpectedExpenses)).toFixed(2)),
         total_actual_margin: Number(((doposcuolaActualRevenues + coursesActualRevenues) - (doposcuolaActualExpenses + coursesActualExpenses)).toFixed(2)),
         total_meals_issued: actualMealsCount
       }

@@ -420,16 +420,17 @@ export interface FinancialMonthlyReport {
   };
   courses: {
     revenues: {
-      expected: number;
       actual: number;
+      remaining: number;
+      expected?: number | null;
     };
     expenses: {
       expected: number;
       actual: number;
     };
     margin: {
-      expected: number;
       actual: number;
+      expected?: number | null;
     };
     teachers: FinancialCourseTeacher[];
   };
@@ -437,6 +438,7 @@ export interface FinancialMonthlyReport {
     total_expected_revenues: number;
     total_actual_revenues: number;
     total_pending_revenues?: number;
+    total_courses_remaining?: number;
     total_expected_expenses: number;
     total_actual_expenses: number;
     total_expected_margin: number;
@@ -627,6 +629,94 @@ export interface TransitionMealTariffPayload {
   new_valid_from: string;
   new_valid_to?: string;
   notes?: string | null;
+}
+
+export type CardStatus = 'VALIDA' | 'IN_SCADENZA' | 'SCADUTA' | 'NESSUNA_TESSERA';
+
+export interface CourseInstallment {
+  id: string;
+  enrollment_id: string;
+  installment_number: number;
+  amount: number;
+  status: 'PENDING' | 'PAID';
+  paid_at?: string | null;
+  payment_method?: string | null;
+  notes?: string | null;
+}
+
+export interface CourseEnrollment {
+  id: string;
+  course_student_id: string;
+  project_id: string;
+  student_nome?: string;
+  student_cognome?: string;
+  student_email?: string | null;
+  student_telefono?: string | null;
+  student_card_status?: CardStatus;
+  project_title?: string;
+  project_max_enrolled?: number;
+  total_amount: number;
+  paid_amount: number;
+  remaining_amount: number;
+  payment_status: 'PENDING' | 'PAID';
+  installments_count: number;
+  paid_installments_count?: number;
+  enrolled_at: string;
+  notes?: string | null;
+  installments: CourseInstallment[];
+}
+
+export interface CourseStudent {
+  id: string;
+  nome: string;
+  cognome: string;
+  email?: string | null;
+  telefono?: string | null;
+  data_nascita?: string | null;
+  luogo_nascita?: string | null;
+  indirizzo_residenza?: string | null;
+  citta_residenza?: string | null;
+  possiede_tessera: boolean;
+  data_scadenza_tessera?: string | null;
+  card_status?: CardStatus;
+  days_to_expiry?: number | null;
+  enrollments_count?: number;
+  remaining_amount?: number;
+  enrollments?: CourseEnrollment[];
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface CourseStudentSummary {
+  total: number;
+  valid: number;
+  expiring_soon: number;
+  expired: number;
+  no_card: number;
+}
+
+export interface CourseStudentsResponse {
+  students: CourseStudent[];
+  summary: CourseStudentSummary;
+}
+
+export interface CourseEnrollmentsSummary {
+  total_enrollments: number;
+  total_amount: number;
+  total_paid: number;
+  total_remaining: number;
+}
+
+export interface CourseEnrollmentsResponse {
+  enrollments: CourseEnrollment[];
+  summary: CourseEnrollmentsSummary;
+}
+
+export interface CreateCourseEnrollmentResponse {
+  enrollment: CourseEnrollment;
+  over_capacity: boolean;
+  actual_enrolled: number;
+  max_enrolled: number;
 }
 
 export * from './payment.model';

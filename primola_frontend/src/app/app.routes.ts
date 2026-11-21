@@ -16,6 +16,8 @@ import { AfterschoolExpensesComponent } from './features/afterschool/afterschool
 import { ReportsComponent } from './features/reports/reports.component';
 import { AfterschoolPackagesPageComponent } from './features/admin/afterschool-packages-page.component';
 import { PaymentsDashboardComponent } from './features/payments/payments-dashboard.component';
+import { CourseStudentsComponent } from './features/course-students/course-students.component';
+import { CoursePaymentsComponent } from './features/course-payments/course-payments.component';
 import { authGuard, adminGuard, guestGuard, adminOrOfficeGuard, reportsGuard } from './core/guards/auth.guard';
 
 export const routes: Routes = [
@@ -88,6 +90,16 @@ export const routes: Routes = [
       {
         path: 'projects/:id',
         component: ProjectDetailComponent,
+        canActivate: [adminOrOfficeGuard]
+      },
+      {
+        path: 'course-students',
+        component: CourseStudentsComponent,
+        canActivate: [adminOrOfficeGuard]
+      },
+      {
+        path: 'course-payments',
+        component: CoursePaymentsComponent,
         canActivate: [adminOrOfficeGuard]
       },
       {

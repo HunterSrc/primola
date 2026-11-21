@@ -33,7 +33,13 @@ import {
   AssignPackagePayload,
   UpdateAssignedTariffPayload,
   SettlePayload,
-  AssignedTariff
+  AssignedTariff,
+  CourseStudent,
+  CourseEnrollment,
+  CourseInstallment,
+  CourseStudentsResponse,
+  CourseEnrollmentsResponse,
+  CreateCourseEnrollmentResponse
 } from '../models';
 
 @Injectable({
@@ -908,6 +914,139 @@ export class ApiService {
   settleMonthlyPayments(payload: SettlePayload): Observable<any> {
     return this.http.post<ApiResponse<any>>(`${this.baseUrl}/payments/settle`, payload).pipe(
       map(res => res.data)
+    );
+  }
+
+  // ================= STUDENTI CORSI & TESSERE =================
+  getCourseStudents(params?: { search?: string; card_status?: string }): Observable<CourseStudentsResponse> {
+    let httpParams = new HttpParams();
+    if (params?.search) {
+      httpParams = httpParams.set('search', params.search);
+    }
+    if (params?.card_status) {
+      httpParams = httpParams.set('card_status', params.card_status);
+    }
+    return this.http.get<ApiResponse<CourseStudentsResponse>>(`${this.baseUrl}/course-students`, { params: httpParams }).pipe(
+      map(res => res.data || {
+        students: [],
+        summary: { total: 0, valid: 0, expiring_soon: 0, expired: 0, no_card: 0 }
+      })
+    );
+  }
+
+  getCourseStudent(id: string): Observable<CourseStudent> {
+    return this.http.get<ApiResponse<CourseStudent>>(`${this.baseUrl}/course-students/${id}`).pipe(
+      map(res => res.data)
+    );
+  }
+
+  createCourseStudent(data: Partial<CourseStudent>): Observable<CourseStudent> {
+    return this.http.post<ApiResponse<CourseStudent>>(`${this.baseUrl}/course-students`, data).pipe(
+      map(res => res.data)
+    );
+  }
+
+  updateCourseStudent(id: string, data: Partial<CourseStudent>): Observable<CourseStudent> {
+    return this.http.put<ApiResponse<CourseStudent>>(`${this.baseUrl}/course-students/${id}`, data).pipe(
+      map(res => res.data)
+    );
+  }
+
+  deleteCourseStudent(id: string): Observable<boolean> {
+    return this.http.delete<ApiResponse<{ message?: string }>>(`${this.baseUrl}/course-students/${id}`).pipe(
+      map(res => res.success)
+    );
+  }
+
+  // ================= ISCRIZIONI & PAGAMENTI CORSI (RATE 1-4) =================
+  getCourseEnrollments(params?: {
+    project_id?: string;
+    course_student_id?: string;
+    payment_status?: string;
+    search?: string;
+  }): Observable<CourseEnrollmentsResponse> {
+    let httpParams = new HttpParams();
+    if (params?.project_id) {
+      httpParams = httpParams.set('project_id', params.project_id);
+    }
+    if (params?.course_student_id) {
+      httpParams = httpParams.set('course_student_id', params.course_student_id);
+    }
+    if (params?.payment_status) {
+      httpParams = httpParams.set('payment_status', params.payment_status);
+    }
+    if (params?.search) {
+      httpParams = httpParams.set('search', params.search);
+    }
+    return this.http.get<ApiResponse<CourseEnrollmentsResponse>>(`${this.baseUrl}/course-enrollments`, { params: httpParams }).pipe(
+      map(res => res.data || {
+        enrollments: [],
+        summary: { total_enrollments: 0, total_amount: 0, total_paid: 0, total_remaining: 0 }
+      })
+    );
+  }
+
+  createCourseEnrollment(data: {
+    course_student_id: string;
+    project_id: string;
+    total_amount?: number;
+    installments_count: number;
+    enrolled_at?: string;
+    notes?: string;
+  }): Observable<CreateCourseEnrollmentResponse> {
+    return this.http.post<ApiResponse<CreateCourseEnrollmentResponse>>(`${this.baseUrl}/course-enrollments`, data).pipe(
+      map(res => res.data)
+    );
+  }
+
+  deleteCourseEnrollment(id: string): Observable<boolean> {
+    return this.http.delete<ApiResponse<{ message?: string }>>(`${this.baseUrl}/course-enrollments/${id}`).pipe(
+      map(res => res.success)
+    );
+  }
+
+  settleCourseEnrollment(
+    id: string,
+    data: { paid_at?: string; payment_method: string; notes?: string }
+  ): Observable<CourseEnrollment> {
+    return this.http.post<ApiResponse<{ enrollment: CourseEnrollment; settled_count?: number }>>(
+      `${this.baseUrl}/course-enrollments/${id}/settle`,
+      data
+    ).pipe(
+      map(res => res.data.enrollment)
+    );
+  }
+
+  payCourseInstallment(
+    installmentId: string,
+    data: { amount?: number; paid_at?: string; payment_method: string; notes?: string }
+  ): Observable<CourseEnrollment> {
+    return this.http.post<ApiResponse<{ enrollment: CourseEnrollment; installment?: CourseInstallment }>>(
+      `${this.baseUrl}/course-enrollments/installments/${installmentId}/pay`,
+      data
+    ).pipe(
+      map(res => res.data.enrollment)
+    );
+  }
+
+  unpayCourseInstallment(installmentId: string): Observable<CourseEnrollment> {
+    return this.http.post<ApiResponse<{ enrollment: CourseEnrollment; installment?: CourseInstallment }>>(
+      `${this.baseUrl}/course-enrollments/installments/${installmentId}/unpay`,
+      {}
+    ).pipe(
+      map(res => res.data.enrollment)
+    );
+  }
+
+  updateCourseInstallment(
+    installmentId: string,
+    data: { amount: number; notes?: string }
+  ): Observable<CourseEnrollment> {
+    return this.http.put<ApiResponse<{ enrollment: CourseEnrollment; installment?: CourseInstallment }>>(
+      `${this.baseUrl}/course-enrollments/installments/${installmentId}`,
+      data
+    ).pipe(
+      map(res => res.data.enrollment)
     );
   }
 }

@@ -5,11 +5,12 @@ import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../core/services/api.service';
 import { AuthService } from '../../core/services/auth.service';
 import { Project } from '../../core/models';
+import { AppDatePipe } from '../../shared/pipes/app-date.pipe';
 
 @Component({
   selector: 'app-projects-list',
   standalone: true,
-  imports: [CommonModule, RouterLink, FormsModule],
+  imports: [CommonModule, RouterLink, FormsModule, AppDatePipe],
   template: `
     <div class="p-4 sm:p-6 max-w-7xl mx-auto space-y-5">
       <!-- Header -->
@@ -191,9 +192,9 @@ import { Project } from '../../core/models';
                     <td class="py-3.5 px-4 align-top whitespace-nowrap">
                       @if (proj.start_date || proj.end_date) {
                         <div class="text-slate-700 font-medium">
-                          <span>{{ proj.start_date || 'Inizio n.d.' }}</span>
+                          <span>{{ proj.start_date ? (proj.start_date | appDate) : 'Inizio n.d.' }}</span>
                           <span class="text-slate-400 mx-1">&rarr;</span>
-                          <span>{{ proj.end_date || 'Fine n.d.' }}</span>
+                          <span>{{ proj.end_date ? (proj.end_date | appDate) : 'Fine n.d.' }}</span>
                         </div>
                       } @else {
                         <span class="text-slate-400 italic">Date non specificate</span>
@@ -244,8 +245,18 @@ import { Project } from '../../core/models';
                       <div class="font-semibold text-slate-700">
                         € {{ (proj.enrollment_fee || 0) | number:'1.2-2' }}
                       </div>
-                      <div class="text-[11px] text-slate-500 font-medium">
-                        Iscritti: <span class="font-bold text-slate-700">{{ proj.actual_enrolled || 0 }}</span> / {{ proj.max_enrolled || 0 }}
+                      <div class="text-[11px] text-slate-500 font-medium flex items-center gap-1.5 flex-wrap">
+                        <span>
+                          Iscritti: <span class="font-bold text-slate-700">{{ proj.actual_enrolled || 0 }}</span> / {{ proj.max_enrolled || 0 }}
+                        </span>
+                        @if ((proj.max_enrolled || 0) > 0 && (proj.actual_enrolled || 0) > (proj.max_enrolled || 0)) {
+                          <span
+                            class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-800 border border-amber-200"
+                            title="Numero iscritti superiore al tetto massimo previsto (dato statistico, non bloccante)"
+                          >
+                            Oltre capienza
+                          </span>
+                        }
                       </div>
                     </td>
 
